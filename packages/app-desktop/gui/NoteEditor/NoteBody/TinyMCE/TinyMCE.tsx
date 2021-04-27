@@ -549,6 +549,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'link', 'joplinInlineCode', 'joplinCodeBlock', 'joplinAttach', '|',
 				'bullist', 'numlist', 'joplinChecklist', '|',
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
+				'|', 'fontselect', 'fontsizeselect', 'formatselect',
+				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
 			];
 
 			const editors = await (window as any).tinymce.init({
