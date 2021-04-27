@@ -1,6 +1,6 @@
 import { FormNote } from './types';
 
-import HtmlToMd from '@joplin/lib/HtmlToMd';
+// import HtmlToMd from '@joplin/lib/HtmlToMd';
 import Note from '@joplin/lib/models/Note';
 const { MarkupToHtml } = require('@joplin/renderer');
 
@@ -8,9 +8,10 @@ export async function htmlToMarkdown(markupLanguage: number, html: string, origi
 	let newBody = '';
 
 	if (markupLanguage === MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN) {
-		const htmlToMd = new HtmlToMd();
-		newBody = htmlToMd.parse(html, { preserveImageTagsWithSize: true });
-		newBody = await Note.replaceResourceExternalToInternalLinks(newBody, { useAbsolutePaths: true });
+		// const htmlToMd = new HtmlToMd();
+		newBody = html;
+		// newBody = htmlToMd.parse(html, { preserveImageTagsWithSize: true });
+		// newBody = await Note.replaceResourceExternalToInternalLinks(newBody, { useAbsolutePaths: true });
 	} else {
 		newBody = await Note.replaceResourceExternalToInternalLinks(html, { useAbsolutePaths: true });
 		if (originalCss) newBody = `<style>${originalCss}</style>\n${newBody}`;
