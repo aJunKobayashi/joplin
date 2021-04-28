@@ -551,6 +551,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
+				'|', 'toc',
 			];
 
 			const editors = await (window as any).tinymce.init({
@@ -561,7 +562,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				resize: false,
 				icons: 'Joplin',
 				icons_url: 'gui/NoteEditor/NoteBody/TinyMCE/icons.js',
-				plugins: 'noneditable link joplinLists hr searchreplace codesample table',
+				plugins: 'noneditable link joplinLists hr searchreplace codesample table toc',
 				noneditable_noneditable_class: 'joplin-editable', // Can be a regex too
 				valid_elements: '*[*]', // We already filter in sanitize_html
 				menubar: false,
