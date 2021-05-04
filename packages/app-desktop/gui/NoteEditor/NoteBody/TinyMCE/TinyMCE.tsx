@@ -351,7 +351,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		async function loadScripts() {
 			const scriptsToLoad: any[] = [
 				{
-					src: 'node_modules/tinymce/tinymce.min.js',
+					src: 'node_modules/tinymce/tinymce.js',
 					id: 'tinyMceScript',
 					loaded: false,
 				},
