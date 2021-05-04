@@ -433,8 +433,7 @@ msgid ""
 "This Rich Text editor has a number of limitations and it is recommended to "
 "be aware of them before using it."
 msgstr ""
-"リッチテキストエディターには多くの制限がありますので、それらをご承知の上でご"
-"使用ください。"
+"編集モード"
 
 #: packages/app-desktop/gui/NoteEditor/NoteEditor.js:341
 msgid "Read more about it"
