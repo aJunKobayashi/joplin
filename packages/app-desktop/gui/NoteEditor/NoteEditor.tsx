@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import TinyMCE from './NoteBody/TinyMCE/TinyMCE';
-import CodeMirror from './NoteBody/CodeMirror/CodeMirror';
 import { connect } from 'react-redux';
 import MultiNoteActions from '../MultiNoteActions';
 import { htmlToMarkdown, formNoteToNote } from './utils';
@@ -404,9 +403,11 @@ function NoteEditor(props: NoteEditorProps) {
 	let editor = null;
 
 	if (props.bodyEditor === 'TinyMCE') {
+		editorProps.disabled = false;
 		editor = <TinyMCE {...editorProps}/>;
 	} else if (props.bodyEditor === 'CodeMirror') {
-		editor = <CodeMirror {...editorProps}/>;
+		editorProps.disabled = true;
+		editor = <TinyMCE {...editorProps}/>;
 	} else {
 		throw new Error(`Invalid editor: ${props.bodyEditor}`);
 	}

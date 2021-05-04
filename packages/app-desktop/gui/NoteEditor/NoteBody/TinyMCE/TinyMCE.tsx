@@ -557,6 +557,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			const editors = await (window as any).tinymce.init({
 				selector: `#${rootIdRef.current}`,
 				root_name: 'pre',
+				content_style: 'body { opacity: 1.0 !important;}',
 				width: '100%',
 				body_class: 'jop-tinymce',
 				height: '100%',
