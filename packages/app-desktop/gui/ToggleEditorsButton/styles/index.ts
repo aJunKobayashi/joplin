@@ -1,8 +1,8 @@
-import { Props, Value } from '../ToggleEditorsButton';
+import { Props } from '../ToggleEditorsButton';
 const { buildStyle } = require('@joplin/lib/theme');
 
 export default function styles(props: Props) {
-	return buildStyle(['ToggleEditorsButton', props.value], props.themeId, (theme: any) => {
+	return buildStyle(['ToggleEditorsButton', props.disabled], props.themeId, (theme: any) => {
 		const iconSize = 15;
 		const mdIconWidth = iconSize * 1.25;
 		const buttonHeight = theme.toolbarHeight - 7;
@@ -53,11 +53,11 @@ export default function styles(props: Props) {
 			},
 		};
 
-		if (props.value === Value.Markdown) {
+		if (props.disabled) {
 			output.leftInnerButton.backgroundColor = theme.color3;
 			output.leftIcon.color = theme.backgroundColor3;
 			output.rightInnerButton.opacity = 0.5;
-		} else if (props.value === Value.RichText) {
+		} else {
 			output.rightInnerButton.backgroundColor = theme.color3;
 			output.rightIcon.color = theme.backgroundColor3;
 			output.leftInnerButton.opacity = 0.5;

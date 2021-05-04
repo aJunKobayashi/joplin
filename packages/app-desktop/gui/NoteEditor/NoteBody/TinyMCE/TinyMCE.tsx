@@ -1153,6 +1153,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				buttons.push(<ToggleEditorsButton
 					key={info.name}
 					value={ToggleEditorsButtonValue.RichText}
+					disabled={props.disabled}
 					themeId={props.themeId}
 					toolbarButtonInfo={info}
 				/>);

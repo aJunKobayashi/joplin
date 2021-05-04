@@ -57,6 +57,7 @@ class ToolbarBaseComponent extends React.Component<Props, any> {
 					rightItemComps.push(<ToggleEditorsButton
 						key={o.name}
 						value={Value.Markdown}
+						disabled = {this.props.disabled}
 						themeId={this.props.themeId}
 						toolbarButtonInfo={o}
 					/>);

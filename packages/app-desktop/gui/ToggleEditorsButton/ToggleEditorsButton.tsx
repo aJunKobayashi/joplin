@@ -10,6 +10,7 @@ export enum Value {
 export interface Props {
 	themeId: number;
 	value: Value;
+	disabled: boolean;
 	toolbarButtonInfo: ToolbarButtonInfo;
 }
 
