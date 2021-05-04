@@ -34,7 +34,7 @@ export default {
 					// So the sanitizeHtml function must handle this kind of non-valid HTML.
 
 					if (!sanitizedContent) {
-						sanitizedContent = htmlUtils.sanitizeHtml(token.content, { addNoMdConvClass: false });
+						sanitizedContent = htmlUtils.sanitizeHtml(token.content, { addNoMdConvClass: true });
 					}
 
 					token.content = sanitizedContent;
