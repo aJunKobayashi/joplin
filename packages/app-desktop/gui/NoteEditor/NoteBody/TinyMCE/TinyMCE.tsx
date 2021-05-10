@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { ScrollOptions, ScrollOptionTypes, EditorCommand, NoteBodyEditorProps } from '../../utils/types';
-import { resourcesStatus, commandAttachFileToBody, handlePasteEvent } from '../../utils/resourceHandling';
+import { resourcesStatus, commandAttachFileToBody } from '../../utils/resourceHandling';
 import useScroll from './utils/useScroll';
 import styles_ from './styles';
 import CommandService from '@joplin/lib/services/CommandService';
@@ -12,13 +12,13 @@ import usePluginServiceRegistration from '../../utils/usePluginServiceRegistrati
 import { utils as pluginUtils } from '@joplin/lib/services/plugins/reducer';
 import { _, closestSupportedLocale } from '@joplin/lib/locale';
 import useContextMenu from './utils/useContextMenu';
-import { copyHtmlToClipboard } from '../../utils/clipboardUtils';
+// import { copyHtmlToClipboard } from '../../utils/clipboardUtils';
 import shim from '@joplin/lib/shim';
 
 const { MarkupToHtml } = require('@joplin/renderer');
 const taboverride = require('taboverride');
 import { reg } from '@joplin/lib/registry';
-import BaseItem from '@joplin/lib/models/BaseItem';
+//  import BaseItem from '@joplin/lib/models/BaseItem';
 import setupToolbarButtons from './utils/setupToolbarButtons';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
@@ -1081,41 +1081,41 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			}
 		}
 
-		async function onPaste(event: any) {
-			const resourceMds = await handlePasteEvent(event);
-			if (resourceMds.length) {
-				const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, resourceMds.join('\n'), markupRenderOptions({ bodyOnly: true }));
-				editor.insertContent(result.html);
-			} else {
-				const pastedText = event.clipboardData.getData('text');
+		// async function onPaste(event: any) {
+		// 	const resourceMds = await handlePasteEvent(event);
+		// 	if (resourceMds.length) {
+		// 		const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, resourceMds.join('\n'), markupRenderOptions({ bodyOnly: true }));
+		// 		editor.insertContent(result.html);
+		// 	} else {
+		// 		const pastedText = event.clipboardData.getData('text');
 
-				if (BaseItem.isMarkdownTag(pastedText)) { // Paste a link to a note
-					event.preventDefault();
-					const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, pastedText, markupRenderOptions({ bodyOnly: true }));
-					editor.insertContent(result.html);
-				} else { // Paste regular text
-					// HACK: TinyMCE doesn't add an undo step when pasting, for unclear reasons
-					// so we manually add it here. We also can't do it immediately it seems, or
-					// else nothing is added to the stack, so do it on the next frame.
-					window.requestAnimationFrame(() => editor.undoManager.add());
-					onChangeHandler();
-				}
-			}
-		}
+		// 		if (BaseItem.isMarkdownTag(pastedText)) { // Paste a link to a note
+		// 			event.preventDefault();
+		// 			const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, pastedText, markupRenderOptions({ bodyOnly: true }));
+		// 			editor.insertContent(result.html);
+		// 		} else { // Paste regular text
+		// 			// HACK: TinyMCE doesn't add an undo step when pasting, for unclear reasons
+		// 			// so we manually add it here. We also can't do it immediately it seems, or
+		// 			// else nothing is added to the stack, so do it on the next frame.
+		// 			window.requestAnimationFrame(() => editor.undoManager.add());
+		// 			onChangeHandler();
+		// 		}
+		// 	}
+		// }
 
-		async function onCopy(event: any) {
-			const copiedContent = editor.selection.getContent();
-			copyHtmlToClipboard(copiedContent);
-			event.preventDefault();
-		}
+		// async function onCopy(event: any) {
+		// 	const copiedContent = editor.selection.getContent();
+		// 	copyHtmlToClipboard(copiedContent);
+		// 	event.preventDefault();
+		// }
 
-		async function onCut(event: any) {
-			const selectedContent = editor.selection.getContent();
-			copyHtmlToClipboard(selectedContent);
-			editor.insertContent('');
-			event.preventDefault();
-			onChangeHandler();
-		}
+		// async function onCut(event: any) {
+		// 	const selectedContent = editor.selection.getContent();
+		// 	copyHtmlToClipboard(selectedContent);
+		// 	editor.insertContent('');
+		// 	event.preventDefault();
+		// 	onChangeHandler();
+		// }
 
 		function onKeyDown(event: any) {
 			// It seems "paste as text" is handled automatically by
