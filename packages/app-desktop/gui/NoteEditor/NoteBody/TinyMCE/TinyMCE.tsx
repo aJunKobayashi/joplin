@@ -1143,7 +1143,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// `compositionend` means that a user has finished entering a Chinese
 		// (or other languages that require IME) character.
 		editor.on('compositionend', onChangeHandler);
-		editor.on('cut', onCut);
+		// editor.on('cut', onCut);
 		editor.on('joplinChange', onChangeHandler);
 		editor.on('Undo', onChangeHandler);
 		editor.on('Redo', onChangeHandler);
@@ -1154,10 +1154,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.off('keyup', onKeyUp);
 				editor.off('keydown', onKeyDown);
 				editor.off('keypress', onKeypress);
-				editor.off('paste', onPaste);
-				editor.off('copy', onCopy);
+				// editor.off('paste', onPaste);
+				// editor.off('copy', onCopy);
 				editor.off('compositionend', onChangeHandler);
-				editor.off('cut', onCut);
+				// editor.off('cut', onCut);
 				editor.off('joplinChange', onChangeHandler);
 				editor.off('Undo', onChangeHandler);
 				editor.off('Redo', onChangeHandler);
