@@ -1138,8 +1138,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.on('keyup', onKeyUp);
 		editor.on('keydown', onKeyDown);
 		editor.on('keypress', onKeypress);
-		editor.on('paste', onPaste);
-		editor.on('copy', onCopy);
+		// editor.on('paste', onPaste);
+		// editor.on('copy', onCopy);
 		// `compositionend` means that a user has finished entering a Chinese
 		// (or other languages that require IME) character.
 		editor.on('compositionend', onChangeHandler);
