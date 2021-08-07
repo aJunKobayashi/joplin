@@ -8,6 +8,8 @@ async function main() {
 	console.info(`Copying ${sourceDir} => ${destDir}`);
 	await utils.copyDir(sourceDir, destDir);
 
+	await utils.copyFile(`${__dirname}/../custom/tinymce.js`, `${__dirname}/../node_modules/tinymce/tinymce.js`);
+
 	const supportedLocales = glob.sync(`${sourceDir}/*.js`).map(s => {
 		s = s.split('/');
 		s = s[s.length - 1];
