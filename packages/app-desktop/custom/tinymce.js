@@ -11480,10 +11480,12 @@
       } else if (args.format === 'tree') {
         return editor.serializer.serialize(body, args);
       } else {
-        content = trimEmptyContents(editor, editor.serializer.serialize(body, args));
+        // content = trimEmptyContents(editor, editor.serializer.serialize(body, args));
+        content = editor.serializer.serialize(body, args);
       }
       if (args.format !== 'text' && !isWsPreserveElement(Element.fromDom(body))) {
-        args.content = Tools.trim(content);
+        // args.content = Tools.trim(content);
+        args.content = content;
       } else {
         args.content = content;
       }
@@ -12270,12 +12272,14 @@
         editor.fire('SetContent', args);
       } else {
         if (args.format !== 'raw') {
-          content = Serializer({ validate: editor.validate }, editor.schema).serialize(editor.parser.parse(content, {
-            isRootContent: true,
-            insert: true
-          }));
+          content = content;
+          // content = Serializer({ validate: editor.validate }, editor.schema).serialize(editor.parser.parse(content, {
+          //   isRootContent: true,
+          //   insert: true
+          // }));
         }
-        args.content = isWsPreserveElement(Element.fromDom(body)) ? content : Tools.trim(content);
+        // args.content = isWsPreserveElement(Element.fromDom(body)) ? content : Tools.trim(content);
+        args.content = content;
         setEditorHtml(editor, args.content);
         if (!args.no_events) {
           editor.fire('SetContent', args);
@@ -15973,8 +15977,9 @@
         var args = __assign({ format: 'html' }, parserArgs);
         var targetNode = DomSerializerPreProcess.process(editor, node, args);
         var html = getHtmlFromNode(dom, targetNode, args);
-        var rootNode = parseHtml(htmlParser, html, args);
-        return args.format === 'tree' ? rootNode : toHtml(editor, settings, schema, rootNode, args);
+        // var rootNode = parseHtml(htmlParser, html, args);
+        // return args.format === 'tree' ? rootNode : toHtml(editor, settings, schema, rootNode, args);
+        return html;
       };
       return {
         schema: schema,
