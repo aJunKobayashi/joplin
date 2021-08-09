@@ -44,7 +44,7 @@ export default class InteropServiceHelper {
 		return tempFile;
 	}
 
-	private static async exportNoteTo_(target: string, noteId: string, options: ExportNoteOptions = {}) {
+	private static async exportNoteTo_(target: string, noteId: string, options: ExportNoteOptions = {}, filepath?: string) {
 		let win: any = null;
 		let htmlFile: string = null;
 
@@ -79,7 +79,12 @@ export default class InteropServiceHelper {
 						if (target === 'pdf') {
 							try {
 								const data = await win.webContents.printToPDF(options);
-								await win.webContents.savePage('/tmp/test.html', 'HTMLComplete');
+								if (filepath) {
+									const pathComponent = filepath.split('.');
+									pathComponent[pathComponent.length - 1] = 'html';
+									const targetPath = pathComponent.join('.');
+									await win.webContents.savePage(targetPath, 'HTMLComplete');
+								}
 								resolve(data);
 							} catch (error) {
 								reject(error);
@@ -117,8 +122,8 @@ export default class InteropServiceHelper {
 		}
 	}
 
-	public static async exportNoteToPdf(noteId: string, options: ExportNoteOptions = {}) {
-		return this.exportNoteTo_('pdf', noteId, options);
+	public static async exportNoteToPdf(noteId: string, options: ExportNoteOptions = {}, filepath?: string) {
+		return this.exportNoteTo_('pdf', noteId, options, filepath);
 	}
 
 	public static async printNote(noteId: string, options: ExportNoteOptions = {}) {
