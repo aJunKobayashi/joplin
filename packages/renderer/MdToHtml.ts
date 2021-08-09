@@ -391,6 +391,9 @@ export default class MdToHtml {
 			pdfViewerEnabled: this.pluginEnabled('pdfViewer'),
 		}, options);
 
+		const noConvert = options.noConvert;
+		delete options.noConvert;
+
 		// The "codeHighlightCacheKey" option indicates what set of cached object should be
 		// associated with this particular Markdown body. It is only used to allow us to
 		// clear the cache whenever switching to a different note.
@@ -517,7 +520,8 @@ export default class MdToHtml {
 
 		if (this.pluginEnabled('linkify')) setupLinkify(markdownIt);
 
-		const renderedBody = body; // markdownIt.render(body, context);
+		const renderedBody = noConvert ?
+			 body : markdownIt.render(body, context);
 
 		let cssStrings = noteStyle(options.theme);
 

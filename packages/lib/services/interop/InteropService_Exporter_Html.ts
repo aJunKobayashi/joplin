@@ -106,6 +106,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 				resources: this.resources_,
 				plainResourceRendering: true,
 				userCss: this.customCss_,
+				noConvert: true,
 			});
 			const noteContent = [];
 			if (item.title) noteContent.push(`<div class="exported-note-title">${escapeHtml(item.title)}</div>`);
