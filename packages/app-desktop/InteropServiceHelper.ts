@@ -79,6 +79,7 @@ export default class InteropServiceHelper {
 						if (target === 'pdf') {
 							try {
 								const data = await win.webContents.printToPDF(options);
+								await win.webContents.savePage('/tmp/test.html', 'HTMLComplete');
 								resolve(data);
 							} catch (error) {
 								reject(error);
