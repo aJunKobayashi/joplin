@@ -420,7 +420,7 @@ export default class MdToHtml {
 		const markdownIt = new MarkdownIt({
 			breaks: !this.pluginEnabled('softbreaks'),
 			typographer: this.pluginEnabled('typographer'),
-			linkify: this.pluginEnabled('linkify'),
+			linkify: undefined, // this.pluginEnabled('linkify'),
 			html: true,
 			highlight: (str: string, lang: string) => {
 				let outputCodeHtml = '';
@@ -517,7 +517,7 @@ export default class MdToHtml {
 
 		if (this.pluginEnabled('linkify')) setupLinkify(markdownIt);
 
-		const renderedBody = markdownIt.render(body, context);
+		const renderedBody = body; // markdownIt.render(body, context);
 
 		let cssStrings = noteStyle(options.theme);
 
