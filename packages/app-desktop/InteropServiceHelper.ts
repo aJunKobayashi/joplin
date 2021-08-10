@@ -146,7 +146,8 @@ export default class InteropServiceHelper {
 
 	public static async export(_dispatch: Function, module: Module, options: ExportNoteOptions = null) {
 		if (!options) options = {};
-
+		const resourceDir = `${Setting.value('resourceDir')}`;
+		console.log(`resourceDir: ${resourceDir}`);
 		let path = null;
 
 		if (module.target === 'file') {

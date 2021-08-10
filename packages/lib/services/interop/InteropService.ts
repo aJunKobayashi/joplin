@@ -9,11 +9,15 @@ import Resource from '../../models/Resource';
 import Folder from '../../models/Folder';
 import NoteTag from '../../models/NoteTag';
 import Note from '../../models/Note';
+import Setting from '../../models/Setting';
+import * as PATH from 'path';
+import * as fsExtra from 'fs-extra';
 const ArrayUtils = require('../../ArrayUtils');
 const { sprintf } = require('sprintf-js');
 const { fileExtension } = require('../../path-utils');
 const { toTitleCase } = require('../../string-utils');
 const EventEmitter = require('events');
+
 
 export default class InteropService {
 
@@ -320,6 +324,9 @@ export default class InteropService {
 			format: 'jex',
 			...options,
 		};
+		const resourcePath = `${Setting.value('resourceDir')}`;
+		console.log(`resourceDir: ${resourcePath}`);
+
 
 		const exportPath = options.path ? options.path : null;
 		let sourceFolderIds = options.sourceFolderIds ? options.sourceFolderIds : [];
@@ -398,6 +405,11 @@ export default class InteropService {
 		const context: any = {
 			resourcePaths: {},
 		};
+
+		const resourceFolder = PATH.basename(resourcePath);
+		const exportResourcePath = PATH.join(exportPath, resourceFolder);
+		await fsExtra.copySync(resourcePath, exportResourcePath, { overwrite: true });
+
 
 		for (let typeOrderIndex = 0; typeOrderIndex < typeOrder.length; typeOrderIndex++) {
 			const type = typeOrder[typeOrderIndex];
