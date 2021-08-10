@@ -154,8 +154,17 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		noteFilePath: string): string {
 		console.log(`srcResourcePath: ${srcResourcePath}`);
 		console.log(`dstResourcePath ${dstResourcePath}`);
-		console.log(`noteFilePath: ${noteFilePath}` );
-		const $ = cheerio.load(fullHtml);
+		console.log(`noteFilePath: ${noteFilePath}`);
+		let $ = cheerio.load(fullHtml);
+		$ = this.convertImgSrcToRelativePath($, srcResourcePath, dstResourcePath, noteFilePath);
+		return $.html();
+	}
+
+	convertImgSrcToRelativePath($: cheerio.Root,
+		srcResourcePath: string,
+		dstResourcePath: string,
+		noteFilePath: string): cheerio.Root {
+
 		const imgs = $('img');
 
 		const targetURI = `file://${srcResourcePath}`;
@@ -178,7 +187,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			img.attribs.src = `${PATH.join(relativePath, imageFileName)}`;
 			console.log(`new img.src:  ${img.attribs.src}`);
 		}
-		return $.html();
+		return $;
 	}
 
 	async processResource(resource: any, filePath: string) {
