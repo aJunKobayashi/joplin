@@ -150,14 +150,25 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 
 	modifyExportHTMLSource(fullHtml: string,
 		srcResourcePath: string,
-		dstResourcePath: string, 
+		dstResourcePath: string,
 		noteFilePath: string): string {
 		console.log(`srcResourcePath: ${srcResourcePath}`);
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 		let $ = cheerio.load(fullHtml);
 		$ = this.convertImgSrcToRelativePath($, srcResourcePath, dstResourcePath, noteFilePath);
+		$ = this.deleteNeedlessAttribute($);
 		return $.html();
+	}
+
+	deleteNeedlessAttribute($: cheerio.Root): cheerio.Root {
+		const targetElements = $('[data-mce-src]');
+		for (let i = 0; i < targetElements.length; i++) {
+			const targetElement = targetElements[i] as cheerio.TagElement;
+			delete targetElement.attribs['data-mce-src'];
+
+		}
+		return $;
 	}
 
 	convertImgSrcToRelativePath($: cheerio.Root,
