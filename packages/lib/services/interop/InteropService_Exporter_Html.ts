@@ -9,6 +9,8 @@ import { MarkupToHtml } from '@joplin/renderer';
 import { ResourceEntity } from '../database/types';
 import { contentScriptsToRendererRules } from '../plugins/utils/loadContentScripts';
 import * as cheerio from 'cheerio';
+import * as PATH from 'path';
+
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
 const { dirname } = require('../../path-utils');
@@ -139,21 +141,42 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 				</html>
 			`;
 
-			const modifiedHtml = this.modifyExportHTMLSource(fullHtml, '', '');
+			const srcResourcePath = `${Setting.value('resourceDir')}`;
+			const dstResourcePath = PATH.join(this.destDir_, PATH.basename(srcResourcePath));
+			const modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath);
 			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
 	}
 
 	modifyExportHTMLSource(fullHtml: string,
-		orignalResourcePath: string,
-		newResourcePath: string): string {
-		console.log(`${orignalResourcePath}`);
-		console.log(`${newResourcePath}`);
+		srcResourcePath: string,
+		dstResourcePath: string, 
+		noteFilePath: string): string {
+		console.log(`srcResourcePath: ${srcResourcePath}`);
+		console.log(`dstResourcePath ${dstResourcePath}`);
+		console.log(`noteFilePath: ${noteFilePath}` );
 		const $ = cheerio.load(fullHtml);
 		const imgs = $('img');
+
+		const targetURI = `file://${srcResourcePath}`;
 		for (let i = 0; i < imgs.length; i++) {
 			const img: cheerio.TagElement = imgs[i] as cheerio.TagElement;
+			if (img.attribs.src == undefined) {
+				continue;
+			}
+			if (img.attribs.src.indexOf(targetURI) !== 0) {
+				continue;
+			}
+			// TODO modify ResourceURL
 			console.log(img.attribs.src);
+			const imageFileName = PATH.basename(img.attribs.src);
+			const noteDir = PATH.dirname(noteFilePath);
+			console.log(`imageFileName: ${imageFileName}`);
+			console.log(`noteDir: ${noteDir}`);
+			const relativePath = PATH.relative(noteDir, dstResourcePath);
+			console.log(`relativePath: ${relativePath}`);
+			img.attribs.src = `${PATH.join(relativePath, imageFileName)}`;
+			console.log(`new img.src:  ${img.attribs.src}`);
 		}
 		return $.html();
 	}
