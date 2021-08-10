@@ -8,6 +8,7 @@ import Setting from '../../models/Setting';
 import { MarkupToHtml } from '@joplin/renderer';
 import { ResourceEntity } from '../database/types';
 import { contentScriptsToRendererRules } from '../plugins/utils/loadContentScripts';
+import * as cheerio from 'cheerio';
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
 const { dirname } = require('../../path-utils');
@@ -138,8 +139,23 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 				</html>
 			`;
 
-			await shim.fsDriver().writeFile(noteFilePath, fullHtml, 'utf-8');
+			const modifiedHtml = this.modifyExportHTMLSource(fullHtml, '', '');
+			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
+	}
+
+	modifyExportHTMLSource(fullHtml: string,
+		orignalResourcePath: string,
+		newResourcePath: string): string {
+		console.log(`${orignalResourcePath}`);
+		console.log(`${newResourcePath}`);
+		const $ = cheerio.load(fullHtml);
+		const imgs = $('img');
+		for (let i = 0; i < imgs.length; i++) {
+			const img: cheerio.TagElement = imgs[i] as cheerio.TagElement;
+			console.log(img.attribs.src);
+		}
+		return $.html();
 	}
 
 	async processResource(resource: any, filePath: string) {
