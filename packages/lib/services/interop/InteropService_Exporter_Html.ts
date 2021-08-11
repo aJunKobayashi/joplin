@@ -162,6 +162,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		let $ = cheerio.load(fullHtml);
 		$ = this.convertImgSrcToRelativePath($, srcResourcePath, dstResourcePath, noteFilePath);
 		$ = this.deleteNeedlessAttribute($);
+		$ = this.deleteScriptTag($);
 		return $.html();
 	}
 
@@ -172,6 +173,11 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			delete targetElement.attribs['data-mce-src'];
 
 		}
+		return $;
+	}
+
+	deleteScriptTag($: cheerio.Root): cheerio.Root {
+		$('script').remove('script');
 		return $;
 	}
 
