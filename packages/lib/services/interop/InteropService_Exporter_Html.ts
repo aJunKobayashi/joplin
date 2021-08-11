@@ -143,7 +143,11 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 
 			const srcResourcePath = `${Setting.value('resourceDir')}`;
 			const dstResourcePath = PATH.join(this.destDir_, PATH.basename(srcResourcePath));
-			const modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath);
+			const profileDirPath = `${Setting.value('profileDir')}`;
+			let modifiedHtml = fullHtml;
+			if (noteFilePath.indexOf(profileDirPath) !== 0) {
+				modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath);
+			}
 			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
 	}

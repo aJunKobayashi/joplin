@@ -406,9 +406,13 @@ export default class InteropService {
 			resourcePaths: {},
 		};
 
+		// 
+		const profileDirPath = `${Setting.value('profileDir')}`;
 		const resourceFolder = PATH.basename(resourcePath);
 		const exportResourcePath = PATH.join(exportPath, resourceFolder);
-		await fsExtra.copySync(resourcePath, exportResourcePath, { overwrite: true });
+		if (options.format === 'html' && exportResourcePath.indexOf(profileDirPath) !== 0) {
+			await fsExtra.copySync(resourcePath, exportResourcePath, { overwrite: true });
+		}
 
 
 		for (let typeOrderIndex = 0; typeOrderIndex < typeOrder.length; typeOrderIndex++) {
