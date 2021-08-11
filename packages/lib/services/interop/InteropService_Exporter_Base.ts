@@ -15,6 +15,10 @@ export default class InteropService_Exporter_Base {
 	// @ts-ignore
 	async processResource(resource: any, filePath: string) {}
 	async close() {}
+	// @ts-ignore
+	async createHtmlPath(item: any): Promise<string> {
+		return '';
+	}
 
 	setMetadata(md: any) {
 		this.metadata_ = md;

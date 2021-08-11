@@ -394,6 +394,7 @@ export default class InteropService {
 			exportedTagIds.push(noteTag.tag_id);
 		}
 
+
 		for (let i = 0; i < exportedTagIds.length; i++) {
 			await queueExportItem(BaseModel.TYPE_TAG, exportedTagIds[i]);
 		}
@@ -414,7 +415,7 @@ export default class InteropService {
 			await fsExtra.copySync(resourcePath, exportResourcePath, { overwrite: true });
 		}
 
-
+		const targetItems: any = [];
 		for (let typeOrderIndex = 0; typeOrderIndex < typeOrder.length; typeOrderIndex++) {
 			const type = typeOrder[typeOrderIndex];
 
@@ -443,19 +444,40 @@ export default class InteropService {
 					continue;
 				}
 
-				try {
-					if (itemType == BaseModel.TYPE_RESOURCE) {
-						const resourcePath = Resource.fullPath(item);
-						context.resourcePaths[item.id] = resourcePath;
-						exporter.updateContext(context);
-						await exporter.processResource(item, resourcePath);
-					}
+				targetItems.push(item);
+			}
+		}
 
-					await exporter.processItem(itemType, item);
-				} catch (error) {
-					console.error(error);
-					result.warnings.push(error.message);
+		if (options.format === 'html') {
+			const noteIdToPath: { [key: string]: string } = {};
+			// create map from noteID to html PATH
+			for (const item of targetItems) {
+				if (item.type_ === BaseModel.TYPE_NOTE) {
+					const htmlPath = await exporter.createHtmlPath(item);
+					console.log(`id: ${item.id} --> html path: ${htmlPath}`);
+					noteIdToPath[item.id] = htmlPath;
 				}
+			}
+			for (const item of targetItems) {
+				if (item.type_ === BaseModel.TYPE_NOTE) {
+					item.noteIdToPath = noteIdToPath;
+				}
+			}
+		}
+
+		for (const item of targetItems) {
+			try {
+				if (item.type_ == BaseModel.TYPE_RESOURCE) {
+					const resourcePath = Resource.fullPath(item);
+					context.resourcePaths[item.id] = resourcePath;
+					exporter.updateContext(context);
+					await exporter.processResource(item, resourcePath);
+				}
+
+				await exporter.processItem(item.type_, item);
+			} catch (error) {
+				console.error(error);
+				result.warnings.push(error.message);
 			}
 		}
 

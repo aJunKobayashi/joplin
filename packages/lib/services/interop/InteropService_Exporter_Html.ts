@@ -81,6 +81,23 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		return newBody;
 	}
 
+	async createHtmlPath(item: any): Promise<string> {
+		if ([BaseModel.TYPE_NOTE, BaseModel.TYPE_FOLDER].indexOf(item.type_) < 0) return '';
+
+		let dirPath = '';
+		let noteFilePath = ''
+		if (!this.filePath_) {
+			dirPath = `${this.destDir_}/${await this.makeDirPath_(item)}`;
+		}
+		if (this.filePath_) {
+			noteFilePath = this.filePath_;
+		} else {
+			noteFilePath = PATH.join(dirPath, `${friendlySafeFilename(item.title, null, true)}.html`);
+			noteFilePath = await shim.fsDriver().findUniqueFilename(noteFilePath);
+		}
+		return noteFilePath;
+	}
+
 	async processItem(_itemType: number, item: any) {
 		if ([BaseModel.TYPE_NOTE, BaseModel.TYPE_FOLDER].indexOf(item.type_) < 0) return;
 
@@ -146,7 +163,8 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			const profileDirPath = `${Setting.value('profileDir')}`;
 			let modifiedHtml = fullHtml;
 			if (noteFilePath.indexOf(profileDirPath) !== 0) {
-				modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath);
+				const noteIdToPath: { [key: string]: string } = item.noteIdToPath;
+				modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath, noteIdToPath);
 			}
 			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
@@ -155,7 +173,8 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	modifyExportHTMLSource(fullHtml: string,
 		srcResourcePath: string,
 		dstResourcePath: string,
-		noteFilePath: string): string {
+		noteFilePath: string,
+		noteIdToPath: { [key: string]: string } ): string {
 		console.log(`srcResourcePath: ${srcResourcePath}`);
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
@@ -163,7 +182,25 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		$ = this.convertImgSrcToRelativePath($, srcResourcePath, dstResourcePath, noteFilePath);
 		$ = this.deleteNeedlessAttribute($);
 		$ = this.deleteScriptTag($);
+		$ = this.modifyJoplinLinkAnchor($, noteFilePath, noteIdToPath);
 		return $.html();
+	}
+
+	modifyJoplinLinkAnchor($: cheerio.Root, noteFilePath: string, noteIdToPath: { [key: string]: string } ):  cheerio.Root {
+		const joplinAnchors = $('a[href^=joplin://]')
+		console.log(`noteFilePath: ${noteFilePath}`);
+		for (let i = 0; i < joplinAnchors.length; i++) {
+			const joplinAnchor = joplinAnchors[i] as  cheerio.TagElement ;
+			const linkComponent = joplinAnchor.attribs.href.toLocaleLowerCase().split('joplin://');
+			const targetId = linkComponent.length > 1 ? linkComponent[1] : '';
+			console.log(`joplin link ID: ${targetId}`);
+			const htmlPath = noteIdToPath[targetId];
+			console.log(`link path: ${htmlPath}`);
+			const srcDir = PATH.dirname(noteFilePath);
+			const relativePath = PATH.relative(srcDir, htmlPath);
+			joplinAnchor.attribs.href = relativePath;
+		}
+		return $;
 	}
 
 	deleteNeedlessAttribute($: cheerio.Root): cheerio.Root {
