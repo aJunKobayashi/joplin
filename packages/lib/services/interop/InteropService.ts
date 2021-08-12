@@ -86,6 +86,14 @@ export default class InteropService {
 					importerClass: 'InteropService_Importer_EnexToHtml',
 					outputFormat: ImportModuleOutputFormat.Html,
 				},
+				{
+					...defaultImportExportModule(ModuleType.Importer),
+					format: 'html',
+					fileExtensions: ['html', 'markdown', 'txt'],
+					sources: [FileSystemItem.Directory],
+					isNoteArchive: false, // Tells whether the file can contain multiple notes (eg. Enex or Jex format)
+					description: _('HTML Directory'),
+				},
 			];
 
 			const exportModules: Module[] = [
