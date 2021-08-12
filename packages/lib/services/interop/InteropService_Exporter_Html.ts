@@ -197,8 +197,13 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			const htmlPath = noteIdToPath[targetId];
 			console.log(`link path: ${htmlPath}`);
 			const srcDir = PATH.dirname(noteFilePath);
-			const relativePath = PATH.relative(srcDir, htmlPath);
-			joplinAnchor.attribs.href = relativePath;
+			try {
+				const relativePath = PATH.relative(srcDir, htmlPath);
+				joplinAnchor.attribs.href = relativePath;
+			} catch (e) {
+				console.log(`error: ${e.toString()}`);
+				console.log(`error cannot calc relativepath: srcDir: ${srcDir}, dstDir: ${htmlPath}`);
+			}
 		}
 		return $;
 	}
