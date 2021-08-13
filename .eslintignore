@@ -1120,6 +1120,9 @@ packages/lib/services/interop/InteropService_Importer_EnexToHtml.js.map
 packages/lib/services/interop/InteropService_Importer_EnexToMd.d.ts
 packages/lib/services/interop/InteropService_Importer_EnexToMd.js
 packages/lib/services/interop/InteropService_Importer_EnexToMd.js.map
+packages/lib/services/interop/InteropService_Importer_Html.d.ts
+packages/lib/services/interop/InteropService_Importer_Html.js
+packages/lib/services/interop/InteropService_Importer_Html.js.map
 packages/lib/services/interop/InteropService_Importer_Jex.d.ts
 packages/lib/services/interop/InteropService_Importer_Jex.js
 packages/lib/services/interop/InteropService_Importer_Jex.js.map

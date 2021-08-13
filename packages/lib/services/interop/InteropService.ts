@@ -127,6 +127,7 @@ export default class InteropService {
 				{
 					...defaultImportExportModule(ModuleType.Exporter),
 					format: 'html',
+					fileExtensions: ['html', 'htm'],
 					target: FileSystemItem.Directory,
 					description: _('HTML Directory'),
 				},

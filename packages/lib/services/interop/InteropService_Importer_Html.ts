@@ -7,6 +7,7 @@ import Note from '../../models/Note';
 const { basename, filename, rtrimSlashes, fileExtension, dirname } = require('../../path-utils');
 import shim from '../../shim';
 import markdownUtils from '../../markdownUtils';
+import { FolderEntity } from '../database/types';
 const { unique } = require('../../ArrayUtils');
 const { pregQuote } = require('../../string-utils-common');
 const { MarkupToHtml } = require('@joplin/renderer');
@@ -20,9 +21,9 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		const filePaths = [];
 		if (await shim.fsDriver().isDirectory(sourcePath)) {
 			if (!this.options_.destinationFolder) {
-				const folderTitle = await Folder.findUniqueItemTitle(basename(sourcePath));
-				const folder = await Folder.save({ title: folderTitle });
-				parentFolderId = folder.id;
+				// const folderTitle = await Folder.findUniqueItemTitle(basename(sourcePath));
+				// const folder = await Folder.save({ title: folderTitle });
+				parentFolderId = null;
 			} else {
 				parentFolderId = this.options_.destinationFolder.id;
 			}
@@ -41,20 +42,43 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return result;
 	}
 
+	hasDirectory(stats: any[]): boolean  {
+		for (let i = 0; i < stats.length; i++) {
+			const stat = stats[i];
+			if(stat.isDirectory()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	async importDirectory(dirPath: string, parentFolderId: string) {
 		console.info(`Import: ${dirPath}`);
+		const supportedFileExtension = ['html'];
 
-		const supportedFileExtension = this.metadata().fileExtensions;
 		const stats = await shim.fsDriver().readDirStats(dirPath);
+		const folderTitle = await Folder.findUniqueItemTitle(basename(dirPath));
+
+		let folderId = parentFolderId;
+		// 作成対象ディレクトリ内に子ディレクトが存在する場合のみフォルダを作る
+		if (this.hasDirectory(stats)) {
+			const folderEntity: FolderEntity = { title: folderTitle };
+			if (parentFolderId !== null) {
+				folderEntity.parent_id = parentFolderId;
+			}
+			const folder = await Folder.save(folderEntity);
+			folderId = folder.id;
+		}
+		
+
+		
 		for (let i = 0; i < stats.length; i++) {
 			const stat = stats[i];
 
 			if (stat.isDirectory()) {
-				const folderTitle = await Folder.findUniqueItemTitle(basename(stat.path));
-				const folder = await Folder.save({ title: folderTitle, parent_id: parentFolderId });
-				await this.importDirectory(`${dirPath}/${basename(stat.path)}`, folder.id);
+				await this.importDirectory(`${dirPath}/${basename(stat.path)}`, folderId);
 			} else if (supportedFileExtension.indexOf(fileExtension(stat.path).toLowerCase()) >= 0) {
-				await this.importFile(`${dirPath}/${stat.path}`, parentFolderId);
+				await this.importFile(`${dirPath}/${stat.path}`, folderId);
 			}
 		}
 	}
@@ -105,6 +129,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			markup_language: MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN,
 		};
 
-		return Note.save(note, { autoTimestamp: false });
+		const noteObj = await Note.save(note, { autoTimestamp: false });
+		console.log(`note: ${filePath} is saved!`);
+		return noteObj;
 	}
 }
