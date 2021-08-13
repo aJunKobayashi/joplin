@@ -45,10 +45,10 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return result;
 	}
 
-	hasDirectory(stats: any[]): boolean  {
+	hasDirectory(stats: any[]): boolean {
 		for (let i = 0; i < stats.length; i++) {
 			const stat = stats[i];
-			if(stat.isDirectory()) {
+			if (stat.isDirectory()) {
 				return true;
 			}
 		}
@@ -72,9 +72,9 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			const folder = await Folder.save(folderEntity);
 			folderId = folder.id;
 		}
-		
 
-		
+
+
 		for (let i = 0; i < stats.length; i++) {
 			const stat = stats[i];
 
@@ -136,6 +136,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		let $ = cheerio.load(htmlBody);
 		// Googleサイトのページのメイン部分だけを取得
 		$ = this.getGoogleSitePageMainContent($);
+		$ = this.modifyH2_4ToH1_3($);
 		return $.html();
 	}
 
@@ -143,5 +144,23 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		const mainContent = $('#sites-canvas-main-content > table > tbody > tr > td > div');
 		const new$ = cheerio.load(mainContent.html());
 		return new$;
+	}
+
+	modifyHx($: cheerio.Root, targetNum: number): cheerio.Root {
+		const hxs = $(`h${targetNum}`);
+		for (let i = 0; i < hxs.length; i++) {
+			const hx = hxs[i] as cheerio.TagElement;
+			hx.name = `h${targetNum - 1}`;
+		}
+		return $;
+
+	}
+
+	modifyH2_4ToH1_3($: cheerio.Root): cheerio.Root {
+		$ = this.modifyHx($, 2);
+		$ = this.modifyHx($, 3);
+		$ = this.modifyHx($, 4);
+
+		return $;
 	}
 }
