@@ -5,7 +5,7 @@ import InteropService_Importer_Base from './InteropService_Importer_Base';
 import Folder from '../../models/Folder';
 import Note from '../../models/Note';
 import * as PATH from 'path';
-const { basename, rtrimSlashes, fileExtension} = require('../../path-utils');
+const { basename, rtrimSlashes, fileExtension } = require('../../path-utils');
 import shim from '../../shim';
 import { FolderEntity } from '../database/types';
 import * as cheerio from 'cheerio';
@@ -177,12 +177,12 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	}
 
 
-	importRelativePathAnchor($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root { 
+	importRelativePathAnchor($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root {
 		const anchors = $('a');
 		for (let i = 0; i < anchors.length; i++) {
 			const anchor = anchors[i] as cheerio.TagElement;
 			const href = anchor.attribs.href;
-			if (!href || !InteropService_Importer_Html.isRelative(href) 
+			if (!href || !InteropService_Importer_Html.isRelative(href)
 			|| InteropService_Importer_Html.isFragmentLink(href)
 			|| InteropService_Importer_Html.isLinkToIndexHtml(href)) {
 				continue;
@@ -190,10 +190,17 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			console.log(`${htmlPath}, ${resourceDir}`);
 			console.log(`relative anchor: ${href}`);
 
-			const ext = PATH.extname(href);
-			const absolutePath = PATH.join(PATH.dirname(htmlPath), href);
+			const ext = PATH.extname(href.split('?')[0]);
+			let downloadName = '';
+			let absolutePath = PATH.join(PATH.dirname(htmlPath), href);
+			if (PATH.basename(absolutePath).indexOf('?attredirects=') !== -1) {
+				const splittedFilename = PATH.basename(absolutePath).split('?')[0];
+				absolutePath = PATH.join(PATH.dirname(absolutePath), InteropService_Importer_Html.skipDir, splittedFilename);
+				downloadName = splittedFilename;
+			}
 			console.log(`anchor absolute path: ${absolutePath}`);
 			try {
+
 				const data = fs.readFileSync(absolutePath);
 				const hash = crypto.createHash('sha256').update(data).digest('hex');
 				console.log(`anchor sha256 hash: ${hash}`);
@@ -201,8 +208,11 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				console.log(`anchor filename: ${PATH.basename(href)} --> ${filename}`);
 				const newFilePath = PATH.join(resourceDir, filename);
 				console.log(`anchor new filepath: ${newFilePath}`);
-				anchor.attribs.src = `file://${newFilePath}`;
+				anchor.attribs.href = `file://${newFilePath}`;
 				anchor.attribs.alt = `${PATH.basename(href)}`;
+				if (downloadName) {
+					anchor.attribs.download = downloadName;
+				}
 				fs.writeFileSync(newFilePath, data);
 			} catch (e) {
 				console.log(`import anchor error: ${e}`);
@@ -212,7 +222,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return $;
 	}
 
-	importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root { 
+	importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root {
 		const imgs = $('img');
 		for (let i = 0; i < imgs.length; i++) {
 			const img = imgs[i] as cheerio.TagElement;
