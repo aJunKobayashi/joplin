@@ -5,14 +5,12 @@ import InteropService_Importer_Base from './InteropService_Importer_Base';
 import Folder from '../../models/Folder';
 import Note from '../../models/Note';
 import * as PATH from 'path';
-const { basename, filename, rtrimSlashes, fileExtension, dirname } = require('../../path-utils');
+const { basename, rtrimSlashes, fileExtension} = require('../../path-utils');
 import shim from '../../shim';
-import markdownUtils from '../../markdownUtils';
 import { FolderEntity } from '../database/types';
 import * as cheerio from 'cheerio';
+import * as URL from 'url';
 
-const { unique } = require('../../ArrayUtils');
-const { pregQuote } = require('../../string-utils-common');
 const { MarkupToHtml } = require('@joplin/renderer');
 
 export default class InteropService_Importer_Html extends InteropService_Importer_Base {
@@ -111,29 +109,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 	}
 
-	/**
-	 * Parse text for links, attempt to find local file, if found create Joplin resource
-	 * and update link accordingly.
-	 */
-	async importLocalImages(filePath: string, md: string) {
-		let updated = md;
-		const imageLinks = unique(markdownUtils.extractImageUrls(md));
-		await Promise.all(imageLinks.map(async (encodedLink: string) => {
-			const link = decodeURI(encodedLink);
-			const attachmentPath = filename(`${dirname(filePath)}/${link}`, true);
-			const pathWithExtension = `${attachmentPath}.${fileExtension(link)}`;
-			const stat = await shim.fsDriver().stat(pathWithExtension);
-			const isDir = stat ? stat.isDirectory() : false;
-			if (stat && !isDir) {
-				const resource = await shim.createResourceFromPath(pathWithExtension);
-				// NOTE: use ](link) in case the link also appears elsewhere, such as in alt text
-				const linkPatternEscaped = pregQuote(`](${link})`);
-				const reg = new RegExp(linkPatternEscaped, 'g');
-				updated = updated.replace(reg, `](:/${resource.id})`);
-			}
-		}));
-		return updated;
-	}
+
 
 	async importFile(filePath: string, parentFolderId: string) {
 		const stat = await shim.fsDriver().stat(filePath);
@@ -165,7 +141,36 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		// Googleサイトのページのメイン部分だけを取得
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
+		$ = this.importLocalImage($);
 		return $.html();
+	}
+
+	private static isURL(urlstr: string): boolean {
+		try {
+			const parsed = URL.parse(urlstr);
+			return parsed.protocol !== null;
+		} catch (e) {
+			return false;
+		}
+	}
+
+	importLocalImage($: cheerio.Root): cheerio.Root { 
+		const imgs = $('img');
+		for (let i = 0; i < imgs.length; i++) {
+			const img = imgs[i] as cheerio.TagElement;
+			const src = img.attribs.src
+			if (!src || InteropService_Importer_Html.isURL(src)) {
+				continue;
+			}
+			if (PATH.isAbsolute(src)) {
+				continue;
+			}
+			if (src.indexOf(".") !== 0) {
+				continue;
+			}
+			console.log(`find relative path image: ${src}`);
+		}
+		return $;
 	}
 
 	getGoogleSitePageMainContent($: cheerio.Root): cheerio.Root {
