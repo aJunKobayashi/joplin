@@ -48,7 +48,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	hasDirectory(stats: any[]): boolean {
 		for (let i = 0; i < stats.length; i++) {
 			const stat = stats[i];
-			if (stat.isDirectory()) {
+			const foldername = basename(stat.path);
+			if (stat.isDirectory() && foldername !== 'attachment') {
 				return true;
 			}
 		}
