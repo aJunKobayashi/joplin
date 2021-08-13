@@ -55,14 +55,24 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return false;
 	}
 
+	getTitleFromGoogleHTMLFile(htmlBody: string) {
+		let title = '';
+		try {
+			const $ = cheerio.load(htmlBody);
+			const titleElement = $('#sites-page-title')[0] as cheerio.TagElement;
+			title = $(titleElement).text();
+		} catch (e) {
+			console.log(`error gettting title: ${e}`);
+		}
+		return title;
+	}
+
 	async getFolderTitle(dirPath: string): Promise<string> {
 		const filePath = PATH.join(dirPath, 'index.html');
 		let title = '';
 		try {
 			const body = await shim.fsDriver().readFile(filePath);
-			const $ = cheerio.load(body);
-			const titleElement = $('#sites-page-title')[0] as cheerio.TagElement;
-			title = $(titleElement).text();
+			title = this.getTitleFromGoogleHTMLFile(body);
 		} catch (e) {
 			console.log(`error gettting title: ${e}`);
 		}
@@ -127,8 +137,11 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	async importFile(filePath: string, parentFolderId: string) {
 		const stat = await shim.fsDriver().stat(filePath);
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
-		const title = PATH.basename(PATH.dirname(filePath));
 		const body = await shim.fsDriver().readFile(filePath);
+		let title = this.getTitleFromGoogleHTMLFile(body);
+		if (!title) {
+			title = PATH.basename(PATH.dirname(filePath));
+		}
 		const updatedBody = this.modifyGoogleSiteHtml(body);
 		const note = {
 			parent_id: parentFolderId,
