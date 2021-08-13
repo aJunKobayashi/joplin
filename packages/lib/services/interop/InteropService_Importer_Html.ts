@@ -9,6 +9,8 @@ const { basename, filename, rtrimSlashes, fileExtension, dirname } = require('..
 import shim from '../../shim';
 import markdownUtils from '../../markdownUtils';
 import { FolderEntity } from '../database/types';
+import * as cheerio from 'cheerio';
+
 const { unique } = require('../../ArrayUtils');
 const { pregQuote } = require('../../string-utils-common');
 const { MarkupToHtml } = require('@joplin/renderer');
@@ -113,12 +115,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
 		const title = PATH.basename(PATH.dirname(filePath));
 		const body = await shim.fsDriver().readFile(filePath);
-		let updatedBody;
-		try {
-			updatedBody = await this.importLocalImages(filePath, body);
-		} catch (error) {
-			// console.error(`Problem importing links for file ${filePath}, error:\n ${error}`);
-		}
+		const updatedBody = this.modifyGoogleSiteHtml(body);
 		const note = {
 			parent_id: parentFolderId,
 			title: title,
@@ -133,5 +130,18 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		const noteObj = await Note.save(note, { autoTimestamp: false });
 		console.log(`note: ${filePath} is saved!`);
 		return noteObj;
+	}
+
+	modifyGoogleSiteHtml(htmlBody: string): string {
+		let $ = cheerio.load(htmlBody);
+		// Googleサイトのページのメイン部分だけを取得
+		$ = this.getGoogleSitePageMainContent($);
+		return $.html();
+	}
+
+	getGoogleSitePageMainContent($: cheerio.Root): cheerio.Root {
+		const mainContent = $('#sites-canvas-main-content > table > tbody > tr > td > div');
+		const new$ = cheerio.load(mainContent.html());
+		return new$;
 	}
 }
