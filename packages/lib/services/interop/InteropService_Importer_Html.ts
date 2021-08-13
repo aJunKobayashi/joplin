@@ -4,6 +4,7 @@ import { _ } from '../../locale';
 import InteropService_Importer_Base from './InteropService_Importer_Base';
 import Folder from '../../models/Folder';
 import Note from '../../models/Note';
+import * as PATH from 'path';
 const { basename, filename, rtrimSlashes, fileExtension, dirname } = require('../../path-utils');
 import shim from '../../shim';
 import markdownUtils from '../../markdownUtils';
@@ -110,7 +111,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	async importFile(filePath: string, parentFolderId: string) {
 		const stat = await shim.fsDriver().stat(filePath);
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
-		const title = filename(filePath);
+		const title = PATH.basename(PATH.dirname(filePath));
 		const body = await shim.fsDriver().readFile(filePath);
 		let updatedBody;
 		try {
