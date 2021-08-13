@@ -55,12 +55,26 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return false;
 	}
 
+	async getFolderTitle(dirPath: string): Promise<string> {
+		const filePath = PATH.join(dirPath, 'index.html');
+		let title = '';
+		try {
+			const body = await shim.fsDriver().readFile(filePath);
+			const $ = cheerio.load(body);
+			const titleElement = $('#sites-page-title')[0] as cheerio.TagElement;
+			title = $(titleElement).text();
+		} catch (e) {
+			console.log(`error gettting title: ${e}`);
+		}
+		return title ? title : basename(dirPath);
+	}
+
 	async importDirectory(dirPath: string, parentFolderId: string) {
 		console.info(`Import: ${dirPath}`);
 		const supportedFileExtension = ['html'];
-
+		const foldername = await this.getFolderTitle(dirPath);
 		const stats = await shim.fsDriver().readDirStats(dirPath);
-		const folderTitle = await Folder.findUniqueItemTitle(basename(dirPath));
+		const folderTitle = await Folder.findUniqueItemTitle(foldername);
 
 		let folderId = parentFolderId;
 		// 作成対象ディレクトリ内に子ディレクトが存在する場合のみフォルダを作る
