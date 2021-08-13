@@ -17,6 +17,8 @@ import Setting from '../../models/Setting';
 const { MarkupToHtml } = require('@joplin/renderer');
 
 export default class InteropService_Importer_Html extends InteropService_Importer_Base {
+	private static readonly skipDir = 'attachment';
+
 	async exec(result: ImportExportResult) {
 		let parentFolderId = null;
 
@@ -50,7 +52,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		for (let i = 0; i < stats.length; i++) {
 			const stat = stats[i];
 			const foldername = basename(stat.path);
-			if (stat.isDirectory() && foldername !== 'attachment') {
+			if (stat.isDirectory() && foldername !== InteropService_Importer_Html.skipDir) {
 				return true;
 			}
 		}
@@ -82,6 +84,10 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	}
 
 	async importDirectory(dirPath: string, parentFolderId: string) {
+		if (PATH.basename(dirPath) === InteropService_Importer_Html.skipDir) {
+			console.log(`skipDir: ${dirPath}`);
+			return;
+		}
 		console.info(`Import: ${dirPath}`);
 		const supportedFileExtension = ['html'];
 		const foldername = await this.getFolderTitle(dirPath);
@@ -146,6 +152,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
 		$ = this.importLocalImage($, filePath, resourceDir);
+		$ = this.importRelativePathAnchor($, filePath, resourceDir);
 		return $.html();
 	}
 
@@ -156,6 +163,53 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		} catch (e) {
 			return false;
 		}
+	}
+
+	private static isFragmentLink(href: string): boolean {
+		return !href || href.indexOf('#') === 0;
+	}
+
+	private static isLinkToIndexHtml(href: string): boolean {
+		const regex = new RegExp('/index.html$');
+		const regex2 = new RegExp('^index.html$');
+		const lhref = href.toLocaleLowerCase();
+		return regex.test(lhref) || regex2.test(lhref);
+	}
+
+
+	importRelativePathAnchor($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root { 
+		const anchors = $('a');
+		for (let i = 0; i < anchors.length; i++) {
+			const anchor = anchors[i] as cheerio.TagElement;
+			const href = anchor.attribs.href;
+			if (!href || !InteropService_Importer_Html.isRelative(href) 
+			|| InteropService_Importer_Html.isFragmentLink(href)
+			|| InteropService_Importer_Html.isLinkToIndexHtml(href)) {
+				continue;
+			}
+			console.log(`${htmlPath}, ${resourceDir}`);
+			console.log(`relative anchor: ${href}`);
+
+			const ext = PATH.extname(href);
+			const absolutePath = PATH.join(PATH.dirname(htmlPath), href);
+			console.log(`anchor absolute path: ${absolutePath}`);
+			try {
+				const data = fs.readFileSync(absolutePath);
+				const hash = crypto.createHash('sha256').update(data).digest('hex');
+				console.log(`anchor sha256 hash: ${hash}`);
+				const filename = `${hash}${ext}`;
+				console.log(`anchor filename: ${PATH.basename(href)} --> ${filename}`);
+				const newFilePath = PATH.join(resourceDir, filename);
+				console.log(`anchor new filepath: ${newFilePath}`);
+				anchor.attribs.src = `file://${newFilePath}`;
+				anchor.attribs.alt = `${PATH.basename(href)}`;
+				fs.writeFileSync(newFilePath, data);
+			} catch (e) {
+				console.log(`import anchor error: ${e}`);
+				console.log(`importing anchor error: ${absolutePath}`);
+			}
+		}
+		return $;
 	}
 
 	importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root { 
