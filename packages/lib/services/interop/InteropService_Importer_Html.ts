@@ -10,6 +10,9 @@ import shim from '../../shim';
 import { FolderEntity } from '../database/types';
 import * as cheerio from 'cheerio';
 import * as URL from 'url';
+import * as fs from 'fs';
+import * as crypto from 'crypto';
+import Setting from '../../models/Setting';
 
 const { MarkupToHtml } = require('@joplin/renderer');
 
@@ -119,7 +122,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		if (!title) {
 			title = PATH.basename(PATH.dirname(filePath));
 		}
-		const updatedBody = this.modifyGoogleSiteHtml(body);
+		const resourceDir = Setting.value('resourceDir');
+		const updatedBody = this.modifyGoogleSiteHtml(body, filePath, resourceDir);
 		const note = {
 			parent_id: parentFolderId,
 			title: title,
@@ -136,39 +140,47 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return noteObj;
 	}
 
-	modifyGoogleSiteHtml(htmlBody: string): string {
+	modifyGoogleSiteHtml(htmlBody: string, filePath: string, resourceDir: string): string {
 		let $ = cheerio.load(htmlBody);
 		// Googleサイトのページのメイン部分だけを取得
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
-		$ = this.importLocalImage($);
+		$ = this.importLocalImage($, filePath, resourceDir);
 		return $.html();
 	}
 
-	private static isURL(urlstr: string): boolean {
+	private static isRelative(urlstr: string): boolean {
 		try {
 			const parsed = URL.parse(urlstr);
-			return parsed.protocol !== null;
+			return parsed.protocol === null && !PATH.isAbsolute(urlstr);
 		} catch (e) {
 			return false;
 		}
 	}
 
-	importLocalImage($: cheerio.Root): cheerio.Root { 
+	importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root { 
 		const imgs = $('img');
 		for (let i = 0; i < imgs.length; i++) {
 			const img = imgs[i] as cheerio.TagElement;
-			const src = img.attribs.src
-			if (!src || InteropService_Importer_Html.isURL(src)) {
-				continue;
-			}
-			if (PATH.isAbsolute(src)) {
-				continue;
-			}
-			if (src.indexOf(".") !== 0) {
+			const src = img.attribs.src;
+			if (!src || !InteropService_Importer_Html.isRelative(src)) {
 				continue;
 			}
 			console.log(`find relative path image: ${src}`);
+			const ext = PATH.extname(src);
+			const absolutePath = PATH.join(PATH.dirname(htmlPath), src);
+			console.log(`absolute path: ${absolutePath}`);
+			const data = fs.readFileSync(absolutePath);
+			const hash = crypto.createHash('sha256').update(data).digest('hex');
+			console.log(`sha256 hash: ${hash}`);
+			const filename = `${hash}${ext}`;
+			console.log(`filename: ${PATH.basename(src)} --> ${filename}`);
+			const newFilePath = PATH.join(resourceDir, filename);
+			console.log(`new filepath: ${newFilePath}`);
+			img.attribs.src = `file://${newFilePath}`;
+			img.attribs.alt = `${PATH.basename(src)}`;
+			fs.writeFileSync(newFilePath, data);
+
 		}
 		return $;
 	}
