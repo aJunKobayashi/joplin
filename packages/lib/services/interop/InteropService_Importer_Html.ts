@@ -254,7 +254,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				console.log(`anchor filename: ${PATH.basename(href)} --> ${filename}`);
 				const newFilePath = PATH.join(resourceDir, filename);
 				console.log(`anchor new filepath: ${newFilePath}`);
-				anchor.attribs.href = `file://${newFilePath}`;
+				anchor.attribs.href = `joplin_resource://${PATH.basename(newFilePath)}`;
 				anchor.attribs.alt = `${PATH.basename(href)}`;
 				if (downloadName) {
 					anchor.attribs.download = downloadName;
@@ -287,7 +287,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			console.log(`filename: ${PATH.basename(src)} --> ${filename}`);
 			const newFilePath = PATH.join(resourceDir, filename);
 			console.log(`new filepath: ${newFilePath}`);
-			img.attribs.src = `file://${newFilePath}`;
+			img.attribs.src = `joplin_resource://${PATH.basename(newFilePath)}`;
 			img.attribs.alt = `${PATH.basename(src)}`;
 			fs.writeFileSync(newFilePath, data);
 
