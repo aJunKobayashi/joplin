@@ -193,13 +193,22 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	}
 
 	modifyGoogleSiteHtml(htmlBody: string, filePath: string, resourceDir: string): string {
-		let $ = cheerio.load(htmlBody);
+		let $: cheerio.Root | undefined = undefined;
+		try {
+			$ = cheerio.load(htmlBody);
+		} catch (e) {
+			console.log(`modifyGoogleSiteHtml Error: ${e}`);
+		}
+		if ($ === undefined) {
+			return htmlBody;
+		}
 		// Googleサイトのページのメイン部分だけを取得
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
 		$ = this.importLocalImage($, filePath, resourceDir);
 		$ = this.importRelativePathAnchor($, filePath, resourceDir);
 		return $.html();
+
 	}
 
 	private static isRelative(urlstr: string): boolean {
@@ -276,29 +285,39 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			if (!src || !InteropService_Importer_Html.isRelative(src)) {
 				continue;
 			}
-			console.log(`find relative path image: ${src}`);
-			const ext = PATH.extname(src);
-			const absolutePath = PATH.join(PATH.dirname(htmlPath), src);
-			console.log(`absolute path: ${absolutePath}`);
-			const data = fs.readFileSync(absolutePath);
-			const hash = crypto.createHash('sha256').update(data).digest('hex');
-			console.log(`sha256 hash: ${hash}`);
-			const filename = `${hash}${ext}`;
-			console.log(`filename: ${PATH.basename(src)} --> ${filename}`);
-			const newFilePath = PATH.join(resourceDir, filename);
-			console.log(`new filepath: ${newFilePath}`);
-			img.attribs.src = `joplin_resource://${PATH.basename(newFilePath)}`;
-			img.attribs.alt = `${PATH.basename(src)}`;
-			fs.writeFileSync(newFilePath, data);
+			try {
+				console.log(`find relative path image: ${src}`);
+				const ext = PATH.extname(src);
+				const absolutePath = PATH.join(PATH.dirname(htmlPath), src);
+				console.log(`absolute path: ${absolutePath}`);
+				const data = fs.readFileSync(absolutePath);
+				const hash = crypto.createHash('sha256').update(data).digest('hex');
+				console.log(`sha256 hash: ${hash}`);
+				const filename = `${hash}${ext}`;
+				console.log(`filename: ${PATH.basename(src)} --> ${filename}`);
+				const newFilePath = PATH.join(resourceDir, filename);
+				console.log(`new filepath: ${newFilePath}`);
+				img.attribs.src = `joplin_resource://${PATH.basename(newFilePath)}`;
+				img.attribs.alt = `${PATH.basename(src)}`;
+				fs.writeFileSync(newFilePath, data);
+			} catch (e) {
+				console.log(`importLocalImage error: ${e} in ${src}`);
+			}
 
+			
 		}
 		return $;
 	}
 
 	getGoogleSitePageMainContent($: cheerio.Root): cheerio.Root {
 		const mainContent = $('#sites-canvas-main-content > table > tbody > tr > td > div');
-		const new$ = cheerio.load(mainContent.html());
-		return new$;
+		try {
+			const new$ = cheerio.load(mainContent.html());
+			return new$;
+		} catch (e) {
+			console.log(`error in getGoogleSitePageMainContent: ${e}`)
+			return $;
+		}
 	}
 
 	modifyHx($: cheerio.Root, targetNum: number): cheerio.Root {
