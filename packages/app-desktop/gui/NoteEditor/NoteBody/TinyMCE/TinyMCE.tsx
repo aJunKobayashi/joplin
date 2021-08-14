@@ -885,14 +885,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		let cancelled = false;
 
+		const escapeRegExp = (str: string): string => {
+			return str.replace(/[.*+?^=!:${}()|[\]\/\\]/g, '\\$&');
+		};
+
 		const modifyJoplinResource = (htmlBody: string, resourceDir: string): string => {
 			const $ = cheerio.load(htmlBody);
+			const regex = new RegExp(`^${escapeRegExp('joplin_resource:/')}`);
 			const anchors = $('a[href^="joplin_resource://"]');
 
 			for (let i = 0; i < anchors.length; i++) {
 				const anchor = anchors[i] as cheerio.TagElement;
 				const href = anchor.attribs.href;
-				const newHref = href.replace('joplin_resource:/', resourceDir);
+				const newHref = href.replace(regex, resourceDir);
 				anchor.attribs.href = newHref;
 			}
 
@@ -900,11 +905,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			for (let i = 0; i < imgs.length; i++) {
 				const img = imgs[i] as cheerio.TagElement;
 				const src = img.attribs.src;
-				const newSrc = src.replace('joplin_resource:/', resourceDir);
+				const newSrc = src.replace(regex, resourceDir);
 				img.attribs.src = newSrc;
 			}
 			return $.html();
-		}
+		};
 
 		const loadContent = async () => {
 			if (lastOnChangeEventInfo.current.content !== props.content || lastOnChangeEventInfo.current.resourceInfos !== props.resourceInfos) {
