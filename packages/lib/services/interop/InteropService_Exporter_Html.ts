@@ -179,7 +179,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 		let $ = cheerio.load(fullHtml);
-		$ = this.convertImgSrcToRelativePath($, srcResourcePath, dstResourcePath, noteFilePath);
+		$ = this.convertImgSrcToRelativePath($, dstResourcePath, noteFilePath);
 		$ = this.deleteNeedlessAttribute($);
 		$ = this.deleteScriptTag($);
 		$ = this.modifyJoplinLinkAnchor($, noteFilePath, noteIdToPath);
@@ -224,21 +224,13 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	}
 
 	convertImgSrcToRelativePath($: cheerio.Root,
-		srcResourcePath: string,
 		dstResourcePath: string,
 		noteFilePath: string): cheerio.Root {
 
-		const imgs = $('img');
+		const imgs = $('img[src^="joplin_resource://"]');
 
-		const targetURI = `file://${srcResourcePath}`;
 		for (let i = 0; i < imgs.length; i++) {
 			const img: cheerio.TagElement = imgs[i] as cheerio.TagElement;
-			if (img.attribs.src == undefined) {
-				continue;
-			}
-			if (img.attribs.src.indexOf(targetURI) !== 0) {
-				continue;
-			}
 			// TODO modify ResourceURL
 			console.log(img.attribs.src);
 			const imageFileName = PATH.basename(img.attribs.src);
