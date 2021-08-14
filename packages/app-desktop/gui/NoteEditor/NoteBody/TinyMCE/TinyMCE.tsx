@@ -15,6 +15,7 @@ import useContextMenu from './utils/useContextMenu';
 import * as cheerio from 'cheerio';
 // import { copyHtmlToClipboard } from '../../utils/clipboardUtils';
 import shim from '@joplin/lib/shim';
+import * as PATH from "path";
 
 const { MarkupToHtml } = require('@joplin/renderer');
 const taboverride = require('taboverride');
@@ -1009,6 +1010,29 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 	const nextOnChangeEventInfo = useRef<any>(null);
 
+	const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): string => {
+		const $ = cheerio.load(htmlBody);
+		const anchors = $(`a[href^="${resourceDir}"]`);
+
+		for (let i = 0; i < anchors.length; i++) {
+			const anchor = anchors[i] as cheerio.TagElement;
+			const href = anchor.attribs.href;
+			const filename = PATH.basename(href);
+			const newHref = `joplin_resource://${filename}`;
+			anchor.attribs.href = newHref;
+		}
+
+		const imgs = $(`img[src^="${resourceDir}"]`);
+		for (let i = 0; i < imgs.length; i++) {
+			const img = imgs[i] as cheerio.TagElement;
+			const src = img.attribs.src;
+			const filename = PATH.basename(src);
+			const newSrc = `joplin_resource://${filename}`;
+			img.attribs.src = newSrc;
+		}
+		return $.html();
+	};
+
 	async function execOnChangeEvent() {
 		const info = nextOnChangeEventInfo.current;
 		if (!info) return;
@@ -1016,12 +1040,15 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		nextOnChangeEventInfo.current = null;
 
 		const contentMd = await prop_htmlToMarkdownRef.current(info.contentMarkupLanguage, info.editor.getContent(), info.contentOriginalCss);
+		const resourceDir = Setting.value('resourceDir');
 
-		lastOnChangeEventInfo.current.content = contentMd;
+		const modifiedMd = revertResourceDirToJoplinScheme(contentMd, resourceDir);
+
+		lastOnChangeEventInfo.current.content = modifiedMd;
 
 		props_onChangeRef.current({
 			changeId: info.changeId,
-			content: contentMd,
+			content: modifiedMd,
 		});
 
 		dispatchDidUpdate(info.editor);
