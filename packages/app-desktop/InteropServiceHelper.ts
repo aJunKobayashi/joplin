@@ -103,6 +103,7 @@ export default class InteropServiceHelper {
 
 								cleanup();
 								if (!success && reason !== 'cancelled') reject(new Error(`Could not print: ${reason}`));
+								// @ts-ignore
 								resolve();
 							});
 						}
