@@ -16,15 +16,21 @@ import Setting from '../../models/Setting';
 
 const { MarkupToHtml } = require('@joplin/renderer');
 
+interface INoteInfoMap {
+	pathToId: { [key: string]: string };
+	IdToPath: { [key: string]: string };
+}
+
 export default class InteropService_Importer_Html extends InteropService_Importer_Base {
 	private static readonly skipDir = 'attachment';
 
 	async exec(result: ImportExportResult) {
 		let parentFolderId = null;
-
+		const noteInfos: INoteInfoMap = { pathToId: {}, IdToPath: {} };
 		const sourcePath = rtrimSlashes(this.sourcePath_);
 
 		const filePaths = [];
+
 		if (await shim.fsDriver().isDirectory(sourcePath)) {
 			if (!this.options_.destinationFolder) {
 				// const folderTitle = await Folder.findUniqueItemTitle(basename(sourcePath));
@@ -34,7 +40,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				parentFolderId = this.options_.destinationFolder.id;
 			}
 
-			await this.importDirectory(sourcePath, parentFolderId);
+			await this.importDirectory(sourcePath, parentFolderId, noteInfos);
 		} else {
 			if (!this.options_.destinationFolder) throw new Error(_('Please specify the notebook where the notes should be imported to.'));
 			parentFolderId = this.options_.destinationFolder.id;
@@ -42,10 +48,48 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 
 		for (let i = 0; i < filePaths.length; i++) {
-			await this.importFile(filePaths[i], parentFolderId);
+			await this.importFile(filePaths[i], parentFolderId, noteInfos);
 		}
 
+		// change links for other notes  to joplin://
+		await InteropService_Importer_Html.convertInternalLinks(noteInfos);
 		return result;
+	}
+
+	private static async convertInternalLinks(noteInfos: INoteInfoMap): Promise<void> {
+		const notePaths = Object.keys(noteInfos.pathToId);
+		for (const notePath of notePaths) {
+			const noteId = noteInfos.pathToId[notePath];
+			await InteropService_Importer_Html.convertInternalLink(noteId, notePath, noteInfos);
+			// console.log(`noteObj: ${JSON.stringify(noteObj, null, ' ')}`);
+		}
+		return;
+	}
+
+	private static async convertInternalLink(noteId: string, notePath: string, noteInfos:INoteInfoMap): Promise<void> {
+		try {
+			const note = await Note.loadItemById(noteId);
+			const body = note.body;
+			const $ = cheerio.load(body);
+			const anchors = $('a[href$="index.html"]');
+			for (let i = 0; i < anchors.length; i++) {
+				const anchor = anchors[i] as cheerio.TagElement;
+				const href = anchor.attribs.href;
+				if (!InteropService_Importer_Html.isRelative(href)) {
+					continue;
+				}
+				const absolutePath = PATH.join(PATH.dirname(notePath), href);
+				const linkNoteId = noteInfos.pathToId[absolutePath];
+				if (linkNoteId === undefined) {
+					continue;
+				}
+				anchor.attribs.href = `joplin://${linkNoteId}`;
+ 			}
+			note.body = $.html();
+			await Note.save(note);
+		} catch (e) {
+			console.log(`error in convertInternalLink: ${e}`);
+		}
 	}
 
 	hasDirectory(stats: any[]): boolean {
@@ -83,7 +127,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return title ? title : basename(dirPath);
 	}
 
-	async importDirectory(dirPath: string, parentFolderId: string) {
+	async importDirectory(dirPath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
 		if (PATH.basename(dirPath) === InteropService_Importer_Html.skipDir) {
 			console.log(`skipDir: ${dirPath}`);
 			return;
@@ -111,16 +155,16 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			const stat = stats[i];
 
 			if (stat.isDirectory()) {
-				await this.importDirectory(`${dirPath}/${basename(stat.path)}`, folderId);
+				await this.importDirectory(`${dirPath}/${basename(stat.path)}`, folderId, noteInfos);
 			} else if (supportedFileExtension.indexOf(fileExtension(stat.path).toLowerCase()) >= 0) {
-				await this.importFile(`${dirPath}/${stat.path}`, folderId);
+				await this.importFile(`${dirPath}/${stat.path}`, folderId, noteInfos);
 			}
 		}
 	}
 
 
 
-	async importFile(filePath: string, parentFolderId: string) {
+	async importFile(filePath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
 		const stat = await shim.fsDriver().stat(filePath);
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
 		const body = await shim.fsDriver().readFile(filePath);
@@ -142,6 +186,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		};
 
 		const noteObj = await Note.save(note, { autoTimestamp: false });
+		noteInfos.IdToPath[noteObj.id] = filePath;
+		noteInfos.pathToId[filePath] = noteObj.id;
 		console.log(`note: ${filePath} is saved!`);
 		return noteObj;
 	}
