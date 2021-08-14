@@ -12,6 +12,7 @@ import usePluginServiceRegistration from '../../utils/usePluginServiceRegistrati
 import { utils as pluginUtils } from '@joplin/lib/services/plugins/reducer';
 import { _, closestSupportedLocale } from '@joplin/lib/locale';
 import useContextMenu from './utils/useContextMenu';
+import * as cheerio from 'cheerio';
 // import { copyHtmlToClipboard } from '../../utils/clipboardUtils';
 import shim from '@joplin/lib/shim';
 
@@ -20,6 +21,7 @@ const taboverride = require('taboverride');
 import { reg } from '@joplin/lib/registry';
 //  import BaseItem from '@joplin/lib/models/BaseItem';
 import setupToolbarButtons from './utils/setupToolbarButtons';
+import Setting from '../../../../../lib/models/Setting';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
@@ -338,6 +340,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			element.id = script.id;
 
 			element.onload = () => {
+				// @ts-ignore
 				resolve();
 			};
 
@@ -882,12 +885,35 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		let cancelled = false;
 
+		const modifyJoplinResource = (htmlBody: string, resourceDir: string): string => {
+			const $ = cheerio.load(htmlBody);
+			const anchors = $('a[href^="joplin_resource://"]');
+
+			for (let i = 0; i < anchors.length; i++) {
+				const anchor = anchors[i] as cheerio.TagElement;
+				const href = anchor.attribs.href;
+				const newHref = href.replace('joplin_resource:/', resourceDir);
+				anchor.attribs.href = newHref;
+			}
+
+			const imgs = $('img[src^="joplin_resource://"]');
+			for (let i = 0; i < imgs.length; i++) {
+				const img = imgs[i] as cheerio.TagElement;
+				const src = img.attribs.src;
+				const newSrc = src.replace('joplin_resource:/', resourceDir);
+				img.attribs.src = newSrc;
+			}
+			return $.html();
+		}
+
 		const loadContent = async () => {
 			if (lastOnChangeEventInfo.current.content !== props.content || lastOnChangeEventInfo.current.resourceInfos !== props.resourceInfos) {
 				// const result = await props.markupToHtml(props.contentMarkupLanguage, props.content, markupRenderOptions({ resourceInfos: props.resourceInfos }));
 				if (cancelled) return;
 
-				editor.setContent(props.content);
+				const resourceDir = Setting.value('resourceDir');
+				const modifiedContent = modifyJoplinResource(props.content, resourceDir)
+				editor.setContent(modifiedContent);
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
 					// Need to clear UndoManager to avoid this problem:
