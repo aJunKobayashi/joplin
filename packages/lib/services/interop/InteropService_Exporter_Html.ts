@@ -183,6 +183,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		$ = this.deleteNeedlessAttribute($);
 		$ = this.deleteScriptTag($);
 		$ = this.modifyJoplinLinkAnchor($, noteFilePath, noteIdToPath);
+		$ = this.convertJoplinSchemeAnchorToRelativePath($, dstResourcePath, noteFilePath);
 		return $.html();
 	}
 
@@ -241,6 +242,28 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			console.log(`relativePath: ${relativePath}`);
 			img.attribs.src = `${PATH.join(relativePath, imageFileName)}`;
 			console.log(`new img.src:  ${img.attribs.src}`);
+		}
+		return $;
+	}
+
+	convertJoplinSchemeAnchorToRelativePath($: cheerio.Root,
+		dstResourcePath: string,
+		noteFilePath: string): cheerio.Root {
+
+		const anchors = $('a[href^="joplin_resource://"]');
+
+		for (let i = 0; i < anchors.length; i++) {
+			const anchor: cheerio.TagElement = anchors[i] as cheerio.TagElement;
+			// TODO modify ResourceURL
+			console.log(anchor.attribs.href);
+			const imageFileName = PATH.basename(anchor.attribs.href);
+			const noteDir = PATH.dirname(noteFilePath);
+			console.log(`imageFileName: ${imageFileName}`);
+			console.log(`noteDir: ${noteDir}`);
+			const relativePath = PATH.relative(noteDir, dstResourcePath);
+			console.log(`relativePath: ${relativePath}`);
+			anchor.attribs.href = `${PATH.join(relativePath, imageFileName)}`;
+			console.log(`new img.src:  ${anchor.attribs.src}`);
 		}
 		return $;
 	}
