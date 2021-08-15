@@ -189,15 +189,22 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	insertResourcesIntoContentRef.current = insertResourcesIntoContent;
 
 	const onEditorContentClick = useCallback((event: any) => {
-		const nodeName = event.target ? event.target.nodeName : '';
+		let nodeName = event.target ? event.target.nodeName : '';
+		const parentName = event.target?.parentElement?.nodeName;
 
 		if (nodeName === 'INPUT' && event.target.getAttribute('type') === 'checkbox') {
 			editor.fire('joplinChange');
 			dispatchDidUpdate(editor);
 		}
 
-		if (nodeName === 'A' && (event.ctrlKey || event.metaKey)) {
-			const href = event.target.getAttribute('href');
+		let targetNodeName = nodeName;
+		let targetElement = event.target;
+		if (nodeName !== 'A' && parentName === 'A') {
+			targetNodeName = parentName;
+			targetElement = event.target.parentElement;
+		}
+		if (targetNodeName === 'A' && (event.ctrlKey || event.metaKey)) {
+			const href = targetElement.getAttribute('href');
 
 			if (href.indexOf('#') === 0) {
 				const anchorName = href.substr(1);
@@ -205,7 +212,13 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (anchor) {
 					anchor.scrollIntoView();
 				} else {
-					reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
+					// when id is not found, search by name
+					const anchor = editor.getDoc().querySelector(`a[name="${anchorName}"]`);
+					if (anchor) {
+						anchor.scrollIntoView();
+					} else {
+						reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
+					}
 				}
 			} else {
 				props.onMessage({ channel: href });
