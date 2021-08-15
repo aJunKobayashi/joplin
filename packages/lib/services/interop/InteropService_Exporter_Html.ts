@@ -10,6 +10,7 @@ import { ResourceEntity } from '../database/types';
 import { contentScriptsToRendererRules } from '../plugins/utils/loadContentScripts';
 import * as cheerio from 'cheerio';
 import * as PATH from 'path';
+import * as URL from 'url';
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -192,14 +193,20 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`noteFilePath: ${noteFilePath}`);
 		for (let i = 0; i < joplinAnchors.length; i++) {
 			const joplinAnchor = joplinAnchors[i] as  cheerio.TagElement ;
-			const linkComponent = joplinAnchor.attribs.href.toLocaleLowerCase().split('joplin://');
-			const targetId = linkComponent.length > 1 ? linkComponent[1] : '';
+			const url = URL.parse(joplinAnchor.attribs.href);
+			if (!url.hostname) {
+				continue;
+			}
+			const targetId = url.hostname;
 			console.log(`joplin link ID: ${targetId}`);
 			const htmlPath = noteIdToPath[targetId];
 			console.log(`link path: ${htmlPath}`);
 			const srcDir = PATH.dirname(noteFilePath);
 			try {
-				const relativePath = PATH.relative(srcDir, htmlPath);
+				let relativePath = PATH.relative(srcDir, htmlPath);
+				if (url.hash) {
+					relativePath += url.hash;
+				}
 				joplinAnchor.attribs.href = relativePath;
 			} catch (e) {
 				console.log(`error: ${e.toString()}`);
