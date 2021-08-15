@@ -128,7 +128,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	}
 
 	async importDirectory(dirPath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
-		if (PATH.basename(dirPath) === InteropService_Importer_Html.skipDir) {
+		if (PATH.basename(dirPath) === InteropService_Importer_Html.skipDir || PATH.basename(dirPath) === '_') {
 			console.log(`skipDir: ${dirPath}`);
 			return;
 		}
