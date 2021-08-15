@@ -71,19 +71,26 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			const note = await Note.loadItemById(noteId);
 			const body = note.body;
 			const $ = cheerio.load(body);
-			const anchors = $('a[href$="index.html"]');
+			const anchors = $('a[href*=".html"]');
 			for (let i = 0; i < anchors.length; i++) {
 				const anchor = anchors[i] as cheerio.TagElement;
 				const href = anchor.attribs.href;
 				if (!InteropService_Importer_Html.isRelative(href)) {
 					continue;
 				}
-				const absolutePath = PATH.join(PATH.dirname(notePath), href);
+				const url = URL.parse(href);
+				const absolutePath = PATH.join(PATH.dirname(notePath), url.path);
 				const linkNoteId = noteInfos.pathToId[absolutePath];
 				if (linkNoteId === undefined) {
 					continue;
 				}
-				anchor.attribs.href = `joplin://${linkNoteId}`;
+				url.protocol = 'joplin';
+				url.path = absolutePath;
+				let newUrl = `joplin://${linkNoteId}`;
+				if (url.hash) {
+					newUrl += url.hash;
+				}
+				anchor.attribs.href = newUrl;
  			}
 			note.body = $.html();
 			await Note.save(note);
