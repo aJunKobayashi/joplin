@@ -120,7 +120,7 @@ export default class NoteListUtils {
 
 			menu.append(
 				new MenuItem({
-					label: _('Copy Markdown link'),
+					label: _('Copy Anchor link'),
 					click: async () => {
 						const { clipboard } = require('electron');
 						const links = [];
