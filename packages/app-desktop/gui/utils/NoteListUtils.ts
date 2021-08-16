@@ -15,7 +15,7 @@ const MenuItem = bridge().MenuItem;
 import Note from '@joplin/lib/models/Note';
 import Folder from '@joplin/lib/models/Folder';
 import Setting from '@joplin/lib/models/Setting';
-import * as cheerio from "cheerio";
+import * as cheerio from 'cheerio';
 const { substrWithEllipsis } = require('@joplin/lib/string-utils');
 
 interface ContextMenuProps {
@@ -32,9 +32,9 @@ enum PageType {
 }
 
 interface SubpageList {
-	type: PageType; 
-	title: string
-	id: string,
+	type: PageType;
+	title: string;
+	id: string;
 	children: SubpageList[];
 }
 
@@ -158,14 +158,14 @@ export default class NoteListUtils {
 							const subpageList = await NoteListUtils.createSubPageList(noteIds[i]);
 							subPageLists.push(subpageList);
 							const jsonstr = JSON.stringify(subpageList, null, ' ');
-							console.log(`subpagelist: ${jsonstr}`)
+							console.log(`subpagelist: ${jsonstr}`);
 						}
 						const htmlStr = NoteListUtils.convertSubpageListsToHTML(subPageLists);
 						clipboard.writeHTML(htmlStr);
 					},
 				})
 			);
-			
+
 
 			if (Setting.value('sync.target') === SyncTargetJoplinServer.id()) {
 				menu.append(
@@ -258,12 +258,12 @@ export default class NoteListUtils {
 		const note = await Note.load(noteId);
 		const parentFolderId = note.parent_id;
 		const folder = await Folder.load(parentFolderId);
-		const subpageList: SubpageList = 
+		const subpageList: SubpageList =
 			{
 				type: PageType.Folder,
 				title: folder.title,
-				id:  folder.id,
-				children: []
+				id: folder.id,
+				children: [],
 			};
 		await NoteListUtils.interCreateSubPageList(subpageList);
 		return subpageList;
@@ -280,8 +280,8 @@ export default class NoteListUtils {
 				type: PageType.Note,
 				title: note.title,
 				id: note.id,
-				children: []
-			}
+				children: [],
+			};
 			subpageList.children.push(notePage);
 		}
 		const folderIds = await Folder.subFolderIds(parentId);
@@ -291,8 +291,8 @@ export default class NoteListUtils {
 				type: PageType.Folder,
 				title: folder.title,
 				id: folder.id,
-				children:[],
-			}
+				children: [],
+			};
 			await this.interCreateSubPageList(folderPage);
 			subpageList.children.push(folderPage);
 		}
@@ -300,36 +300,36 @@ export default class NoteListUtils {
 	}
 
 	private static convertSubpageListsToHTML(subpageLists: SubpageList[]): string {
-		const $ = cheerio.load('<ul></ul>');
+		const $ = cheerio.load('<ul id="joplin_subpagelist"></ul>');
 		const subpageList = subpageLists[0];
-		const root = $(`ul`);
+		const root = $('ul');
 		NoteListUtils.interConvertSubpageListToHTML(subpageList, root);
 		const html = $.html();
 		console.log(`subpage html: ${JSON.stringify(html, null, ' ')}`);
 		return html;
 	}
 
-	private static interConvertSubpageListToHTML(subpageList: SubpageList, parent:cheerio.Cheerio): cheerio.Cheerio {
+	private static interConvertSubpageListToHTML(subpageList: SubpageList, parent: cheerio.Cheerio): cheerio.Cheerio {
 
 		if (subpageList.type === PageType.Note) {
-			const li = cheerio.load(`<li><a href="joplin://${subpageList.id}">${subpageList.title}</a></li>`)
+			const li = cheerio.load(`<li><a href="joplin://${subpageList.id}">${subpageList.title}</a></li>`);
 			li('li').appendTo(parent);
 			return parent;
-		} 
-		
+		}
+
 		if (subpageList.type !== PageType.Folder) {
 			return parent;
 		}
-		
+
 		const litemp = cheerio.load(`<li>${subpageList.title}</li>`);
-		const li = litemp(`li`);
-		const ultemp = cheerio.load(`<ul></ul>`);			
-		const ul = ultemp(`ul`);
+		const li = litemp('li');
+		const ultemp = cheerio.load('<ul></ul>');
+		const ul = ultemp('ul');
 
 		for (const child of subpageList.children) {
-			NoteListUtils.interConvertSubpageListToHTML(child, ul)
-		} 
-		
+			NoteListUtils.interConvertSubpageListToHTML(child, ul);
+		}
+
 		console.log(`before: ${JSON.stringify(parent.html(), null, ' ')}`);
 		ul.appendTo(li);
 		li.appendTo(parent);
