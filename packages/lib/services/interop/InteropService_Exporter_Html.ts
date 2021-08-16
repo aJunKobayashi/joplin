@@ -11,6 +11,7 @@ import { contentScriptsToRendererRules } from '../plugins/utils/loadContentScrip
 import * as cheerio from 'cheerio';
 import * as PATH from 'path';
 import * as URL from 'url';
+import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -165,21 +166,24 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			let modifiedHtml = fullHtml;
 			if (noteFilePath.indexOf(profileDirPath) !== 0) {
 				const noteIdToPath: { [key: string]: string } = item.noteIdToPath;
-				modifiedHtml = this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteFilePath, noteIdToPath);
+				const noteId = item.id;
+				modifiedHtml = await this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteId, noteFilePath, noteIdToPath);
 			}
 			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
 	}
 
-	modifyExportHTMLSource(fullHtml: string,
+	async modifyExportHTMLSource(fullHtml: string,
 		srcResourcePath: string,
 		dstResourcePath: string,
+		noteId: string,
 		noteFilePath: string,
-		noteIdToPath: { [key: string]: string } ): string {
+		noteIdToPath: { [key: string]: string } ): Promise<string> {
 		console.log(`srcResourcePath: ${srcResourcePath}`);
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 		let $ = cheerio.load(fullHtml);
+		$ = await NoteListUtils.updateSubpageLists($, noteId);
 		$ = this.convertImgSrcToRelativePath($, dstResourcePath, noteFilePath);
 		$ = this.deleteNeedlessAttribute($);
 		$ = this.deleteScriptTag($);
