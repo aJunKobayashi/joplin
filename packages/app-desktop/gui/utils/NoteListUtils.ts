@@ -309,6 +309,19 @@ export default class NoteListUtils {
 		return html;
 	}
 
+	public static async updateSubpageLists($: cheerio.Root, noteId: string): Promise<cheerio.Root> {
+		const root = $('#joplin_subpagelist');
+		if (root.length <= 0) {
+			return $;
+		}
+		root.remove('#joplin_subpagelist > *');
+		const subpageList = await NoteListUtils.createSubPageList(noteId)
+
+		await NoteListUtils.interConvertSubpageListToHTML(subpageList, root);
+
+		return $;
+	}
+
 	private static interConvertSubpageListToHTML(subpageList: SubpageList, parent: cheerio.Cheerio): cheerio.Cheerio {
 
 		if (subpageList.type === PageType.Note) {

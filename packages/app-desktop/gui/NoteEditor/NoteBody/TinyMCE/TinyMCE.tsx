@@ -23,6 +23,7 @@ import { reg } from '@joplin/lib/registry';
 //  import BaseItem from '@joplin/lib/models/BaseItem';
 import setupToolbarButtons from './utils/setupToolbarButtons';
 import Setting from '../../../../../lib/models/Setting';
+import NoteListUtils from '../../../utils/NoteListUtils';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
@@ -898,7 +899,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			return str.replace(/[.*+?^=!:${}()|[\]\/\\]/g, '\\$&');
 		};
 
-		const modifyJoplinResource = (htmlBody: string, resourceDir: string): string => {
+		const modifyJoplinResource = (htmlBody: string, resourceDir: string): cheerio.Root => {
 			const $ = cheerio.load(htmlBody);
 			const regex = new RegExp(`^${escapeRegExp('joplin_resource:/')}`);
 			const anchors = $('a[href^="joplin_resource://"]');
@@ -917,8 +918,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				const newSrc = src.replace(regex, resourceDir);
 				img.attribs.src = newSrc;
 			}
-			return $.html();
+			return $;
 		};
+
+		const updateSubpagelist = async($: cheerio.Root, noteId: string): Promise<cheerio.Root> => {
+			await NoteListUtils.updateSubpageLists($, noteId);
+			return $
+		}
+
+		const modifyHtmlContent = async(htmlStr: string, resourceDir: string,  noteId: string): Promise<string> => {
+			let $ = modifyJoplinResource(htmlStr, resourceDir)
+			$ = await updateSubpagelist($, noteId);
+			return $.html();
+		}
 
 		const loadContent = async () => {
 			if (lastOnChangeEventInfo.current.content !== props.content || lastOnChangeEventInfo.current.resourceInfos !== props.resourceInfos) {
@@ -926,7 +938,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (cancelled) return;
 
 				const resourceDir = Setting.value('resourceDir');
-				const modifiedContent = modifyJoplinResource(props.content, resourceDir)
+				const modifiedContent = await modifyHtmlContent(props.content, resourceDir, props.contentKey);
 				editor.setContent(modifiedContent);
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
