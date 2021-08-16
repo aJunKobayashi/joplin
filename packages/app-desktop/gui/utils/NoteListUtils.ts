@@ -284,6 +284,17 @@ export default class NoteListUtils {
 			};
 			subpageList.children.push(notePage);
 		}
+		subpageList.children.sort((a: SubpageList, b: SubpageList): number => {
+			const nameA = a.title.toUpperCase();
+			const nameB = b.title.toUpperCase();
+			if (nameA < nameB) {
+				return -1;
+			}
+			if (nameA > nameB) {
+				return 1;
+			}
+			return 0;
+		});
 		const folderIds = await Folder.subFolderIds(parentId);
 		for (const folderId of folderIds) {
 			const folder = await Folder.load(folderId);
