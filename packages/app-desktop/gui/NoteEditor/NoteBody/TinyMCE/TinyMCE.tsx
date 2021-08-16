@@ -208,17 +208,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 			if (href.indexOf('#') === 0) {
 				const anchorName = href.substr(1);
-				const anchor = editor.getDoc().getElementById(anchorName);
+				// when id is not found, search by name
+				const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
 				if (anchor) {
 					anchor.scrollIntoView();
 				} else {
-					// when id is not found, search by name
-					const anchor = editor.getDoc().querySelector(`a[name="${anchorName}"]`);
-					if (anchor) {
-						anchor.scrollIntoView();
-					} else {
-						reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
-					}
+					reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
 				}
 			} else {
 				props.onMessage({ channel: href });
