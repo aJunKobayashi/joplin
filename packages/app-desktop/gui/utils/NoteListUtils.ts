@@ -310,15 +310,17 @@ export default class NoteListUtils {
 	}
 
 	public static async updateSubpageLists($: cheerio.Root, noteId: string): Promise<cheerio.Root> {
-		const root = $('#joplin_subpagelist');
+		console.log(`before update: ${$.html()}`); 
+		let root = $('#joplin_subpagelist');
 		if (root.length <= 0) {
 			return $;
 		}
-		root.remove('#joplin_subpagelist > *');
+		root.find('*').remove();
+		console.log(`removed update: ${$.html()}`);
 		const subpageList = await NoteListUtils.createSubPageList(noteId)
 
 		await NoteListUtils.interConvertSubpageListToHTML(subpageList, root);
-
+		console.log(`update subpage: ${$.html()}`);
 		return $;
 	}
 

@@ -141,6 +141,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const [scriptLoaded, setScriptLoaded] = useState(false);
 	const [editorReady, setEditorReady] = useState(false);
 	const [draggingStarted, setDraggingStarted] = useState(false);
+	const [prevNoteId, setPrevNoteId] = useState("");
 
 	const props_onMessage = useRef(null);
 	props_onMessage.current = props.onMessage;
@@ -926,11 +927,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			return $
 		}
 
-		const modifyHtmlContent = async(htmlStr: string, resourceDir: string,  noteId: string): Promise<string> => {
-			let $ = modifyJoplinResource(htmlStr, resourceDir)
-			$ = await updateSubpagelist($, noteId);
-			return $.html();
-		}
+		// const modifyHtmlContent = async(htmlStr: string, resourceDir: string,  noteId: string): Promise<string> => {
+		// 	let $ = modifyJoplinResource(htmlStr, resourceDir)
+		// 	$ = await updateSubpagelist($, noteId);
+		// 	return $.html(); 
+		// }
 
 		const loadContent = async () => {
 			if (lastOnChangeEventInfo.current.content !== props.content || lastOnChangeEventInfo.current.resourceInfos !== props.resourceInfos) {
@@ -938,7 +939,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (cancelled) return;
 
 				const resourceDir = Setting.value('resourceDir');
-				const modifiedContent = await modifyHtmlContent(props.content, resourceDir, props.contentKey);
+				let $ = modifyJoplinResource(props.content, resourceDir)
+				if (prevNoteId !== props.contentKey) {
+					setPrevNoteId(props.contentKey)
+					await updateSubpagelist($, props.contentKey);
+				}
+				const modifiedContent = $.html();
 				editor.setContent(modifiedContent);
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
