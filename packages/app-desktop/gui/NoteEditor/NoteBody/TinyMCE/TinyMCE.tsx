@@ -1051,7 +1051,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		if (!info) return;
 
 		nextOnChangeEventInfo.current = null;
-
+		editor.execCommand('mceUpdateToc');
 		const contentMd = await prop_htmlToMarkdownRef.current(info.contentMarkupLanguage, info.editor.getContent(), info.contentOriginalCss);
 		const resourceDir = Setting.value('resourceDir');
 
