@@ -13,6 +13,7 @@ const bridge = require('electron').remote.require('./bridge').default;
 const Menu = bridge().Menu;
 const MenuItem = bridge().MenuItem;
 import Note from '@joplin/lib/models/Note';
+import Folder from '@joplin/lib/models/Folder';
 import Setting from '@joplin/lib/models/Setting';
 const { substrWithEllipsis } = require('@joplin/lib/string-utils');
 
@@ -22,6 +23,18 @@ interface ContextMenuProps {
 	watchedNoteFiles: string[];
 	plugins: PluginStates;
 	inConflictFolder: boolean;
+}
+
+enum PageType {
+	Folder,
+	Note,
+}
+
+interface SubpageList {
+	type: PageType; 
+	title: string
+	id: string,
+	children: SubpageList[];
 }
 
 export default class NoteListUtils {
@@ -133,6 +146,24 @@ export default class NoteListUtils {
 				})
 			);
 
+			menu.append(
+				new MenuItem({
+					label: _('Copy Subpage List'),
+					click: async () => {
+						const { clipboard } = require('electron');
+						for (let i = 0; i < noteIds.length; i++) {
+							// TODO create subpagelist.
+							const subpageList = await NoteListUtils.createSubPageList(noteIds[i]);
+							const jsonstr = JSON.stringify(subpageList, null, ' ');
+							console.log(`subpagelist: ${jsonstr}`)
+							clipboard.writeText(jsonstr);
+						}
+						
+					},
+				})
+			);
+			
+
 			if (Setting.value('sync.target') === SyncTargetJoplinServer.id()) {
 				menu.append(
 					new MenuItem(
@@ -217,6 +248,52 @@ export default class NoteListUtils {
 
 		if (!ok) return;
 		await Note.batchDelete(noteIds);
+	}
+
+	private static async createSubPageList(noteId: string): Promise<SubpageList> {
+		// TODO create subpagelist.
+		const note = await Note.load(noteId);
+		const parentFolderId = note.parent_id;
+		const folder = await Folder.load(parentFolderId);
+		const subpageList: SubpageList = 
+			{
+				type: PageType.Folder,
+				title: folder.title,
+				id:  folder.id,
+				children: []
+			};
+		await NoteListUtils.interCreateSubPageList(subpageList);
+		return subpageList;
+	}
+
+	private static async interCreateSubPageList(subpageList: SubpageList) {
+		if (subpageList.type === PageType.Note) {
+			return;
+		}
+		const parentId = subpageList.id;
+		const notes = await Note.previews(parentId, null);
+		for (const note of notes) {
+			const notePage: SubpageList = {
+				type: PageType.Note,
+				title: note.title,
+				id: note.id,
+				children: []
+			}
+			subpageList.children.push(notePage);
+		}
+		const folderIds = await Folder.subFolderIds(parentId);
+		for (const folderId of folderIds) {
+			const folder = await Folder.load(folderId);
+			const folderPage: SubpageList = {
+				type: PageType.Folder,
+				title: folder.title,
+				id: folder.id,
+				children:[],
+			}
+			await this.interCreateSubPageList(folderPage);
+			subpageList.children.push(folderPage);
+		}
+		return;
 	}
 
 }
