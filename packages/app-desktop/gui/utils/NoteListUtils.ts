@@ -126,9 +126,9 @@ export default class NoteListUtils {
 						const links = [];
 						for (let i = 0; i < noteIds.length; i++) {
 							const note = await Note.load(noteIds[i]);
-							links.push(Note.markdownTag(note));
+							links.push(Note.copyAnchorTag(note));
 						}
-						clipboard.writeText(links.join(' '));
+						clipboard.writeHTML(links.join(' '));
 					},
 				})
 			);
