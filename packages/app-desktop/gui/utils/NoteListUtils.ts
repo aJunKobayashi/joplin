@@ -15,6 +15,7 @@ const MenuItem = bridge().MenuItem;
 import Note from '@joplin/lib/models/Note';
 import Folder from '@joplin/lib/models/Folder';
 import Setting from '@joplin/lib/models/Setting';
+import * as cheerio from "cheerio";
 const { substrWithEllipsis } = require('@joplin/lib/string-utils');
 
 interface ContextMenuProps {
@@ -151,14 +152,16 @@ export default class NoteListUtils {
 					label: _('Copy Subpage List'),
 					click: async () => {
 						const { clipboard } = require('electron');
+						const subPageLists: SubpageList[] = [];
 						for (let i = 0; i < noteIds.length; i++) {
 							// TODO create subpagelist.
 							const subpageList = await NoteListUtils.createSubPageList(noteIds[i]);
+							subPageLists.push(subpageList);
 							const jsonstr = JSON.stringify(subpageList, null, ' ');
 							console.log(`subpagelist: ${jsonstr}`)
-							clipboard.writeText(jsonstr);
 						}
-						
+						const htmlStr = NoteListUtils.convertSubpageListsToHTML(subPageLists);
+						clipboard.writeHTML(htmlStr);
 					},
 				})
 			);
@@ -294,6 +297,46 @@ export default class NoteListUtils {
 			subpageList.children.push(folderPage);
 		}
 		return;
+	}
+
+	private static convertSubpageListsToHTML(subpageLists: SubpageList[]): string {
+		const $ = cheerio.load('<ul></ul>');
+		const subpageList = subpageLists[0];
+		const root = $(`ul`);
+		NoteListUtils.interConvertSubpageListToHTML(subpageList, root);
+		const html = $.html();
+		console.log(`subpage html: ${JSON.stringify(html, null, ' ')}`);
+		return html;
+	}
+
+	private static interConvertSubpageListToHTML(subpageList: SubpageList, parent:cheerio.Cheerio): cheerio.Cheerio {
+
+		if (subpageList.type === PageType.Note) {
+			const li = cheerio.load(`<li><a href="joplin://${subpageList.id}">${subpageList.title}</a></li>`)
+			li('li').appendTo(parent);
+			return parent;
+		} 
+		
+		if (subpageList.type !== PageType.Folder) {
+			return parent;
+		}
+		
+		const litemp = cheerio.load(`<li>${subpageList.title}</li>`);
+		const li = litemp(`li`);
+		const ultemp = cheerio.load(`<ul></ul>`);			
+		const ul = ultemp(`ul`);
+
+		for (const child of subpageList.children) {
+			NoteListUtils.interConvertSubpageListToHTML(child, ul)
+		} 
+		
+		console.log(`before: ${JSON.stringify(parent.html(), null, ' ')}`);
+		ul.appendTo(li);
+		li.appendTo(parent);
+		console.log(`before: ${JSON.stringify(parent.html(), null, ' ')}`);
+
+
+		return parent;
 	}
 
 }
