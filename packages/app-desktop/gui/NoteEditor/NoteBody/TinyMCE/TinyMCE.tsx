@@ -239,7 +239,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (!editor) return;
 
 				if (options.type === ScrollOptionTypes.Hash) {
-					const anchor = editor.getDoc().getElementById(options.value);
+					const anchor = editor.getDoc().getElementById(options.value) || editor.getDoc().querySelector(`a[name="${options.value}"]`);
 					if (!anchor) {
 						console.warn('Cannot find hash', options);
 						return;
