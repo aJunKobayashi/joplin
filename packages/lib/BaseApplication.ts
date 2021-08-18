@@ -156,6 +156,13 @@ export default class BaseApplication {
 				continue;
 			}
 
+			if (arg == '--profileName') {
+				if (!nextArg) throw new JoplinError(_('Usage: %s', '--profileName <foldername>'), 'flagError');
+				matched.profileName = nextArg;
+				argv.splice(0, 2);
+				continue;
+			}
+
 			if (arg == '--no-welcome') {
 				matched.welcomeDisabled = true;
 				argv.splice(0, 1);
@@ -643,6 +650,8 @@ export default class BaseApplication {
 			output = initArgs.profileDir;
 		} else if (process && process.env && process.env.PORTABLE_EXECUTABLE_DIR) {
 			output = `${process.env.PORTABLE_EXECUTABLE_DIR}/JoplinProfile`;
+		} else if (initArgs.profileName) {
+			output = `${os.homedir()}/.config/${initArgs.profileName}`;
 		} else {
 			output = `${os.homedir()}/.config/${Setting.value('appName')}`;
 		}
