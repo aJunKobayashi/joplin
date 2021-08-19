@@ -264,8 +264,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			try {
 
 				const data = fs.readFileSync(absolutePath);
-				const hash = crypto.createHash('sha256').update(data).digest('hex');
-				console.log(`anchor sha256 hash: ${hash}`);
+				const hash = crypto.createHash('md5').update(data).digest('hex');
+				console.log(`anchor md5 hash: ${hash}`);
 				const filename = `${hash}${ext}`;
 				console.log(`anchor filename: ${PATH.basename(href)} --> ${filename}`);
 				const newFilePath = PATH.join(resourceDir, filename);
@@ -307,8 +307,8 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				const absolutePath = PATH.join(PATH.dirname(htmlPath), src);
 				console.log(`absolute path: ${absolutePath}`);
 				const data = fs.readFileSync(absolutePath);
-				const hash = crypto.createHash('sha256').update(data).digest('hex');
-				console.log(`sha256 hash: ${hash}`);
+				const hash = crypto.createHash('md5').update(data).digest('hex');
+				console.log(`md5 hash: ${hash}`);
 				const filename = `${hash}${ext}`;
 				console.log(`filename: ${PATH.basename(src)} --> ${filename}`);
 				const newFilePath = PATH.join(resourceDir, filename);
