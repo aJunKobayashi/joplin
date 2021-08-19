@@ -213,7 +213,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
 		$ = await this.importLocalImage($, filePath, resourceDir);
-		$ = this.importRelativePathAnchor($, filePath, resourceDir);
+		$ = await this.importRelativePathAnchor($, filePath, resourceDir);
 		return $.html();
 
 	}
@@ -239,7 +239,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 	}
 
 
-	importRelativePathAnchor($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root {
+	async importRelativePathAnchor($: cheerio.Root, htmlPath: string, resourceDir: string): Promise<cheerio.Root> {
 		const anchors = $('a');
 		for (let i = 0; i < anchors.length; i++) {
 			const anchor = anchors[i] as cheerio.TagElement;
@@ -272,6 +272,15 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				console.log(`anchor new filepath: ${newFilePath}`);
 				anchor.attribs.href = `joplin_resource://${PATH.basename(newFilePath)}`;
 				anchor.attribs.alt = `${PATH.basename(href)}`;
+				const options = {
+					createFileURL: false,
+					resizeLargeImages: 'never' };
+				const defaultProps = {
+					id: hash,
+					title: `${PATH.basename(href)}`,
+				};
+				const resource = await shim.createResourceFromPath(absolutePath, defaultProps, options);
+				console.log(`image resource: ${JSON.stringify(resource, null, ' ')}`);
 				if (downloadName) {
 					anchor.attribs.download = downloadName;
 				}
@@ -309,7 +318,11 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				const options = {
 					createFileURL: false,
 					resizeLargeImages: 'never' };
-				const resource = await shim.createResourceFromPath(absolutePath, null, options);
+				const defaultProps = {
+					id: hash,
+					title: `${PATH.basename(src)}`,
+				};
+				const resource = await shim.createResourceFromPath(absolutePath, defaultProps, options);
 				console.log(`image resource: ${JSON.stringify(resource, null, ' ')}`);
 				fs.writeFileSync(newFilePath, data);
 
