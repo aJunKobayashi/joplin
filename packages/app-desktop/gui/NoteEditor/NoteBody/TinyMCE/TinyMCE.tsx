@@ -15,7 +15,8 @@ import useContextMenu from './utils/useContextMenu';
 import * as cheerio from 'cheerio';
 // import { copyHtmlToClipboard } from '../../utils/clipboardUtils';
 import shim from '@joplin/lib/shim';
-import * as PATH from "path";
+import * as PATH from 'path';
+import * as URL from 'url';
 
 const { MarkupToHtml } = require('@joplin/renderer');
 const taboverride = require('taboverride');
@@ -900,8 +901,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			return str.replace(/[.*+?^=!:${}()|[\]\/\\]/g, '\\$&');
 		};
 
-		const modifyJoplinResource = (htmlBody: string, resourceDir: string): cheerio.Root => {
-			const $ = cheerio.load(htmlBody);
+		const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): cheerio.Root => {
 			const regex = new RegExp(`^${escapeRegExp('joplin_resource:/')}`);
 			const anchors = $('a[href^="joplin_resource://"]');
 
@@ -922,15 +922,46 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			return $;
 		};
 
-		const updateSubpagelist = async($: cheerio.Root, noteId: string): Promise<cheerio.Root> => {
+		const modifyFileSchemeResource = ($: cheerio.Root, resourceDir: string): cheerio.Root => {
+			const imgs = $('img[src^="file:///"]');
+			for (let i = 0; i < imgs.length; i++) {
+				const img = imgs[i] as cheerio.TagElement;
+				const src = img.attribs.src;
+				const srcPath = URL.parse(src).path;
+				const filename = PATH.basename(srcPath);
+				const resourceFolderName = PATH.basename(PATH.dirname(srcPath));
+				if (resourceFolderName !== PATH.basename(resourceDir)) {
+					continue;
+				}
+				img.attribs.src = PATH.join(resourceDir, filename);
+			}
+
+			const anchors = $('a[href^="file:///"]');
+			for (let i = 0; i < anchors.length; i++) {
+				const anchor = anchors[i] as cheerio.TagElement;
+				const href = anchor.attribs.href;
+				const srcPath = URL.parse(href).path;
+				const filename = PATH.basename(srcPath);
+				const resourceFolderName = PATH.basename(PATH.dirname(srcPath));
+				if (resourceFolderName !== PATH.basename(resourceDir)) {
+					continue;
+				}
+				anchor.attribs.href = PATH.join(resourceDir, filename);
+			}
+
+
+			return $;
+		};
+
+		const updateSubpagelist = async ($: cheerio.Root, noteId: string): Promise<cheerio.Root> => {
 			await NoteListUtils.updateSubpageLists($, noteId);
-			return $
-		}
+			return $;
+		};
 
 		// const modifyHtmlContent = async(htmlStr: string, resourceDir: string,  noteId: string): Promise<string> => {
 		// 	let $ = modifyJoplinResource(htmlStr, resourceDir)
 		// 	$ = await updateSubpagelist($, noteId);
-		// 	return $.html(); 
+		// 	return $.html();
 		// }
 
 		const loadContent = async () => {
@@ -939,9 +970,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (cancelled) return;
 
 				const resourceDir = Setting.value('resourceDir');
-				let $ = modifyJoplinResource(props.content, resourceDir)
+				let $ = cheerio.load(props.content);
+				$ = modifyFileSchemeResource($, resourceDir);
+				$ = modifyJoplinResource($, resourceDir);
 				if (prevNoteId !== props.contentKey) {
-					setPrevNoteId(props.contentKey)
+					setPrevNoteId(props.contentKey);
 					await updateSubpagelist($, props.contentKey);
 				}
 				const modifiedContent = $.html();
