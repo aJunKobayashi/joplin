@@ -129,8 +129,7 @@ export default class BaseItem extends BaseModel {
 		p = p[p.length - 1];
 		p = p.split('.');
 		if (p.length != 2) return false;
-		// add length == 64, because resource filename is sha-256 hash (64 length)
-		return (p[0].length == 32 || p[0].length == 64) && p[1] == 'md';
+		return p[0].length == 32 && p[1] == 'md';
 	}
 
 	static itemClass(item: any): any {
