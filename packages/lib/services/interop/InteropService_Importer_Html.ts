@@ -180,7 +180,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			title = PATH.basename(PATH.dirname(filePath));
 		}
 		const resourceDir = Setting.value('resourceDir');
-		const updatedBody = this.modifyGoogleSiteHtml(body, filePath, resourceDir);
+		const updatedBody = await this.modifyGoogleSiteHtml(body, filePath, resourceDir);
 		const note = {
 			parent_id: parentFolderId,
 			title: title,
@@ -199,7 +199,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return noteObj;
 	}
 
-	modifyGoogleSiteHtml(htmlBody: string, filePath: string, resourceDir: string): string {
+	async modifyGoogleSiteHtml(htmlBody: string, filePath: string, resourceDir: string): Promise<string> {
 		let $: cheerio.Root | undefined = undefined;
 		try {
 			$ = cheerio.load(htmlBody);
@@ -212,7 +212,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		// Googleサイトのページのメイン部分だけを取得
 		$ = this.getGoogleSitePageMainContent($);
 		$ = this.modifyH2_4ToH1_3($);
-		$ = this.importLocalImage($, filePath, resourceDir);
+		$ = await this.importLocalImage($, filePath, resourceDir);
 		$ = this.importRelativePathAnchor($, filePath, resourceDir);
 		return $.html();
 
@@ -284,7 +284,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return $;
 	}
 
-	importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): cheerio.Root {
+	async importLocalImage($: cheerio.Root, htmlPath: string, resourceDir: string): Promise<cheerio.Root> {
 		const imgs = $('img');
 		for (let i = 0; i < imgs.length; i++) {
 			const img = imgs[i] as cheerio.TagElement;
@@ -306,12 +306,16 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				console.log(`new filepath: ${newFilePath}`);
 				img.attribs.src = `joplin_resource://${PATH.basename(newFilePath)}`;
 				img.attribs.alt = `${PATH.basename(src)}`;
+				const options = {
+					createFileURL: false,
+					resizeLargeImages: 'never' };
+				const resource = await shim.createResourceFromPath(absolutePath, null, options);
+				console.log(`image resource: ${JSON.stringify(resource, null, ' ')}`);
 				fs.writeFileSync(newFilePath, data);
+
 			} catch (e) {
 				console.log(`importLocalImage error: ${e} in ${src}`);
 			}
-
-			
 		}
 		return $;
 	}
