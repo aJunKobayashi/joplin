@@ -2,6 +2,8 @@ import shim from './shim';
 import time from './time';
 import Logger from './Logger';
 import { _ } from './locale';
+import * as PATHUtil from 'path';
+import Setting from './models/Setting';
 
 const { stringify } = require('query-string');
 const urlUtils = require('./urlUtils.js');
@@ -80,7 +82,9 @@ export default class OneDriveApi {
 	async appDirectory() {
 		const driveId = this.accountProperties_.driveId;
 		const r = await this.execJson('GET', `/me/drives/${driveId}/special/approot`);
-		return `${r.parentReference.path}/${r.name}`;
+		const rootFolder = PATHUtil.basename(Setting.value('profileDir'));
+		const path = PATHUtil.join(`${r.parentReference.path}/${r.name}`, rootFolder);
+		return path;
 	}
 
 	authCodeUrl(redirectUri: string) {
