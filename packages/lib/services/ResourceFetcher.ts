@@ -106,9 +106,18 @@ export default class ResourceFetcher extends BaseService {
 
 		const item = { id: resourceId };
 
+
 		if (priority === 'high') {
 			this.queue_.splice(0, 0, item);
 		} else {
+			const alreadyQueued = this.queue_.some((item: any) => {
+				return item.id === resourceId;
+			});
+			if (alreadyQueued) {
+				console.log(`resource is already queued: ${resourceId}`);
+				return false;
+			}
+
 			this.queue_.push(item);
 		}
 
