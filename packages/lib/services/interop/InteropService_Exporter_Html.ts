@@ -168,10 +168,40 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 				const noteIdToPath: { [key: string]: string } = item.noteIdToPath;
 				const noteId = item.id;
 				modifiedHtml = await this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteId, noteFilePath, noteIdToPath);
+			} else {
+				// for exporting pdf,  joplin_resource:// schme must be modified.
+				const resourceDir = Setting.value('resourceDir');
+				modifiedHtml = InteropService_Exporter_Html.modifyJoplinResource(fullHtml, resourceDir);
 			}
 			await shim.fsDriver().writeFile(noteFilePath, modifiedHtml, 'utf-8');
 		}
 	}
+
+	private static escapeRegExp(str: string): string {
+		return str.replace(/[.*+?^=!:${}()|[\]\/\\]/g, '\\$&');
+	}
+
+	private static modifyJoplinResource = (fullHTML: string, resourceDir: string): string => {
+		const $ = cheerio.load(fullHTML);
+		const regex = new RegExp(`^${InteropService_Exporter_Html.escapeRegExp('joplin_resource:/')}`);
+		const anchors = $('a[href^="joplin_resource://"]');
+
+		for (let i = 0; i < anchors.length; i++) {
+			const anchor = anchors[i] as cheerio.TagElement;
+			const href = anchor.attribs.href;
+			const newHref = href.replace(regex, resourceDir);
+			anchor.attribs.href = newHref;
+		}
+
+		const imgs = $('img[src^="joplin_resource://"]');
+		for (let i = 0; i < imgs.length; i++) {
+			const img = imgs[i] as cheerio.TagElement;
+			const src = img.attribs.src;
+			const newSrc = src.replace(regex, resourceDir);
+			img.attribs.src = newSrc;
+		}
+		return $.html();
+	};
 
 	async modifyExportHTMLSource(fullHtml: string,
 		srcResourcePath: string,
