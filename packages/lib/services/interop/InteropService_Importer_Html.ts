@@ -80,7 +80,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				parentFolderId = this.options_.destinationFolder.id;
 			}
 
-			await this.importDirectoryForGoogleSite(sourcePath, parentFolderId, noteInfos);
+			await this.importDirectoryForExportedSite(sourcePath, parentFolderId, noteInfos);
 		} else {
 			if (!this.options_.destinationFolder) throw new Error(_('Please specify the notebook where the notes should be imported to.'));
 			parentFolderId = this.options_.destinationFolder.id;
@@ -88,7 +88,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 
 		for (let i = 0; i < filePaths.length; i++) {
-			await this.importFileForGoogleSite(filePaths[i], parentFolderId, noteInfos);
+			await this.importFileForExportedSite(filePaths[i], parentFolderId, noteInfos);
 		}
 
 		// change links for other notes  to joplin://
@@ -214,14 +214,19 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		console.info(`Import: ${dirPath}`);
 		const supportedFileExtension = ['html'];
 		const foldername = basename(dirPath);
+		if (foldername === 'pluginAssets') {
+			return;
+		}
 		const stats = await shim.fsDriver().readDirStats(dirPath);
 		const folderTitle = await Folder.findUniqueItemTitle(foldername);
 
-		let folderId = parentFolderId;
 		// 作成対象ディレクトリ内に子ディレクトが存在する場合のみフォルダを作る
-		const folderEntity: FolderEntity = { title: folderTitle };
+		const folderEntity: FolderEntity = { title: folderTitle};
+		if (parentFolderId) {
+			folderEntity.parent_id = parentFolderId;
+		}
 		const folder = await Folder.save(folderEntity);
-		folderId = folder.id;
+		const folderId = folder.id;
 
 
 		for (let i = 0; i < stats.length; i++) {
@@ -267,7 +272,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		const stat = await shim.fsDriver().stat(filePath);
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
 		const body = await shim.fsDriver().readFile(filePath);
-		const title = PATH.basename(PATH.dirname(filePath));
+		const title = PATH.basename(filePath).split('.').slice(0, -1).join('.');
 		const resourceDir = Setting.value('resourceDir');
 		const updatedBody = await this.modifyExportedSiteHtml(body, filePath, resourceDir);
 		const note = {

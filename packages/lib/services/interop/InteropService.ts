@@ -100,6 +100,7 @@ export default class InteropService {
 					fileExtensions: ['html'],
 					sources: [FileSystemItem.Directory],
 					isNoteArchive: false, // Tells whether the file can contain multiple notes (eg. Enex or Jex format)
+					outputFormat: ImportModuleOutputFormat.Html,
 					description: _('HTML Directory of exported'),
 				},
 			];
