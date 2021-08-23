@@ -92,7 +92,15 @@ export default class InteropService {
 					fileExtensions: ['html', 'markdown', 'txt'],
 					sources: [FileSystemItem.Directory],
 					isNoteArchive: false, // Tells whether the file can contain multiple notes (eg. Enex or Jex format)
-					description: _('HTML Directory'),
+					description: _('HTML Directory of GoogleSite'),
+				},
+				{
+					...defaultImportExportModule(ModuleType.Importer),
+					format: 'html',
+					fileExtensions: ['html'],
+					sources: [FileSystemItem.Directory],
+					isNoteArchive: false, // Tells whether the file can contain multiple notes (eg. Enex or Jex format)
+					description: _('HTML Directory of exported'),
 				},
 			];
 

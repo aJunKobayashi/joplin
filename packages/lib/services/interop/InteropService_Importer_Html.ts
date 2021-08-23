@@ -24,7 +24,14 @@ interface INoteInfoMap {
 export default class InteropService_Importer_Html extends InteropService_Importer_Base {
 	private static readonly skipDir = 'attachment';
 
-	async exec(result: ImportExportResult) {
+	public async exec(result: ImportExportResult) {
+		if ((this.metadata().description as string).toLocaleLowerCase().indexOf('googlesite') >= 0) {
+			return this.execGoogleSite(result);
+		}
+		return this.execExportedSite(result);
+	}
+
+	private async execGoogleSite(result: ImportExportResult) {
 		let parentFolderId = null;
 		const noteInfos: INoteInfoMap = { pathToId: {}, IdToPath: {} };
 		const sourcePath = rtrimSlashes(this.sourcePath_);
@@ -40,7 +47,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 				parentFolderId = this.options_.destinationFolder.id;
 			}
 
-			await this.importDirectory(sourcePath, parentFolderId, noteInfos);
+			await this.importDirectoryForGoogleSite(sourcePath, parentFolderId, noteInfos);
 		} else {
 			if (!this.options_.destinationFolder) throw new Error(_('Please specify the notebook where the notes should be imported to.'));
 			parentFolderId = this.options_.destinationFolder.id;
@@ -48,7 +55,40 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 
 		for (let i = 0; i < filePaths.length; i++) {
-			await this.importFile(filePaths[i], parentFolderId, noteInfos);
+			await this.importFileForGoogleSite(filePaths[i], parentFolderId, noteInfos);
+		}
+
+		// change links for other notes  to joplin://
+		await InteropService_Importer_Html.convertInternalLinks(noteInfos);
+		return result;
+	}
+
+
+	private async execExportedSite(result: ImportExportResult) {
+		let parentFolderId = null;
+		const noteInfos: INoteInfoMap = { pathToId: {}, IdToPath: {} };
+		const sourcePath = rtrimSlashes(this.sourcePath_);
+
+		const filePaths = [];
+
+		if (await shim.fsDriver().isDirectory(sourcePath)) {
+			if (!this.options_.destinationFolder) {
+				// const folderTitle = await Folder.findUniqueItemTitle(basename(sourcePath));
+				// const folder = await Folder.save({ title: folderTitle });
+				parentFolderId = null;
+			} else {
+				parentFolderId = this.options_.destinationFolder.id;
+			}
+
+			await this.importDirectoryForGoogleSite(sourcePath, parentFolderId, noteInfos);
+		} else {
+			if (!this.options_.destinationFolder) throw new Error(_('Please specify the notebook where the notes should be imported to.'));
+			parentFolderId = this.options_.destinationFolder.id;
+			filePaths.push(sourcePath);
+		}
+
+		for (let i = 0; i < filePaths.length; i++) {
+			await this.importFileForGoogleSite(filePaths[i], parentFolderId, noteInfos);
 		}
 
 		// change links for other notes  to joplin://
@@ -91,7 +131,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 					newUrl += url.hash;
 				}
 				anchor.attribs.href = newUrl;
- 			}
+			}
 			note.body = $.html();
 			await Note.save(note);
 		} catch (e) {
@@ -134,7 +174,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		return title ? title : basename(dirPath);
 	}
 
-	async importDirectory(dirPath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
+	async importDirectoryForGoogleSite(dirPath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
 		if (PATH.basename(dirPath) === InteropService_Importer_Html.skipDir || PATH.basename(dirPath) === '_') {
 			console.log(`skipDir: ${dirPath}`);
 			return;
@@ -162,16 +202,40 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 			const stat = stats[i];
 
 			if (stat.isDirectory()) {
-				await this.importDirectory(`${dirPath}/${basename(stat.path)}`, folderId, noteInfos);
+				await this.importDirectoryForGoogleSite(`${dirPath}/${basename(stat.path)}`, folderId, noteInfos);
 			} else if (supportedFileExtension.indexOf(fileExtension(stat.path).toLowerCase()) >= 0) {
-				await this.importFile(`${dirPath}/${stat.path}`, folderId, noteInfos);
+				await this.importFileForGoogleSite(`${dirPath}/${stat.path}`, folderId, noteInfos);
 			}
 		}
 	}
 
 
+	async importDirectoryForExportedSite(dirPath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
+		console.info(`Import: ${dirPath}`);
+		const supportedFileExtension = ['html'];
+		const foldername = basename(dirPath);
+		const stats = await shim.fsDriver().readDirStats(dirPath);
+		const folderTitle = await Folder.findUniqueItemTitle(foldername);
 
-	async importFile(filePath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
+		let folderId = parentFolderId;
+		// 作成対象ディレクトリ内に子ディレクトが存在する場合のみフォルダを作る
+		const folderEntity: FolderEntity = { title: folderTitle };
+		const folder = await Folder.save(folderEntity);
+		folderId = folder.id;
+
+
+		for (let i = 0; i < stats.length; i++) {
+			const stat = stats[i];
+			if (stat.isDirectory()) {
+				await this.importDirectoryForExportedSite(`${dirPath}/${basename(stat.path)}`, folderId, noteInfos);
+			} else if (supportedFileExtension.indexOf(fileExtension(stat.path).toLowerCase()) >= 0) {
+				await this.importFileForExportedSite(`${dirPath}/${stat.path}`, folderId, noteInfos);
+			}
+		}
+	}
+
+
+	async importFileForGoogleSite(filePath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
 		const stat = await shim.fsDriver().stat(filePath);
 		if (!stat) throw new Error(`Cannot read ${filePath}`);
 		const body = await shim.fsDriver().readFile(filePath);
@@ -181,6 +245,31 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 		const resourceDir = Setting.value('resourceDir');
 		const updatedBody = await this.modifyGoogleSiteHtml(body, filePath, resourceDir);
+		const note = {
+			parent_id: parentFolderId,
+			title: title,
+			body: updatedBody || body,
+			updated_time: stat.mtime.getTime(),
+			created_time: stat.birthtime.getTime(),
+			user_updated_time: stat.mtime.getTime(),
+			user_created_time: stat.birthtime.getTime(),
+			markup_language: MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN,
+		};
+
+		const noteObj = await Note.save(note, { autoTimestamp: false });
+		noteInfos.IdToPath[noteObj.id] = filePath;
+		noteInfos.pathToId[filePath] = noteObj.id;
+		console.log(`note: ${filePath} is saved!`);
+		return noteObj;
+	}
+
+	async importFileForExportedSite(filePath: string, parentFolderId: string, noteInfos: INoteInfoMap) {
+		const stat = await shim.fsDriver().stat(filePath);
+		if (!stat) throw new Error(`Cannot read ${filePath}`);
+		const body = await shim.fsDriver().readFile(filePath);
+		const title = PATH.basename(PATH.dirname(filePath));
+		const resourceDir = Setting.value('resourceDir');
+		const updatedBody = await this.modifyExportedSiteHtml(body, filePath, resourceDir);
 		const note = {
 			parent_id: parentFolderId,
 			title: title,
@@ -216,6 +305,22 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		$ = await this.importRelativePathAnchor($, filePath, resourceDir);
 		return $.html();
 
+	}
+
+	async modifyExportedSiteHtml(htmlBody: string, filePath: string, resourceDir: string): Promise<string> {
+		let $: cheerio.Root | undefined = undefined;
+		try {
+			$ = cheerio.load(htmlBody);
+		} catch (e) {
+			console.log(`modifyGoogleSiteHtml Error: ${e}`);
+		}
+		if ($ === undefined) {
+			return htmlBody;
+		}
+		// Googleサイトのページのメイン部分だけを取得
+		$ = await this.importLocalImage($, filePath, resourceDir);
+		$ = await this.importRelativePathAnchor($, filePath, resourceDir);
+		return $.html();
 	}
 
 	private static isRelative(urlstr: string): boolean {
