@@ -622,7 +622,11 @@
 
     var global$2 = tinymce.util.Tools.resolve('tinymce.Env');
 
+    var gEditorMode = "";
+
     var open = function (editor, currentSearchState) {
+      console.log(`current mode: ${editor.mode.get()}`);
+      gEditorMode = editor.mode.get();
       var dialogApi = value();
       editor.undoManager.add();
       var selectedText = global$1.trim(editor.selection.getContent({ format: 'text' }));
@@ -675,7 +679,10 @@
         if (last.text === data.findtext && last.matchCase === data.matchcase && last.wholeWord === data.wholewords) {
           next(editor, currentSearchState);
         } else {
+          
+          editor.mode.set("design");
           var count = find(editor, currentSearchState, data.findtext, data.matchcase, data.wholewords);
+          
           if (count <= 0) {
             notFoundAlert(api);
           }
@@ -758,18 +765,18 @@
             text: 'Find',
             primary: true
           },
-          {
-            type: 'custom',
-            name: 'replace',
-            text: 'Replace',
-            disabled: true
-          },
-          {
-            type: 'custom',
-            name: 'replaceall',
-            text: 'Replace All',
-            disabled: true
-          }
+          // {
+          //   type: 'custom',
+          //   name: 'replace',
+          //   text: 'Replace',
+          //   disabled: true
+          // },
+          // {
+          //   type: 'custom',
+          //   name: 'replaceall',
+          //   text: 'Replace All',
+          //   disabled: true
+          // }
         ],
         initialData: initialData,
         onChange: function (api, details) {
@@ -816,6 +823,9 @@
         },
         onClose: function () {
           editor.focus();
+          if (gEditorMode === 'readonly') {
+            editor.mode.set("readonly");
+          }
           done(editor, currentSearchState);
           editor.undoManager.add();
         }
