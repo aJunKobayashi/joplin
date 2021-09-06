@@ -94,6 +94,7 @@ const globalCommands = [
 	require('./commands/stopExternalEditing'),
 	require('./commands/toggleExternalEditing'),
 	require('./commands/toggleSafeMode'),
+	require('./commands/showBrowser'),
 	require('@joplin/lib/commands/historyBackward'),
 	require('@joplin/lib/commands/historyForward'),
 	require('@joplin/lib/commands/synchronize'),

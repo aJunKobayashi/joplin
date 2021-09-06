@@ -166,6 +166,10 @@ export default class NoteListUtils {
 				})
 			);
 
+			menu.append(
+				new MenuItem(menuUtils.commandToStatefulMenuItem('ShowBrowser', singleNoteId))
+			);
+
 
 			if (Setting.value('sync.target') === SyncTargetJoplinServer.id()) {
 				menu.append(
