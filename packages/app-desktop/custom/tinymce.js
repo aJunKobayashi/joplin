@@ -26427,6 +26427,8 @@
     var fireEvent = function (editor, eventName, e) {
       if (isListening(editor)) {
         editor.fire(eventName, e);
+      } else if(isReadOnly(editor) && isClickEvent(e) && isAnchorLink(e.target)) {
+        editor.fire(eventName, e);
       } else if (isReadOnly(editor)) {
         preventReadOnlyEvents(editor, e);
       }
