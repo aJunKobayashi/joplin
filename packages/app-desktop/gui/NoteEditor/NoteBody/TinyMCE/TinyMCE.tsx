@@ -28,6 +28,8 @@ import NoteListUtils from '../../../utils/NoteListUtils';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
+import { modifyJoplinResource } from '../../../../commands/showBrowser';
+
 
 function markupRenderOptions(override: any = null) {
 	return {
@@ -897,30 +899,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		let cancelled = false;
 
-		const escapeRegExp = (str: string): string => {
-			return str.replace(/[.*+?^=!:${}()|[\]\/\\]/g, '\\$&');
-		};
 
-		const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): cheerio.Root => {
-			const regex = new RegExp(`^${escapeRegExp('joplin_resource:/')}`);
-			const anchors = $('a[href^="joplin_resource://"]');
-
-			for (let i = 0; i < anchors.length; i++) {
-				const anchor = anchors[i] as cheerio.TagElement;
-				const href = anchor.attribs.href;
-				const newHref = href.replace(regex, resourceDir);
-				anchor.attribs.href = newHref;
-			}
-
-			const imgs = $('img[src^="joplin_resource://"]');
-			for (let i = 0; i < imgs.length; i++) {
-				const img = imgs[i] as cheerio.TagElement;
-				const src = img.attribs.src;
-				const newSrc = src.replace(regex, resourceDir);
-				img.attribs.src = newSrc;
-			}
-			return $;
-		};
 
 		const modifyFileSchemeResource = ($: cheerio.Root, resourceDir: string): cheerio.Root => {
 			const imgs = $('img[src^="file:///"]');
