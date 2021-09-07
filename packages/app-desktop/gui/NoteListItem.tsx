@@ -4,8 +4,10 @@ const { themeStyle } = require('@joplin/lib/theme');
 const Mark = require('mark.js/dist/mark.min.js');
 const markJsUtils = require('@joplin/lib/markJsUtils');
 import Note from '@joplin/lib/models/Note';
+import { showNoteByBrowser } from '../commands/showBrowser';
 const { replaceRegexDiacritics, pregQuote } = require('@joplin/lib/string-utils');
 const styled = require('styled-components').default;
+
 
 const StyledRoot = styled.div`
 	width: ${(props: any) => props.width}px;
@@ -83,8 +85,13 @@ function NoteListItem(props: NoteListItemProps, ref: any) {
 		dragItemPosition = 'bottom';
 	}
 
-	const onTitleClick = useCallback((event) => {
-		props.onTitleClick(event, props.item);
+	const onTitleClick = useCallback(async (event) => {
+		if (event && event.metaKey) {
+			console.log(`title metakey click: id: ${props.item.id},  title: ${props.item.title}`);
+			await showNoteByBrowser(props.item.id);
+		} else {
+			props.onTitleClick(event, props.item);
+		}
 	}, [props.onTitleClick, props.item]);
 
 	const onCheckboxClick = useCallback((event) => {

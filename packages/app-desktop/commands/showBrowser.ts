@@ -48,19 +48,23 @@ export const runtime = (): CommandRuntime => {
 	return {
 		execute: async (context: CommandContext, noteId: string = null) => {
 			noteId = noteId || stateUtils.selectedNoteId(context.state);
-			try {
-				const note = await Note.load(noteId);
-				const path = `${Setting.value('tempDir')}/${note.title}.html`;
-				const resourceDir = `${Setting.value('resourceDir')}`;
-				let $ = cheerio.load(note.body);
-				$ = modifyJoplinResource($, resourceDir);
-				fs.writeFileSync(path, $.html());
-				const url = `file://${path}`;
-				await shell.openExternal(url);
-			} catch (error) {
-				bridge().showErrorMessageBox(_('Error opening note in editor: %s', error.message));
-			}
+			await showNoteByBrowser(noteId);
 		},
 		enabledCondition: 'oneNoteSelected',
 	};
+};
+
+export const showNoteByBrowser = async (noteId: string) => {
+	try {
+		const note = await Note.load(noteId);
+		const path = `${Setting.value('tempDir')}/${note.title}.html`;
+		const resourceDir = `${Setting.value('resourceDir')}`;
+		let $ = cheerio.load(note.body);
+		$ = modifyJoplinResource($, resourceDir);
+		fs.writeFileSync(path, $.html());
+		const url = `file://${path}`;
+		await shell.openExternal(url);
+	} catch (error) {
+		bridge().showErrorMessageBox(_('Error opening note in editor: %s', error.message));
+	}
 };
