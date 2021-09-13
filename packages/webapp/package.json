@@ -12,6 +12,7 @@
     "tsc": "node node_modules/typescript/bin/tsc --project tsconfig.json",
     "watch": "node node_modules/typescript/bin/tsc --watch --project tsconfig.json",
     "start": "gulp build && electron . --env dev --log-level debug --no-welcome --open-dev-tools",
+    "start_server": "gulp build && node ./swagger/server_src/index.js --env dev --log-level debug --no-welcome --open-dev-tools",
     "test": "jest",
     "test-ci": "npm run test"
   },
@@ -159,6 +160,9 @@
     "styled-components": "^5.1.1",
     "styled-system": "^5.1.5",
     "taboverride": "^4.0.3",
-    "tinymce": "^5.2.0"
+    "tinymce": "^5.2.0",
+    "connect": "^3.2.0",
+    "js-yaml": "^3.3.0",
+    "swagger-tools": "0.10.1"
   }
 }
