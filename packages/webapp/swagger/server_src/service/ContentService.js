@@ -1,3 +1,5 @@
+const SwaggerImp = require("../../server_imp/content_service").SwaggerImp
+
 'use strict';
 
 
@@ -9,7 +11,7 @@
  **/
 exports.getContent = function() {
   return new Promise(function(resolve, reject) {
-    resolve();
+    return SwaggerImp.getContent(resolve);
   });
 }
 
