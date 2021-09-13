@@ -1,7 +1,7 @@
 {
-  "name": "@joplin/app-desktop",
+  "name": "@joplin/webapp",
   "version": "1.8.2",
-  "description": "Joplin for Desktop",
+  "description": "Joplin webapp",
   "main": "main.js",
   "private": true,
   "scripts": {
