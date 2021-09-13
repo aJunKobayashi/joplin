@@ -10,5 +10,5 @@ module.exports = {
     plugins: [
         new webpack.IgnorePlugin(/electron/),
     ],
-    
+    externals: { 'sqlite3':'commonjs sqlite3', 'fsevents': 'commonjs fsevents'}
 };
