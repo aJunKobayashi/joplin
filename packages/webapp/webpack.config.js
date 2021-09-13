@@ -1,5 +1,7 @@
 const webpack = require('webpack');
 module.exports = {
+    mode: "development",
+    devtool: 'inline-source-map',
     entry: './gui/Root.js', // entry pointを起点にバンドルしていきます
     target: 'electron-renderer',
     output: { // 出力に関して
