@@ -123,10 +123,10 @@ module.exports = function(grunt) {
 					// 	expand: true,
 					// },
 					// { src: ['changelog.txt'], dest: 'dist', expand: true },
-					{
-						src: ['dist/joplinLists.js'],
-						dest: '../../../packages/app-desktop/gui/NoteEditor/NoteBody/TinyMCE/plugins/lists.js',
-					},
+					// {
+					// 	src: ['dist/joplinLists.js'],
+					// 	dest: '../../../packages/app-desktop/gui/NoteEditor/NoteBody/TinyMCE/plugins/lists.js',
+					// },
 				],
 			},
 		},

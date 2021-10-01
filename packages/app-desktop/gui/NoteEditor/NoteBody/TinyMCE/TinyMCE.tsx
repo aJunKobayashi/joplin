@@ -641,7 +641,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				resize: false,
 				icons: 'Joplin',
 				icons_url: 'gui/NoteEditor/NoteBody/TinyMCE/icons.js',
-				plugins: 'noneditable link joplinLists hr searchreplace codesample table toc example',
+				plugins: 'noneditable link, lists, hr, searchreplace, codesample table toc example',
 				noneditable_noneditable_class: 'joplin-editable', // Can be a regex too
 				valid_elements: '*[*]', // We already filter in sanitize_html
 				menubar: false,
