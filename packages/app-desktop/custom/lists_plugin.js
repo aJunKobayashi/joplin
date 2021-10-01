@@ -2030,7 +2030,7 @@
       if (startListParent || Selection.getSelectedListItems(editor).length > 0) {
         editor.undoManager.transact(function () {
           editor.execCommand('Delete');
-          NormalizeLists.normalizeLists(editor.dom, editor.getBody());
+          // NormalizeLists.normalizeLists(editor.dom, editor.getBody());
         });
         return true;
       }
