@@ -16,6 +16,7 @@ import Note from '@joplin/lib/models/Note';
 import Folder from '@joplin/lib/models/Folder';
 import Setting from '@joplin/lib/models/Setting';
 import * as cheerio from 'cheerio';
+import { NoteEntity } from '@joplin/lib/services/database/types';
 const { substrWithEllipsis } = require('@joplin/lib/string-utils');
 
 interface ContextMenuProps {
@@ -170,6 +171,16 @@ export default class NoteListUtils {
 				new MenuItem(menuUtils.commandToStatefulMenuItem('ShowBrowser', singleNoteId))
 			);
 
+			menu.append(
+				new MenuItem({
+					label: _('fix page h1~h3'),
+					click: async () => {
+						const allNoteIds = await NoteListUtils.fixGoogleSiteImportedH1H2H3();
+						console.log(allNoteIds);
+					},
+				})
+			);
+
 
 			if (Setting.value('sync.target') === SyncTargetJoplinServer.id()) {
 				menu.append(
@@ -271,6 +282,15 @@ export default class NoteListUtils {
 			};
 		await NoteListUtils.interCreateSubPageList(subpageList);
 		return subpageList;
+	}
+
+	private static async fixGoogleSiteImportedH1H2H3(): Promise<void> {
+		const noteIds: string[] = await Note.getAllIds();
+		for (const noteId of noteIds) {
+			const note: NoteEntity = await Note.load(noteId);
+			console.log(note.body);
+		}
+		return;
 	}
 
 	private static async interCreateSubPageList(subpageList: SubpageList) {
