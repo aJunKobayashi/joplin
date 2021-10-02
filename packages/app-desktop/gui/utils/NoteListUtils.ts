@@ -284,7 +284,7 @@ export default class NoteListUtils {
 		return subpageList;
 	}
 
-	private static async fixGoogleSiteImportedH1H2H3(): Promise<void> {
+	public static async fixGoogleSiteImportedH1H2H3(): Promise<void> {
 		const noteIds: string[] = await Note.getAllIds();
 		for (const noteId of noteIds) {
 			const note: NoteEntity = await Note.load(noteId);

@@ -13,6 +13,7 @@ import * as URL from 'url';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import Setting from '../../models/Setting';
+import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
 
 const { MarkupToHtml } = require('@joplin/renderer');
 
@@ -60,6 +61,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 
 		// change links for other notes  to joplin://
 		await InteropService_Importer_Html.convertInternalLinks(noteInfos);
+		await NoteListUtils.fixGoogleSiteImportedH1H2H3();
 		return result;
 	}
 
