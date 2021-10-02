@@ -289,8 +289,39 @@ export default class NoteListUtils {
 		for (const noteId of noteIds) {
 			const note: NoteEntity = await Note.load(noteId);
 			console.log(note.body);
+			let $ = cheerio.load(note.body);
+			$ = this.modifyGoogleSiteHxElement($, 1);
+			$ = this.modifyGoogleSiteHxElement($, 2);
+			$ = this.modifyGoogleSiteHxElement($, 3);
+			const resultHtml = $.html();
+			note.body = resultHtml;
+			await Note.save(note);
 		}
 		return;
+	}
+
+	private static modifyGoogleSiteHxElement($: cheerio.Root, targetNum: number): cheerio.Root {
+		const hxs = $(`h${targetNum}`);
+		for (let i = 0; i < hxs.length ; i++) {
+			const hx = hxs[i] as cheerio.TagElement;
+			const anchors = $(hx).find('a');
+			if (anchors.length <= 0) {
+				continue;
+			}
+			const anchor = anchors[0] as cheerio.TagElement;
+			const anchorNameAttr = anchor.attribs.name;
+			if (!anchorNameAttr) {
+				continue;
+			}
+			console.log(`anchor name: ${anchorNameAttr}`);
+			const hxText = $(hx).text();
+			console.log(`h${targetNum} text: ${hxText}`);
+			$(hx.children).remove('*');
+			$(hx).text(hxText);
+			hx.attribs.id = anchorNameAttr;
+			console.log($.html());
+		}
+		return $;
 	}
 
 	private static async interCreateSubPageList(subpageList: SubpageList) {
