@@ -175,8 +175,10 @@ export default class NoteListUtils {
 				new MenuItem({
 					label: _('fix page h1~h3'),
 					click: async () => {
-						const allNoteIds = await NoteListUtils.fixGoogleSiteImportedH1H2H3();
-						console.log(allNoteIds);
+						for (let i = 0; i < noteIds.length; i++) {
+							await NoteListUtils.fixGoogleSiteImporteH1H2H3OneNote(noteIds[i]);
+						}
+						// console.log(allNoteIds);
 					},
 				})
 			);
