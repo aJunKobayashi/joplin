@@ -287,17 +287,21 @@ export default class NoteListUtils {
 	public static async fixGoogleSiteImportedH1H2H3(): Promise<void> {
 		const noteIds: string[] = await Note.getAllIds();
 		for (const noteId of noteIds) {
-			const note: NoteEntity = await Note.load(noteId);
-			console.log(note.body);
-			let $ = cheerio.load(note.body);
-			$ = this.modifyGoogleSiteHxElement($, 1);
-			$ = this.modifyGoogleSiteHxElement($, 2);
-			$ = this.modifyGoogleSiteHxElement($, 3);
-			const resultHtml = $.html();
-			note.body = resultHtml;
-			await Note.save(note);
+			await NoteListUtils.fixGoogleSiteImporteH1H2H3OneNote(noteId);
 		}
 		return;
+	}
+
+	private static async fixGoogleSiteImporteH1H2H3OneNote(noteId: string): Promise<void> {
+		const note: NoteEntity = await Note.load(noteId);
+		console.log(note.body);
+		let $ = cheerio.load(note.body);
+		$ = this.modifyGoogleSiteHxElement($, 1);
+		$ = this.modifyGoogleSiteHxElement($, 2);
+		$ = this.modifyGoogleSiteHxElement($, 3);
+		const resultHtml = $.html();
+		note.body = resultHtml;
+		await Note.save(note);
 	}
 
 	private static modifyGoogleSiteHxElement($: cheerio.Root, targetNum: number): cheerio.Root {
