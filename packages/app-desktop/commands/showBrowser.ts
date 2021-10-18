@@ -38,7 +38,7 @@ export const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): chee
 	return $;
 };
 
-export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): string => {
+export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): cheerio.Root  => {
 	const $ = cheerio.load(htmlBody);
 	const anchors = $(`a[href^="${resourceDir}"]`);
 
@@ -58,7 +58,7 @@ export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: s
 		const newSrc = `joplin_resource://${filename}`;
 		img.attribs.src = newSrc;
 	}
-	return $.html();
+	return $;
 };
 
 

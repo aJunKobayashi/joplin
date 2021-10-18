@@ -12,6 +12,7 @@ import * as cheerio from 'cheerio';
 import * as PATH from 'path';
 import * as URL from 'url';
 import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
+import { revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -212,8 +213,11 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`srcResourcePath: ${srcResourcePath}`);
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
+
+		const resourceDir = Setting.value('resourceDir');
 		let $ = cheerio.load(fullHtml);
 		$ = await NoteListUtils.updateSubpageLists($, noteId);
+		$ = revertResourceDirToJoplinScheme($.html(), resourceDir);
 		$ = this.convertImgSrcToRelativePath($, dstResourcePath, noteFilePath);
 		$ = this.deleteNeedlessAttribute($);
 		$ = this.deleteScriptTag($);

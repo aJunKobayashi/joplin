@@ -1057,7 +1057,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const contentMd = await prop_htmlToMarkdownRef.current(info.contentMarkupLanguage, info.editor.getContent(), info.contentOriginalCss);
 		const resourceDir = Setting.value('resourceDir');
 
-		const modifiedMd = revertResourceDirToJoplinScheme(contentMd, resourceDir);
+		const modifiedMd: string = revertResourceDirToJoplinScheme(contentMd, resourceDir).html();
 
 		lastOnChangeEventInfo.current.content = modifiedMd;
 
