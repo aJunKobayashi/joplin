@@ -28,7 +28,7 @@ import NoteListUtils from '../../../utils/NoteListUtils';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
-import { modifyJoplinResource } from '../../../../commands/showBrowser';
+import { modifyJoplinResource, revertResourceDirToJoplinScheme } from '../../../../commands/showBrowser';
 
 
 function markupRenderOptions(override: any = null) {
@@ -1047,29 +1047,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	prop_htmlToMarkdownRef.current = props.htmlToMarkdown;
 
 	const nextOnChangeEventInfo = useRef<any>(null);
-
-	const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): string => {
-		const $ = cheerio.load(htmlBody);
-		const anchors = $(`a[href^="${resourceDir}"]`);
-
-		for (let i = 0; i < anchors.length; i++) {
-			const anchor = anchors[i] as cheerio.TagElement;
-			const href = anchor.attribs.href;
-			const filename = PATH.basename(href);
-			const newHref = `joplin_resource://${filename}`;
-			anchor.attribs.href = newHref;
-		}
-
-		const imgs = $(`img[src^="${resourceDir}"]`);
-		for (let i = 0; i < imgs.length; i++) {
-			const img = imgs[i] as cheerio.TagElement;
-			const src = img.attribs.src;
-			const filename = PATH.basename(src);
-			const newSrc = `joplin_resource://${filename}`;
-			img.attribs.src = newSrc;
-		}
-		return $.html();
-	};
 
 	async function execOnChangeEvent() {
 		const info = nextOnChangeEventInfo.current;

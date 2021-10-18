@@ -7,7 +7,7 @@ import { shell } from 'electron';
 import Setting from '@joplin/lib/models/Setting';
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
-// import * as ChromeLauncher from 'chrome-launcher';
+import * as PATH from 'path';
 
 const bridge = require('electron').remote.require('./bridge').default;
 
@@ -37,6 +37,31 @@ export const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): chee
 	}
 	return $;
 };
+
+export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): string => {
+	const $ = cheerio.load(htmlBody);
+	const anchors = $(`a[href^="${resourceDir}"]`);
+
+	for (let i = 0; i < anchors.length; i++) {
+		const anchor = anchors[i] as cheerio.TagElement;
+		const href = anchor.attribs.href;
+		const filename = PATH.basename(href);
+		const newHref = `joplin_resource://${filename}`;
+		anchor.attribs.href = newHref;
+	}
+
+	const imgs = $(`img[src^="${resourceDir}"]`);
+	for (let i = 0; i < imgs.length; i++) {
+		const img = imgs[i] as cheerio.TagElement;
+		const src = img.attribs.src;
+		const filename = PATH.basename(src);
+		const newSrc = `joplin_resource://${filename}`;
+		img.attribs.src = newSrc;
+	}
+	return $.html();
+};
+
+
 
 export const declaration: CommandDeclaration = {
 	name: 'ShowBrowser',
