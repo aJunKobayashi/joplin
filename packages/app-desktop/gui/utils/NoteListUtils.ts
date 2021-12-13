@@ -5,6 +5,7 @@ import eventManager from '@joplin/lib/eventManager';
 import InteropService from '@joplin/lib/services/interop/InteropService';
 import MenuUtils from '@joplin/lib/services/commands/MenuUtils';
 import InteropServiceHelper from '../../InteropServiceHelper';
+import InteropSErvice_Importer_Html from '../../../lib/services/interop/InteropService_Importer_Html';
 import { _ } from '@joplin/lib/locale';
 import { MenuItemLocation } from '@joplin/lib/services/plugins/api/types';
 
@@ -179,6 +180,18 @@ export default class NoteListUtils {
 							await NoteListUtils.fixGoogleSiteImporteH1H2H3OneNote(noteIds[i]);
 						}
 						// console.log(allNoteIds);
+					},
+				})
+			);
+
+			menu.append(
+				new MenuItem({
+					label: _('Localize another joplin resource'),
+					click: async () => {
+						for (let i = 0; i < noteIds.length; i++) {
+							const noteId = noteIds[i];
+							await InteropSErvice_Importer_Html.convertAnotherJoplinResource(noteId);
+						}
 					},
 				})
 			);

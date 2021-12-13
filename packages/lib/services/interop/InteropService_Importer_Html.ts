@@ -473,4 +473,130 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 
 		return $;
 	}
+
+
+	public static async convertAnotherJoplinResource(noteId: string): Promise<void> {
+		const note = await Note.load(noteId);
+		const profileDir = Setting.value('profileDir');
+		const searchTargetDir = PATH.dirname(profileDir);
+		const resourceDir = Setting.value('resourceDir');
+		let $ = cheerio.load(note.body);
+		$ = await InteropService_Importer_Html.convertAnotherJoplinImage($, resourceDir, searchTargetDir);
+		$ = await InteropService_Importer_Html.convertAnotherJoplinAnchor($, resourceDir, searchTargetDir);
+		const convertedHTML = $.html();
+		note.body = convertedHTML;
+		await Note.save(note);
+
+	}
+
+	private static isAnotherJoplinResource(imgPath: string, resourceDir: string, searchTargetDir: string): boolean {
+		if (!imgPath) {
+			return false;
+		}
+		const imgResourceDir = PATH.dirname(imgPath);
+		if (resourceDir === imgResourceDir) {
+			// this image is same joplin resource;
+			return false;
+		}
+		// joplin's resource folder must be resources
+		if (PATH.basename(resourceDir) !== PATH.basename(imgResourceDir)) {
+			// resource foldername is not "resources"
+			return false;
+		}
+
+		const imgProfileDir = PATH.dirname(PATH.dirname(imgPath));
+		const imageProfileDirName = PATH.basename(imgProfileDir);
+		if (imageProfileDirName.toLocaleLowerCase().indexOf('joplin') !== 0) {
+			return false;
+		}
+		const aboveProfileDir = PATH.dirname(imgProfileDir);
+		return aboveProfileDir === searchTargetDir;
+	}
+
+	private static async importOneAnotherJoplinResource(absolutePath: string, resourceDir: string): Promise<string> {
+		try {
+			const ext = PATH.extname(absolutePath);
+			console.log(`absolute path: ${absolutePath}`);
+			const data = fs.readFileSync(absolutePath);
+			const hash = crypto.createHash('sha256').update(data).digest('hex');
+			console.log(`sha256 hash: ${hash}`);
+			const filename = `${hash}${ext}`;
+			console.log(`filename: ${PATH.basename(absolutePath)} --> ${filename}`);
+			const newFilePath = PATH.join(resourceDir, filename);
+			console.log(`new filepath: ${newFilePath}`);
+			const resultJoplinSchemePath = `joplin_resource://${PATH.basename(newFilePath)}`;
+			const options = {
+				createFileURL: false,
+				resizeLargeImages: 'never' };
+			const defaultProps = {
+				id: hash,
+				title: `${PATH.basename(absolutePath)}`,
+			};
+			try {
+				const resource = await shim.createResourceFromPath(absolutePath, defaultProps, options);
+				console.log(`image resource: ${JSON.stringify(resource, null, ' ')}`);
+				fs.writeFileSync(newFilePath, data);
+			} catch (e) {
+				console.log(`same resource is already exist: ${absolutePath}, error = ${e.toString()}`);
+			}
+			return resultJoplinSchemePath;
+		} catch (e) {
+			console.log(`importLocalImage error: ${e} in ${absolutePath}`);
+		}
+		return '';
+	}
+
+	private static async convertAnotherJoplinAnchor($: cheerio.Root, resourceDir: string, searchTargetDir: string): Promise<cheerio.Root> {
+		const anchors = $('a');
+		console.log(`search Target: ${searchTargetDir}`);
+		console.log(`resourceDir: ${resourceDir}`);
+		let count = 0;
+		for (let i = 0; i < anchors.length; i++) {
+			const anchor = anchors[i] as cheerio.TagElement;
+			const href = anchor.attribs.href;
+			try {
+				if (!InteropService_Importer_Html.isAnotherJoplinResource(href, resourceDir, searchTargetDir)) {
+					continue;
+				}
+				console.log(`find Another joplin resource: ${href}`);
+				const newHref = await InteropService_Importer_Html.importOneAnotherJoplinResource(href, resourceDir);
+				if (newHref) {
+					anchor.attribs.href = newHref;
+					anchor.attribs.title = newHref;
+					anchor.attribs['data-mce-src'] = newHref;
+					count++;
+				}
+			} catch (e) {
+				console.log(`[convertAnotherJoplinImage] error href=${href}, error=${e.toString()} `);
+			}
+		}
+		console.log(`[convertAnotherJoplinImage] convert ${count} anchors`);
+		return $;
+	}
+
+	private static async convertAnotherJoplinImage($: cheerio.Root, resourceDir: string, searchTargetDir: string): Promise<cheerio.Root> {
+		const imgs = $('img');
+		console.log(`search Target: ${searchTargetDir}`);
+		console.log(`resourceDir: ${resourceDir}`);
+		let count = 0;
+		for (let i = 0; i < imgs.length; i++) {
+			const img = imgs[i] as cheerio.TagElement;
+			const src = img.attribs.src;
+			try {
+				if (!InteropService_Importer_Html.isAnotherJoplinResource(src, resourceDir, searchTargetDir)) {
+					continue;
+				}
+				console.log(`find Another joplin resource: ${src}`);
+				const newSrc = await InteropService_Importer_Html.importOneAnotherJoplinResource(src, resourceDir);
+				if (newSrc) {
+					img.attribs.src = newSrc;
+					count++;
+				}
+			} catch (e) {
+				console.log(`error src=${src}, error=${e.toString()} `);
+			}
+		}
+		console.log(`[convertAnotherJoplinImage] convert ${count} images`);
+		return $;
+	}
 }
