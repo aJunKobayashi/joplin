@@ -493,6 +493,10 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		if (!imgPath) {
 			return false;
 		}
+		const protocol = URL.parse(imgPath).protocol;
+		if (protocol) {
+			return false;
+		}
 		const imgResourceDir = PATH.dirname(imgPath);
 		if (resourceDir === imgResourceDir) {
 			// this image is same joplin resource;
