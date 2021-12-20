@@ -493,10 +493,12 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		if (!imgPath) {
 			return false;
 		}
-		const protocol = URL.parse(imgPath).protocol;
+		const parsedUrl = URL.parse(imgPath);
+		const protocol = parsedUrl.protocol;
 		if (protocol) {
 			return false;
 		}
+		imgPath = parsedUrl.pathname;
 		const imgResourceDir = PATH.dirname(imgPath);
 		if (resourceDir === imgResourceDir) {
 			// this image is same joplin resource;
@@ -557,11 +559,13 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		let count = 0;
 		for (let i = 0; i < anchors.length; i++) {
 			const anchor = anchors[i] as cheerio.TagElement;
-			const href = anchor.attribs.href;
+			let href = anchor.attribs.href;
 			try {
 				if (!InteropService_Importer_Html.isAnotherJoplinResource(href, resourceDir, searchTargetDir)) {
 					continue;
 				}
+				const parsedUrl = URL.parse(href);
+				href = parsedUrl.pathname; // fix hoge/hoge.jpg?t=xxxx --> hoge/hoge.jpg
 				console.log(`find Another joplin resource: ${href}`);
 				const newHref = await InteropService_Importer_Html.importOneAnotherJoplinResource(href, resourceDir);
 				if (newHref) {
@@ -585,11 +589,13 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		let count = 0;
 		for (let i = 0; i < imgs.length; i++) {
 			const img = imgs[i] as cheerio.TagElement;
-			const src = img.attribs.src;
+			let src = img.attribs.src;
 			try {
 				if (!InteropService_Importer_Html.isAnotherJoplinResource(src, resourceDir, searchTargetDir)) {
 					continue;
 				}
+				const parsedUrl = URL.parse(src);
+				src = parsedUrl.pathname; // fix hoge/hoge.jpg?t=xxxx --> hoge/hoge.jpg
 				console.log(`find Another joplin resource: ${src}`);
 				const newSrc = await InteropService_Importer_Html.importOneAnotherJoplinResource(src, resourceDir);
 				if (newSrc) {
