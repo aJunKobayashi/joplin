@@ -395,8 +395,8 @@ export default class NoteListUtils {
 	}
 
 	public static async updateSubpageLists($: cheerio.Root, noteId: string): Promise<cheerio.Root> {
-		console.log(`before update: ${$.html()}`); 
-		let root = $('#joplin_subpagelist');
+		console.log(`before update: ${$.html()}`);
+		const root = $('#joplin_subpagelist');
 		if (root.length <= 0) {
 			return $;
 		}
