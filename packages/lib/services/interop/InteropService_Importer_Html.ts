@@ -495,7 +495,7 @@ export default class InteropService_Importer_Html extends InteropService_Importe
 		}
 		const parsedUrl = URL.parse(imgPath);
 		const protocol = parsedUrl.protocol;
-		if (protocol) {
+		if (protocol && protocol.toLowerCase() !== "file:") {
 			return false;
 		}
 		imgPath = parsedUrl.pathname;
