@@ -40,7 +40,7 @@ export const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): chee
 
 export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): cheerio.Root  => {
 	const $ = cheerio.load(htmlBody);
-	const anchors = $(`a[href^="file://${resourceDir}"]`);
+	const anchors = [...$(`a[href^="file://${resourceDir}"]`), ...$(`a[href^="${resourceDir}"]`)];
 	for (let i = 0; i < anchors.length; i++) {
 		const anchor = anchors[i] as cheerio.TagElement;
 		const href = anchor.attribs.href;
@@ -49,7 +49,7 @@ export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: s
 		anchor.attribs.href = newHref;
 	}
 
-	const imgs = $(`img[src^="file://${resourceDir}"]`);
+	const imgs = [...$(`img[src^="file://${resourceDir}"]`), ...$(`img[src^="${resourceDir}"]`)];
 	for (let i = 0; i < imgs.length; i++) {
 		const img = imgs[i] as cheerio.TagElement;
 		const src = img.attribs.src;
