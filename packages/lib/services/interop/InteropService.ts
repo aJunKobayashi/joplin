@@ -140,6 +140,13 @@ export default class InteropService {
 					target: FileSystemItem.Directory,
 					description: _('HTML Directory'),
 				},
+				{
+					...defaultImportExportModule(ModuleType.Exporter),
+					format: 'html_emb',
+					fileExtensions: ['html', 'htm'],
+					target: FileSystemItem.Directory,
+					description: _('HTML Directory With Embeded Image'),
+				},
 			];
 
 			this.defaultModules_ = importModules.concat(exportModules);
@@ -416,7 +423,10 @@ export default class InteropService {
 		for (let i = 0; i < exportedTagIds.length; i++) {
 			await queueExportItem(BaseModel.TYPE_TAG, exportedTagIds[i]);
 		}
-
+		if (options.format === 'html_emb') {
+			options.format = 'html';
+			options.embededImage = true;
+		}
 		const exporter = this.newModuleFromPath_(ModuleType.Exporter, options);
 		await exporter.init(exportPath, options);
 
