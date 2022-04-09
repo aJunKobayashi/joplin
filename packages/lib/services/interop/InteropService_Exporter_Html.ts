@@ -14,6 +14,8 @@ import * as URL from 'url';
 import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
 import { revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
 
+import * as fs from 'fs';
+
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
 const { dirname } = require('../../path-utils');
@@ -30,10 +32,12 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	private markupToHtml_: MarkupToHtml;
 	private resources_: ResourceEntity[] = [];
 	private style_: any;
+	private embededImage: boolean = false;
 
 	async init(path: string, options: any = {}) {
 		this.customCss_ = options.customCss ? options.customCss : '';
 
+		this.embededImage = options.embededImage ? options.embededImage : false;
 		if (this.metadata().target === 'file') {
 			this.destDir_ = dirname(path);
 			this.filePath_ = path;
@@ -284,11 +288,29 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			console.log(`imageFileName: ${imageFileName}`);
 			console.log(`noteDir: ${noteDir}`);
 			const relativePath = PATH.relative(noteDir, dstResourcePath);
-			console.log(`relativePath: ${relativePath}`);
-			img.attribs.src = `${PATH.join(relativePath, imageFileName)}`;
+			if (this.embededImage) {
+				const fileAbsPath = PATH.join(dstResourcePath, imageFileName);
+				const base64Src = InteropService_Exporter_Html.createBase64Resource(fileAbsPath);
+				img.attribs.src = base64Src;
+			} else {
+				console.log(`relativePath: ${relativePath}`);
+				img.attribs.src = `${PATH.join(relativePath, imageFileName)}`;
+			}
 			console.log(`new img.src:  ${img.attribs.src}`);
 		}
 		return $;
+	}
+
+	private static createBase64Resource(imgPath: string): string {
+		try {
+			const format = PATH.extname(imgPath).toLocaleLowerCase();
+			const base64Img = fs.readFileSync(imgPath, { encoding: 'base64' });
+			const result = `data:image/${format};base64, ${base64Img}`;
+			return result;
+		} catch (e) {
+			console.log(`cannot read img: ${imgPath}, error: ${e.toString()}`);
+			return '';
+		}
 	}
 
 	convertJoplinSchemeAnchorToRelativePath($: cheerio.Root,
