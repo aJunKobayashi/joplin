@@ -303,8 +303,10 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 
 	private static createBase64Resource(imgPath: string): string {
 		try {
-			const format = PATH.extname(imgPath).toLocaleLowerCase();
-			const base64Img = fs.readFileSync(imgPath, { encoding: 'base64' });
+			// reomove /xxx/xxx.png?t=yyyy --> /xxx/xxx.png
+			const pathWithoutQuery = imgPath.split('?')[0];
+			const format = PATH.extname(pathWithoutQuery).toLocaleLowerCase().split('.')[1];
+			const base64Img = fs.readFileSync(pathWithoutQuery, { encoding: 'base64' });
 			const result = `data:image/${format};base64, ${base64Img}`;
 			return result;
 		} catch (e) {
