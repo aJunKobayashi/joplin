@@ -96,11 +96,13 @@ export const showNoteByBrowser = async (noteId: string) => {
 		} else {
 			console.log(`pluginDir not exists. create ${pluginDir}`);
 			fs.mkdirSync(pluginDir);
-			await fsext.copy(srcDir, pluginDir);
+			await fsext.copy(srcDir, `${pluginDir}/katex` );
 		}
 		
 		let $ = cheerio.load(note.body);
 		$ = modifyJoplinResource($, resourceDir);
+		// headタグにlinkタグを追加する
+		$('head').append('<link rel="stylesheet" href="pluginAssets/katex/katex.css">');
 		fs.writeFileSync(path, $.html());
 		const url = `file://${path}`;
 		await shell.openExternal(url);
