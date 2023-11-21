@@ -8,6 +8,7 @@ import Setting from '@joplin/lib/models/Setting';
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
 import * as PATH from 'path';
+import * as fsext from 'fs-extra';
 
 const bridge = require('electron').remote.require('./bridge').default;
 
@@ -83,6 +84,21 @@ export const showNoteByBrowser = async (noteId: string) => {
 		const note = await Note.load(noteId);
 		const path = `${Setting.value('tempDir')}/${note.title}.html`;
 		const resourceDir = `${Setting.value('resourceDir')}`;
+		const curDir = process.cwd();
+		// joplin/packages/app-desktop --> joplin/packages/lib/node_modules/@joplin/renderer/assets/katex
+		console.log(`curDir: ${curDir}`);
+		const srcDir = `${PATH.dirname(curDir)}/lib/node_modules/@joplin/renderer/assets/katex`;
+		console.log(`srcDir: ${srcDir}`);
+		const pluginDir = `${Setting.value('tempDir')}/pluginAssets`
+		console.log(`pluginDir: ${pluginDir}`);
+		if (fs.existsSync(pluginDir)) {
+			console.log(`pluginDir exists. ${pluginDir}`);
+		} else {
+			console.log(`pluginDir not exists. create ${pluginDir}`);
+			fs.mkdirSync(pluginDir);
+			await fsext.copy(srcDir, pluginDir);
+		}
+		
 		let $ = cheerio.load(note.body);
 		$ = modifyJoplinResource($, resourceDir);
 		fs.writeFileSync(path, $.html());
