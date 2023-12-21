@@ -246,6 +246,9 @@ class SidebarComponent extends React.Component<Props, State> {
 			menu.append(
 				new MenuItem(menuUtils.commandToStatefulMenuItem('newFolder', itemId))
 			);
+			menu.append(
+				new MenuItem(menuUtils.commandToStatefulMenuItem('newFolder', itemId))
+			);
 		}
 
 		menu.append(
