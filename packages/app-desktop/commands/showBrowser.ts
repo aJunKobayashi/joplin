@@ -39,7 +39,7 @@ export const modifyJoplinResource = ($: cheerio.Root, resourceDir: string): chee
 	return $;
 };
 
-export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): cheerio.Root  => {
+export const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string): cheerio.Root => {
 	const $ = cheerio.load(htmlBody);
 	const anchors = [...$(`a[href^="file://${resourceDir}"]`), ...$(`a[href^="${resourceDir}"]`)];
 	for (let i = 0; i < anchors.length; i++) {
@@ -82,24 +82,33 @@ export const runtime = (): CommandRuntime => {
 export const showNoteByBrowser = async (noteId: string) => {
 	try {
 		const note = await Note.load(noteId);
-		const path = `${Setting.value('tempDir')}/${note.title}.html`;
+		await showNoteBodyByBrowser(note.body, note.title);
+	} catch (error) {
+		bridge().showErrorMessageBox(_('Error opening note in editor: %s', error.message));
+	}
+};
+
+
+export const showNoteBodyByBrowser = async (noteBody: string, noteTitle: string) => {
+	try {
+		const path = `${Setting.value('tempDir')}/${noteTitle}.html`;
 		const resourceDir = `${Setting.value('resourceDir')}`;
 		const curDir = process.cwd();
 		// joplin/packages/app-desktop --> joplin/packages/lib/node_modules/@joplin/renderer/assets/katex
 		console.log(`curDir: ${curDir}`);
 		const srcDir = `${PATH.dirname(curDir)}/lib/node_modules/@joplin/renderer/assets/katex`;
 		console.log(`srcDir: ${srcDir}`);
-		const pluginDir = `${Setting.value('tempDir')}/pluginAssets`
+		const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
 		console.log(`pluginDir: ${pluginDir}`);
 		if (fs.existsSync(pluginDir)) {
 			console.log(`pluginDir exists. ${pluginDir}`);
 		} else {
 			console.log(`pluginDir not exists. create ${pluginDir}`);
 			fs.mkdirSync(pluginDir);
-			await fsext.copy(srcDir, `${pluginDir}/katex` );
+			await fsext.copy(srcDir, `${pluginDir}/katex`);
 		}
-		
-		let $ = cheerio.load(note.body);
+
+		let $ = cheerio.load(noteBody);
 		$ = modifyJoplinResource($, resourceDir);
 		// headタグにlinkタグを追加する
 		$('head').append('<link rel="stylesheet" href="pluginAssets/katex/katex.css">');
