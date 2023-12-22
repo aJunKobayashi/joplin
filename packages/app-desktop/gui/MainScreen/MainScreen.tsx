@@ -122,6 +122,7 @@ const commands = [
 	require('./commands/openNote'),
 	require('./commands/openFolder'),
 	require('./commands/openTag'),
+	require('./commands/mergeNotes'),
 ];
 
 class MainScreenComponent extends React.Component<Props, State> {

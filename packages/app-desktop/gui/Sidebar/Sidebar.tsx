@@ -19,6 +19,7 @@ import BaseModel from '@joplin/lib/BaseModel';
 import Folder from '@joplin/lib/models/Folder';
 import Note from '@joplin/lib/models/Note';
 import Tag from '@joplin/lib/models/Tag';
+import { showMergedNoteByBrowser } from '../MainScreen/commands/mergeNotes';
 const { themeStyle } = require('@joplin/lib/theme');
 const bridge = require('electron').remote.require('./bridge').default;
 const Menu = bridge().Menu;
@@ -87,8 +88,8 @@ function FolderItem(props: any) {
 				data-type={BaseModel.TYPE_FOLDER}
 				onContextMenu={itemContextMenu}
 				data-folder-id={folderId}
-				onClick={() => {
-					folderItem_click(folderId);
+				onClick={(event: React.MouseEvent) => {
+					folderItem_click(folderId, event);
 				}}
 				onDoubleClick={onFolderToggleClick_}
 			>
@@ -246,6 +247,9 @@ class SidebarComponent extends React.Component<Props, State> {
 			menu.append(
 				new MenuItem(menuUtils.commandToStatefulMenuItem('newFolder', itemId))
 			);
+			menu.append(
+				new MenuItem(menuUtils.commandToStatefulMenuItem('mergeNotes', itemId))
+			);
 		}
 
 		menu.append(
@@ -325,7 +329,13 @@ class SidebarComponent extends React.Component<Props, State> {
 		menu.popup(bridge().window());
 	}
 
-	folderItem_click(folderId: string) {
+	async folderItem_click(folderId: string, event: React.MouseEvent) {
+		// console.log(`FOLDER_SELECT: ${event}`);
+		if (event.metaKey) {
+			console.log('FOLDER SELECT with Metakey');
+			await showMergedNoteByBrowser(folderId);
+			return;
+		}
 		this.props.dispatch({
 			type: 'FOLDER_SELECT',
 			id: folderId ? folderId : null,

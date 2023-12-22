@@ -79,6 +79,7 @@ const commands = [
 	require('./gui/NoteList/commands/focusElementNoteList'),
 	require('./gui/NoteListControls/commands/focusSearch'),
 	require('./gui/Sidebar/commands/focusElementSideBar'),
+	require('./gui/MainScreen/commands/mergeNotes'),
 ];
 
 // Commands that are not tied to any particular component.
