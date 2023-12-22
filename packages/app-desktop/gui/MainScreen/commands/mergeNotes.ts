@@ -57,10 +57,12 @@ export const runtime = (_: any): CommandRuntime => {
 				return title1.localeCompare(title2);
 			});
 			let mergedBody = '';
+			const titles = [];
 			for (const note of sortedNotes) {
 				mergedBody += note.body;
+				titles.push(note.title);
 			}
-			const tocModifiedBody = extractToCAndPutHead(mergedBody);
+			const tocModifiedBody = extractToCAndPutHead(mergedBody, titles);
 			console.log(`tocModifiedBody: ${tocModifiedBody}`);
 			await showNoteBodyByBrowser(tocModifiedBody, 'mergedNotes.html');
 			// console.log(`mergedBody: ${mergedBody}`);
@@ -69,7 +71,7 @@ export const runtime = (_: any): CommandRuntime => {
 };
 
 
-const extractToCAndPutHead = (htmlBody: string): string => {
+const extractToCAndPutHead = (htmlBody: string, titles: string[]): string => {
 	const $ = cheerio.load(htmlBody);
 	const grandParents: cheerio.Element[] = [];
 
@@ -77,6 +79,10 @@ const extractToCAndPutHead = (htmlBody: string): string => {
 	for (let i = 0; i < tocs.length; i++) {
 		const toc = tocs[i];
 		const grandParent = toc;
+		const h2 = $(toc).find('h2');
+		if (h2.length > 0) {
+			$(h2).text(`目次: ${titles?.[i]}`);
+		}
 		grandParents.push(grandParent);
 	}
 
