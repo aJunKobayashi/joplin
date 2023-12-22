@@ -145,6 +145,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const [editorReady, setEditorReady] = useState(false);
 	const [draggingStarted, setDraggingStarted] = useState(false);
 	const [prevNoteId, setPrevNoteId] = useState('');
+	const fragementRef = useRef('');
 
 	const props_onMessage = useRef(null);
 	props_onMessage.current = props.onMessage;
@@ -205,7 +206,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const getFragmentFromUrl = useCallback((url: string): string => {
 		const hashIndex = url.indexOf('#');
 		if (hashIndex !== -1) {
-			return url.substring(hashIndex + 1);
+			return url.substring(hashIndex);
 		}
 		return '';
 	}, []);
@@ -241,6 +242,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (isJoplinSchemeWithFragment(href)) {
 					const fragment = getFragmentFromUrl(href);
 					console.log(`fragment: ${fragment}`);
+					fragementRef.current = fragment;
+				} else {
+					fragementRef.current = '';
 				}
 				props.onMessage({ channel: href });
 			}
