@@ -211,6 +211,17 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return '';
 	}, []);
 
+	const executeFragmentJump = useCallback((href: string) => {
+		const anchorName = href.substr(1);
+		// when id is not found, search by name
+		const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
+		if (anchor) {
+			anchor.scrollIntoView();
+		} else {
+			reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
+		}
+	}, [editor]);
+
 	const onEditorContentClick = useCallback((event: any) => {
 		const nodeName = event.target ? event.target.nodeName : '';
 		const parentName = event.target?.parentElement?.nodeName;
@@ -230,14 +241,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			const href = targetElement.getAttribute('href');
 
 			if (href.indexOf('#') === 0) {
-				const anchorName = href.substr(1);
-				// when id is not found, search by name
-				const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
-				if (anchor) {
-					anchor.scrollIntoView();
-				} else {
-					reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
-				}
+				executeFragmentJump(href);
 			} else {
 				if (isJoplinSchemeWithFragment(href)) {
 					const fragment = getFragmentFromUrl(href);
