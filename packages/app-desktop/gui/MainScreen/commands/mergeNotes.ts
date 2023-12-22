@@ -80,8 +80,9 @@ const extractToCAndPutHead = (htmlBody: string): string => {
 		grandParents.push(grandParent);
 	}
 
+	const reversedGrandParents = grandParents.reverse();
 	// 各grandParent要素を切り離し、bodyの先頭に追加
-	grandParents.forEach(grandParent => {
+	reversedGrandParents.forEach(grandParent => {
 		// $(grandParent).remove(); // 元の位置から切り離す
 		$('body').prepend($(grandParent)); // bodyの先頭に追加
 	});
