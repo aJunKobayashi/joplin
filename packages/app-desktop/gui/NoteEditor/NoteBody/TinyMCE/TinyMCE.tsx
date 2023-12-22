@@ -144,7 +144,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const [scriptLoaded, setScriptLoaded] = useState(false);
 	const [editorReady, setEditorReady] = useState(false);
 	const [draggingStarted, setDraggingStarted] = useState(false);
-	const [prevNoteId, setPrevNoteId] = useState("");
+	const [prevNoteId, setPrevNoteId] = useState('');
 
 	const props_onMessage = useRef(null);
 	props_onMessage.current = props.onMessage;
@@ -193,8 +193,25 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const insertResourcesIntoContentRef = useRef(null);
 	insertResourcesIntoContentRef.current = insertResourcesIntoContent;
 
+	const isJoplinSchemeWithFragment = useCallback((href: string) => {
+		const joplinScheme = href.toLowerCase().indexOf('joplin://') === 0;
+		if (!joplinScheme) {
+			return false;
+		}
+		return href.indexOf('#') >= 0;
+
+	}, []);
+
+	const getFragmentFromUrl = useCallback((url: string): string => {
+		const hashIndex = url.indexOf('#');
+		if (hashIndex !== -1) {
+			return url.substring(hashIndex + 1);
+		}
+		return '';
+	}, []);
+
 	const onEditorContentClick = useCallback((event: any) => {
-		let nodeName = event.target ? event.target.nodeName : '';
+		const nodeName = event.target ? event.target.nodeName : '';
 		const parentName = event.target?.parentElement?.nodeName;
 
 		if (nodeName === 'INPUT' && event.target.getAttribute('type') === 'checkbox') {
@@ -221,6 +238,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
 				}
 			} else {
+				if (isJoplinSchemeWithFragment(href)) {
+					const fragment = getFragmentFromUrl(href);
+					console.log(`fragment: ${fragment}`);
+				}
 				props.onMessage({ channel: href });
 			}
 		}
