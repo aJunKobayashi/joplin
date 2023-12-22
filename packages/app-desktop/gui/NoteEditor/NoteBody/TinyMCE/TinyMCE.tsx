@@ -144,7 +144,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const [scriptLoaded, setScriptLoaded] = useState(false);
 	const [editorReady, setEditorReady] = useState(false);
 	const [draggingStarted, setDraggingStarted] = useState(false);
-	const [prevNoteId, setPrevNoteId] = useState("");
+	const [prevNoteId, setPrevNoteId] = useState('');
+	const fragementRef = useRef('');
+	const fragmentJumpTimerRef = useRef<null | number>(null);
 
 	const props_onMessage = useRef(null);
 	props_onMessage.current = props.onMessage;
@@ -193,9 +195,59 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const insertResourcesIntoContentRef = useRef(null);
 	insertResourcesIntoContentRef.current = insertResourcesIntoContent;
 
+	const isJoplinSchemeWithFragment = useCallback((href: string) => {
+		const joplinScheme = href.toLowerCase().indexOf('joplin://') === 0;
+		if (!joplinScheme) {
+			return false;
+		}
+		const jsScheme = href.toLowerCase().indexOf('javascript://') >= 0;
+		if (jsScheme) {
+			return false;
+		}
+		return href.indexOf('#') >= 0;
+
+	}, []);
+
+	const getFragmentFromUrl = useCallback((url: string): string => {
+		const hashIndex = url.indexOf('#');
+		if (hashIndex !== -1) {
+			return url.substring(hashIndex);
+		}
+		return '';
+	}, []);
+
+	const clearFragmentJumpTimer = useCallback(() => {
+		if (fragmentJumpTimerRef.current !== null) {
+			clearTimeout(fragmentJumpTimerRef.current);
+			fragmentJumpTimerRef.current = null;
+		}
+	}, []);
+
+	const executeFragmentJump = useCallback((href: string, retry: boolean, count: number) => {
+		const anchorName = href.substr(1);
+		// when id is not found, search by name
+		const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
+		if (anchor) {
+			anchor.scrollIntoView();
+			clearFragmentJumpTimer();
+		} else {
+			if (retry && count <= 60) {
+				console.log(`cannot find retry fragment jump ${count} times. href=${href}`);
+				clearFragmentJumpTimer();
+				fragmentJumpTimerRef.current = setTimeout(() => {
+					executeFragmentJump(href, retry, count + 1);
+				}, 1000);
+				return;
+			}
+			// console.log('TinyMce: could not find anchor with ID ', anchorName);
+			reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
+		}
+	}, [editor]);
+
 	const onEditorContentClick = useCallback((event: any) => {
-		let nodeName = event.target ? event.target.nodeName : '';
+		const nodeName = event.target ? event.target.nodeName : '';
 		const parentName = event.target?.parentElement?.nodeName;
+		clearFragmentJumpTimer();
 
 		if (nodeName === 'INPUT' && event.target.getAttribute('type') === 'checkbox') {
 			editor.fire('joplinChange');
@@ -212,15 +264,15 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			const href = targetElement.getAttribute('href');
 
 			if (href.indexOf('#') === 0) {
-				const anchorName = href.substr(1);
-				// when id is not found, search by name
-				const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
-				if (anchor) {
-					anchor.scrollIntoView();
-				} else {
-					reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
-				}
+				executeFragmentJump(href, false, 0);
 			} else {
+				if (isJoplinSchemeWithFragment(href)) {
+					const fragment = getFragmentFromUrl(href);
+					console.log(`fragment: ${fragment}`);
+					fragementRef.current = fragment;
+				} else {
+					fragementRef.current = '';
+				}
 				props.onMessage({ channel: href });
 			}
 		}
@@ -958,6 +1010,14 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				}
 				const modifiedContent = $.html();
 				editor.setContent(modifiedContent);
+				if (fragementRef.current) {
+					const fragment = fragementRef.current;
+					fragementRef.current = '';
+					const retry = true;
+					const count = 0;
+					executeFragmentJump(fragment, retry, count);
+					// setTimeout(() => { executeFragmentJump(fragment); }, 1000);
+				}
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
 					// Need to clear UndoManager to avoid this problem:
