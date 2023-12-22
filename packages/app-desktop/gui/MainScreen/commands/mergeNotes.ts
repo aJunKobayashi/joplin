@@ -2,6 +2,7 @@ import { CommandContext, CommandDeclaration, CommandRuntime } from '@joplin/lib/
 import { _ } from '@joplin/lib/locale';
 import Folder from '@joplin/lib/models/Folder';
 import Note from '@joplin/lib/models/Note';
+import { showNoteBodyByBrowser } from '../../../commands/showBrowser';
 // const bridge = require('electron').remote.require('./bridge').default;
 
 export interface NoteInfo {
@@ -59,6 +60,8 @@ export const runtime = (_: any): CommandRuntime => {
 			for (const note of sortedNotes) {
 				mergedBody += note.body;
 			}
+			await showNoteBodyByBrowser(mergedBody, 'mergedNotes.html');
+			// console.log(`mergedBody: ${mergedBody}`);
 		},
 	};
 };
