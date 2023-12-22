@@ -200,6 +200,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		if (!joplinScheme) {
 			return false;
 		}
+		const jsScheme = href.toLowerCase().indexOf('javascript://') >= 0;
+		if (jsScheme) {
+			return false;
+		}
 		return href.indexOf('#') >= 0;
 
 	}, []);
