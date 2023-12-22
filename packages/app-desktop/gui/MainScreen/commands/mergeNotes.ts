@@ -3,7 +3,7 @@ import { _ } from '@joplin/lib/locale';
 import Folder from '@joplin/lib/models/Folder';
 import Note from '@joplin/lib/models/Note';
 import { showNoteBodyByBrowser } from '../../../commands/showBrowser';
-// const bridge = require('electron').remote.require('./bridge').default;
+import * as cheerio from 'cheerio';
 
 export interface NoteInfo {
     id: string;
@@ -60,8 +60,30 @@ export const runtime = (_: any): CommandRuntime => {
 			for (const note of sortedNotes) {
 				mergedBody += note.body;
 			}
-			await showNoteBodyByBrowser(mergedBody, 'mergedNotes.html');
+			const tocModifiedBody = extractToCAndPutHead(mergedBody);
+			console.log(`tocModifiedBody: ${tocModifiedBody}`);
+			await showNoteBodyByBrowser(tocModifiedBody, 'mergedNotes.html');
 			// console.log(`mergedBody: ${mergedBody}`);
 		},
 	};
+};
+
+
+const extractToCAndPutHead = (htmlBody: string): string => {
+	const $ = cheerio.load(htmlBody);
+	const grandParents: cheerio.Element[] = [];
+
+	const tocs = $('div.mce-toc');
+	for (let i = 0; i < tocs.length; i++) {
+		const toc = tocs[i];
+		const grandParent = toc;
+		grandParents.push(grandParent);
+	}
+
+	// 各grandParent要素を切り離し、bodyの先頭に追加
+	grandParents.forEach(grandParent => {
+		// $(grandParent).remove(); // 元の位置から切り離す
+		$('body').prepend($(grandParent)); // bodyの先頭に追加
+	});
+	return $.html();
 };
