@@ -19,6 +19,7 @@ import BaseModel from '@joplin/lib/BaseModel';
 import Folder from '@joplin/lib/models/Folder';
 import Note from '@joplin/lib/models/Note';
 import Tag from '@joplin/lib/models/Tag';
+import { showMergedNoteByBrowser } from '../MainScreen/commands/mergeNotes';
 const { themeStyle } = require('@joplin/lib/theme');
 const bridge = require('electron').remote.require('./bridge').default;
 const Menu = bridge().Menu;
@@ -328,10 +329,11 @@ class SidebarComponent extends React.Component<Props, State> {
 		menu.popup(bridge().window());
 	}
 
-	folderItem_click(folderId: string, event: React.MouseEvent) {
+	async folderItem_click(folderId: string, event: React.MouseEvent) {
 		// console.log(`FOLDER_SELECT: ${event}`);
 		if (event.metaKey) {
 			console.log('FOLDER SELECT with Metakey');
+			await showMergedNoteByBrowser(folderId);
 			return;
 		}
 		this.props.dispatch({

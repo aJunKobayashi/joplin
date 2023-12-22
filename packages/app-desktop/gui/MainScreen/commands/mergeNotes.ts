@@ -44,28 +44,7 @@ export const declaration: CommandDeclaration = {
 export const runtime = (_: any): CommandRuntime => {
 	return {
 		execute: async (_context: CommandContext, parentId: string = null) => {
-			console.log(`parntId: ${parentId}`);
-			const noteIds: string[] = await Folder.noteIds(parentId);
-			console.log(`noteIds: ${JSON.stringify(noteIds, null, 2)}`);
-
-			const notes: NoteInfo[] = await Note.loadItemsByIds(noteIds);
-			console.log(`notes: ${JSON.stringify(notes, null, 2)}`);
-
-			const sortedNotes = notes.sort((a: NoteInfo, b: NoteInfo) => {
-				const title1 = a.title;
-				const title2 = b.title;
-				return title1.localeCompare(title2);
-			});
-			let mergedBody = '';
-			const titles = [];
-			for (const note of sortedNotes) {
-				mergedBody += note.body;
-				titles.push(note.title);
-			}
-			const tocModifiedBody = extractToCAndPutHead(mergedBody, titles);
-			console.log(`tocModifiedBody: ${tocModifiedBody}`);
-			await showNoteBodyByBrowser(tocModifiedBody, 'mergedNotes.html');
-			// console.log(`mergedBody: ${mergedBody}`);
+			await showMergedNoteByBrowser(parentId);
 		},
 	};
 };
@@ -93,4 +72,29 @@ const extractToCAndPutHead = (htmlBody: string, titles: string[]): string => {
 		$('body').prepend($(grandParent)); // bodyの先頭に追加
 	});
 	return $.html();
+};
+
+export const showMergedNoteByBrowser = async (parentId: string) => {
+	console.log(`parntId: ${parentId}`);
+	const noteIds: string[] = await Folder.noteIds(parentId);
+	console.log(`noteIds: ${JSON.stringify(noteIds, null, 2)}`);
+
+	const notes: NoteInfo[] = await Note.loadItemsByIds(noteIds);
+	console.log(`notes: ${JSON.stringify(notes, null, 2)}`);
+
+	const sortedNotes = notes.sort((a: NoteInfo, b: NoteInfo) => {
+		const title1 = a.title;
+		const title2 = b.title;
+		return title1.localeCompare(title2);
+	});
+	let mergedBody = '';
+	const titles = [];
+	for (const note of sortedNotes) {
+		mergedBody += note.body;
+		titles.push(note.title);
+	}
+	const tocModifiedBody = extractToCAndPutHead(mergedBody, titles);
+	console.log(`tocModifiedBody: ${tocModifiedBody}`);
+	await showNoteBodyByBrowser(tocModifiedBody, 'mergedNotes.html');
+	// console.log(`mergedBody: ${mergedBody}`);
 };
