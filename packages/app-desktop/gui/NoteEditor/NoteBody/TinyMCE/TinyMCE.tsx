@@ -987,6 +987,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				}
 				const modifiedContent = $.html();
 				editor.setContent(modifiedContent);
+				if (fragementRef.current) {
+					const fragment = fragementRef.current;
+					fragementRef.current = '';
+					// executeFragmentJump(fragment);
+					setTimeout(() => { executeFragmentJump(fragment); }, 1000);
+				}
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
 					// Need to clear UndoManager to avoid this problem:
