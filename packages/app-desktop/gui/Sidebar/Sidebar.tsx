@@ -87,8 +87,8 @@ function FolderItem(props: any) {
 				data-type={BaseModel.TYPE_FOLDER}
 				onContextMenu={itemContextMenu}
 				data-folder-id={folderId}
-				onClick={() => {
-					folderItem_click(folderId);
+				onClick={(event: React.MouseEvent) => {
+					folderItem_click(folderId, event);
 				}}
 				onDoubleClick={onFolderToggleClick_}
 			>
@@ -328,7 +328,12 @@ class SidebarComponent extends React.Component<Props, State> {
 		menu.popup(bridge().window());
 	}
 
-	folderItem_click(folderId: string) {
+	folderItem_click(folderId: string, event: React.MouseEvent) {
+		// console.log(`FOLDER_SELECT: ${event}`);
+		if (event.metaKey) {
+			console.log('FOLDER SELECT with Metakey');
+			return;
+		}
 		this.props.dispatch({
 			type: 'FOLDER_SELECT',
 			id: folderId ? folderId : null,
