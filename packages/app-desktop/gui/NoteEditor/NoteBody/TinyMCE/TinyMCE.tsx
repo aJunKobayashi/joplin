@@ -146,6 +146,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const [draggingStarted, setDraggingStarted] = useState(false);
 	const [prevNoteId, setPrevNoteId] = useState('');
 	const fragementRef = useRef('');
+	const fragmentJumpTimerRef = useRef<null | number>(null);
 
 	const props_onMessage = useRef(null);
 	props_onMessage.current = props.onMessage;
@@ -211,16 +212,25 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return '';
 	}, []);
 
+	const clearFragmentJumpTimer = useCallback(() => {
+		if (fragmentJumpTimerRef.current !== null) {
+			clearTimeout(fragmentJumpTimerRef.current);
+			fragmentJumpTimerRef.current = null;
+		}
+	}, []);
+
 	const executeFragmentJump = useCallback((href: string, retry: boolean, count: number) => {
 		const anchorName = href.substr(1);
 		// when id is not found, search by name
 		const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
 		if (anchor) {
 			anchor.scrollIntoView();
+			clearFragmentJumpTimer();
 		} else {
 			if (retry && count <= 60) {
 				console.log(`cannot find retry fragment jump ${count} times. href=${href}`);
-				setTimeout(() => {
+				clearFragmentJumpTimer();
+				fragmentJumpTimerRef.current = setTimeout(() => {
 					executeFragmentJump(href, retry, count + 1);
 				}, 1000);
 				return;
@@ -233,6 +243,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	const onEditorContentClick = useCallback((event: any) => {
 		const nodeName = event.target ? event.target.nodeName : '';
 		const parentName = event.target?.parentElement?.nodeName;
+		clearFragmentJumpTimer();
 
 		if (nodeName === 'INPUT' && event.target.getAttribute('type') === 'checkbox') {
 			editor.fire('joplinChange');
