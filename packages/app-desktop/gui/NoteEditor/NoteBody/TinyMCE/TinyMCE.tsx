@@ -211,13 +211,21 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return '';
 	}, []);
 
-	const executeFragmentJump = useCallback((href: string) => {
+	const executeFragmentJump = useCallback((href: string, retry: boolean, count: number) => {
 		const anchorName = href.substr(1);
 		// when id is not found, search by name
 		const anchor = editor.getDoc().getElementById(anchorName) || editor.getDoc().querySelector(`a[name="${anchorName}"]`);
 		if (anchor) {
 			anchor.scrollIntoView();
 		} else {
+			if (retry && count <= 60) {
+				console.log(`cannot find retry fragment jump ${count} times. href=${href}`);
+				setTimeout(() => {
+					executeFragmentJump(href, retry, count + 1);
+				}, 1000);
+				return;
+			}
+			// console.log('TinyMce: could not find anchor with ID ', anchorName);
 			reg.logger().warn('TinyMce: could not find anchor with ID ', anchorName);
 		}
 	}, [editor]);
@@ -241,7 +249,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			const href = targetElement.getAttribute('href');
 
 			if (href.indexOf('#') === 0) {
-				executeFragmentJump(href);
+				executeFragmentJump(href, false, 0);
 			} else {
 				if (isJoplinSchemeWithFragment(href)) {
 					const fragment = getFragmentFromUrl(href);
@@ -990,8 +998,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				if (fragementRef.current) {
 					const fragment = fragementRef.current;
 					fragementRef.current = '';
-					// executeFragmentJump(fragment);
-					setTimeout(() => { executeFragmentJump(fragment); }, 1000);
+					const retry = true;
+					const count = 0;
+					executeFragmentJump(fragment, retry, count);
+					// setTimeout(() => { executeFragmentJump(fragment); }, 1000);
 				}
 
 				if (lastOnChangeEventInfo.current.contentKey !== props.contentKey) {
