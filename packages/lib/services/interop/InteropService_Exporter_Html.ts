@@ -24,7 +24,7 @@ const { escapeHtml } = require('../../string-utils.js');
 const { assetsToHeaders } = require('@joplin/renderer');
 
 
-interface Item {
+interface HtmlItem {
 	altitude: string;
 	application_data: string;
 	author: string;
@@ -52,11 +52,6 @@ interface Item {
 	updated_time: number;
 	user_created_time: number;
 	user_updated_time: number;
-}
-
-export interface HtmlItems {
-	type: number;
-	item: Item;
 }
 
 export default class InteropService_Exporter_Html extends InteropService_Exporter_Base {
@@ -223,12 +218,13 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	}
 
 
-	public async processMergedItems(items: HtmlItems[]) {
+	public async processMergedItems(items: HtmlItem[]) {
 		// if ([BaseModel.TYPE_NOTE, BaseModel.TYPE_FOLDER].indexOf(item.type_) < 0) return;
 
 
-		const folderItems = items.filter((item) => {
-			return item.type === BaseModel.TYPE_FOLDER;
+		const folderItems = items.filter((item: HtmlItem) => {
+			const result = item.type_ === BaseModel.TYPE_FOLDER;
+			return result;
 		});
 
 		if (folderItems.length !== 1) {
@@ -238,9 +234,9 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		const folderItem = folderItems[0];
 
 		const noteItems = items.filter((item) => {
-			return item.type === BaseModel.TYPE_NOTE;
+			return item.type_ === BaseModel.TYPE_NOTE;
 		});
-		const noteItem = noteItems[0].item;
+		const noteItem = noteItems[0];
 
 		let dirPath = '';
 		if (!this.filePath_) {
@@ -252,7 +248,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			}
 		}
 		const noteContent = [];
-		if (folderItem.item.title) noteContent.push(`<div class="exported-note-title">${escapeHtml(folderItem.item.title)}</div>`);
+		if (folderItem.title) noteContent.push(`<div class="exported-note-title">${escapeHtml(folderItem.title)}</div>`);
 
 		let result: RenderResult;
 		let noteFilePath = '';
@@ -260,12 +256,12 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			if (this.filePath_) {
 				noteFilePath = this.filePath_;
 			} else {
-				noteFilePath = `${dirPath}/${friendlySafeFilename(folderItem.item.title, null, true)}.html`;
+				noteFilePath = `${dirPath}/${friendlySafeFilename(folderItem.title, null, true)}.html`;
 				noteFilePath = await shim.fsDriver().findUniqueFilename(noteFilePath);
 			}
 
-			const bodyMd = await this.processNoteResources_(item.item);
-			result = await this.markupToHtml_.render(item.item.markup_language, bodyMd, this.style_, {
+			const bodyMd = await this.processNoteResources_(item);
+			result = await this.markupToHtml_.render(item.markup_language, bodyMd, this.style_, {
 				resources: this.resources_,
 				plainResourceRendering: true,
 				userCss: this.customCss_,
@@ -293,7 +289,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			<head>
 				<meta charset="UTF-8">
 				${assetsToHeaders(result.pluginAssets, { asHtml: true })}
-				<title>${escapeHtml(folderItem.item.title)}</title>
+				<title>${escapeHtml(folderItem.title)}</title>
 			</head>
 			<body>
 				<div class="exported-note">${noteContent.join('\n\n')}</div>
