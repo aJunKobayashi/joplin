@@ -302,8 +302,15 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		const dstResourcePath = PATH.join(this.destDir_, PATH.basename(srcResourcePath));
 		const profileDirPath = `${Setting.value('profileDir')}`;
 		let modifiedHtml = fullHtml;
+		const titles = noteItems.sort((a: HtmlItem, b: HtmlItem) => {
+			const title1 = a.title;
+			const title2 = b.title;
+			return title1.localeCompare(title2);
+		}).map((item: HtmlItem) => {
+			return item.title;
+		});
 
-		modifiedHtml = extractToCAndPutHead(modifiedHtml, []);
+		modifiedHtml = extractToCAndPutHead(modifiedHtml, titles);
 
 		if (noteFilePath.indexOf(profileDirPath) !== 0) {
 			const noteIdToPath: { [key: string]: string } = noteItem.noteIdToPath;
