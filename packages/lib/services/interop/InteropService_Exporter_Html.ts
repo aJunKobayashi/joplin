@@ -16,6 +16,7 @@ import { revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/s
 
 import * as fs from 'fs';
 import { RenderResult } from '@joplin/renderer/MarkupToHtml';
+import { extractToCAndPutHead } from '../../../app-desktop/gui/MainScreen/commands/mergeNotes';
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -302,11 +303,12 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		const profileDirPath = `${Setting.value('profileDir')}`;
 		let modifiedHtml = fullHtml;
 
+		modifiedHtml = extractToCAndPutHead(modifiedHtml, []);
 
 		if (noteFilePath.indexOf(profileDirPath) !== 0) {
 			const noteIdToPath: { [key: string]: string } = noteItem.noteIdToPath;
 			const noteId = noteItem.id;
-			modifiedHtml = await this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteId, noteFilePath, noteIdToPath);
+			modifiedHtml = await this.modifyExportHTMLSource(modifiedHtml, srcResourcePath, dstResourcePath, noteId, noteFilePath, noteIdToPath);
 		} else {
 			// for exporting pdf,  joplin_resource:// schme must be modified.
 			const resourceDir = Setting.value('resourceDir');
