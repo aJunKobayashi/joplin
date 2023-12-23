@@ -1,7 +1,6 @@
 import { ModuleType, FileSystemItem, ImportModuleOutputFormat, Module, ImportOptions, ExportOptions, ImportExportResult, defaultImportExportModule } from './types';
 import InteropService_Importer_Custom from './InteropService_Importer_Custom';
 import InteropService_Exporter_Custom from './InteropService_Exporter_Custom';
-import InteropService_Exporter_Html from './InteropService_Exporter_Html';
 import shim from '../../shim';
 import { _ } from '../../locale';
 import BaseItem from '../../models/BaseItem';
@@ -524,8 +523,8 @@ export default class InteropService {
 		}
 
 		if (options.format === 'html' && options.merged) {
-			// const htmlExporter = exporter as InteropService_Exporter_Html;
-			// await htmlExporter.processMergedItems(targetItems);
+			const htmlExporter = exporter;
+			await htmlExporter.processMergedItems(targetItems);
 		}
 
 		await exporter.close();
