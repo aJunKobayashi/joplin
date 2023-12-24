@@ -80,6 +80,7 @@ const commands = [
 	require('./gui/NoteListControls/commands/focusSearch'),
 	require('./gui/Sidebar/commands/focusElementSideBar'),
 	require('./gui/MainScreen/commands/mergeNotes'),
+	require('./gui/MainScreen/commands/exportMergedPdf'),
 ];
 
 // Commands that are not tied to any particular component.
