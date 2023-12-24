@@ -50,7 +50,7 @@ export const runtime = (_: any): CommandRuntime => {
 };
 
 
-const extractToCAndPutHead = (htmlBody: string, titles: string[]): string => {
+export const extractToCAndPutHead = (htmlBody: string, titles: string[]): string => {
 	const $ = cheerio.load(htmlBody);
 	const grandParents: cheerio.Element[] = [];
 

@@ -97,6 +97,7 @@ export interface ExportOptions {
 	includeConflicts?: boolean;
 	plugins?: PluginStates;
 	embededImage?: boolean;
+	merged?: boolean;
 }
 
 export interface ImportExportResult {

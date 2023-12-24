@@ -147,6 +147,20 @@ export default class InteropService {
 					target: FileSystemItem.Directory,
 					description: _('HTML Directory With Embeded Image'),
 				},
+				{
+					...defaultImportExportModule(ModuleType.Exporter),
+					format: 'html_merge',
+					fileExtensions: ['html', 'htm'],
+					target: FileSystemItem.Directory,
+					description: _('HTML Directory merged'),
+				},
+				{
+					...defaultImportExportModule(ModuleType.Exporter),
+					format: 'html_merge_emb',
+					fileExtensions: ['html', 'htm'],
+					target: FileSystemItem.Directory,
+					description: _('HTML Directory merged With Embeded Image'),
+				},
 			];
 
 			this.defaultModules_ = importModules.concat(exportModules);
@@ -423,10 +437,17 @@ export default class InteropService {
 		for (let i = 0; i < exportedTagIds.length; i++) {
 			await queueExportItem(BaseModel.TYPE_TAG, exportedTagIds[i]);
 		}
-		if (options.format === 'html_emb') {
+		const originalFormat = options.format;
+		if (originalFormat === 'html_emb' || originalFormat === 'html_merge_emb') {
 			options.format = 'html';
 			options.embededImage = true;
 		}
+
+		if (originalFormat === 'html_merge' || originalFormat === 'html_merge_emb') {
+			options.format = 'html';
+			options.merged = true;
+		}
+
 		const exporter = this.newModuleFromPath_(ModuleType.Exporter, options);
 		await exporter.init(exportPath, options);
 
@@ -435,7 +456,7 @@ export default class InteropService {
 			resourcePaths: {},
 		};
 
-		// 
+		//
 		const profileDirPath = `${Setting.value('profileDir')}`;
 		const resourceFolder = PATH.basename(resourcePath);
 		const exportResourcePath = PATH.join(exportPath, resourceFolder);
@@ -507,6 +528,11 @@ export default class InteropService {
 				console.error(error);
 				result.warnings.push(error.message);
 			}
+		}
+
+		if (options.format === 'html' && options.merged) {
+			const htmlExporter = exporter;
+			await htmlExporter.processMergedItems(targetItems);
 		}
 
 		await exporter.close();
