@@ -74,7 +74,7 @@ export const extractToCAndPutHead = (htmlBody: string, titles: string[]): string
 	return $.html();
 };
 
-export const showMergedNoteByBrowser = async (parentId: string) => {
+export const createMergedNoteBody = async (parentId: string): Promise<string> => {
 	console.log(`parntId: ${parentId}`);
 	const noteIds: string[] = await Folder.noteIds(parentId);
 	console.log(`noteIds: ${JSON.stringify(noteIds, null, 2)}`);
@@ -95,6 +95,11 @@ export const showMergedNoteByBrowser = async (parentId: string) => {
 	}
 	const tocModifiedBody = extractToCAndPutHead(mergedBody, titles);
 	console.log(`tocModifiedBody: ${tocModifiedBody}`);
+	return tocModifiedBody;
+};
+
+export const showMergedNoteByBrowser = async (parentId: string) => {
+	const tocModifiedBody = await createMergedNoteBody(parentId);
 	await showNoteBodyByBrowser(tocModifiedBody, 'mergedNotes.html');
 	// console.log(`mergedBody: ${mergedBody}`);
 };
