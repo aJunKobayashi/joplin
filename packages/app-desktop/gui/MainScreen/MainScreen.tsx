@@ -123,7 +123,7 @@ const commands = [
 	require('./commands/openFolder'),
 	require('./commands/openTag'),
 	require('./commands/mergeNotes'),
-	require('./gui/MainScreen/commands/exportMergedPdf'),
+	require('./commands/exportMergedPdf'),
 ];
 
 class MainScreenComponent extends React.Component<Props, State> {
