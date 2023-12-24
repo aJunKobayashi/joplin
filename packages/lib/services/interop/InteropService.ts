@@ -154,6 +154,13 @@ export default class InteropService {
 					target: FileSystemItem.Directory,
 					description: _('HTML Directory merged'),
 				},
+				{
+					...defaultImportExportModule(ModuleType.Exporter),
+					format: 'html_merge_emb',
+					fileExtensions: ['html', 'htm'],
+					target: FileSystemItem.Directory,
+					description: _('HTML Directory merged With Embeded Image'),
+				},
 			];
 
 			this.defaultModules_ = importModules.concat(exportModules);
@@ -430,12 +437,13 @@ export default class InteropService {
 		for (let i = 0; i < exportedTagIds.length; i++) {
 			await queueExportItem(BaseModel.TYPE_TAG, exportedTagIds[i]);
 		}
-		if (options.format === 'html_emb') {
+		const originalFormat = options.format;
+		if (originalFormat === 'html_emb' || originalFormat === 'html_merge_emb') {
 			options.format = 'html';
 			options.embededImage = true;
 		}
 
-		if (options.format === 'html_merge') {
+		if (originalFormat === 'html_merge' || originalFormat === 'html_merge_emb') {
 			options.format = 'html';
 			options.merged = true;
 		}
