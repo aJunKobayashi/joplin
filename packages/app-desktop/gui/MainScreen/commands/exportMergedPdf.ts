@@ -6,8 +6,8 @@ import Note from '@joplin/lib/models/Note';
 const bridge = require('electron').remote.require('./bridge').default;
 
 export const declaration: CommandDeclaration = {
-	name: 'exportPdf',
-	label: () => `PDF - ${_('PDF File')}`,
+	name: 'exportMergedPdf',
+	label: () => `PDF - ${_('Merged PDF File')}`,
 };
 
 export const runtime = (comp: any): CommandRuntime => {
