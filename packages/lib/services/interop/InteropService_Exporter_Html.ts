@@ -455,8 +455,8 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 
 	private static async embededFontCss() {
 		await copyPluginAssetsIfNotExit();
-		const cssFilePath = `${Setting.value('tempDir')}/pluginAssets/katex.css`;
-		const outFilePath = `${Setting.value('tempDir')}/pluginAssets/output.css`;
+		const cssFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/katex.css`;
+		const outFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/output.css`;
 		await createEmbededFontCss(cssFilePath, outFilePath);
 
 	}
