@@ -12,11 +12,14 @@ import * as cheerio from 'cheerio';
 import * as PATH from 'path';
 import * as URL from 'url';
 import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
-import { revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
+import { copyPluginAssetsIfNotExit, revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
 
 import * as fs from 'fs';
 import { RenderResult } from '@joplin/renderer/MarkupToHtml';
 import { extractToCAndPutHead } from '../../../app-desktop/gui/MainScreen/commands/mergeNotes';
+import { createEmbededFontCss } from '../../../app-desktop/commands/font_embed_css';
+
+
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -361,6 +364,10 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 
+		if (this.embededImage) {
+			await InteropService_Exporter_Html.embededFontCss();
+		}
+
 		const resourceDir = Setting.value('resourceDir');
 		let $ = cheerio.load(fullHtml);
 		$ = await NoteListUtils.updateSubpageLists($, noteId);
@@ -442,6 +449,16 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			console.log(`new img.src:  ${img.attribs.src}`);
 		}
 		return $;
+	}
+
+
+
+	private static async embededFontCss() {
+		await copyPluginAssetsIfNotExit();
+		const cssFilePath = `${Setting.value('tempDir')}/pluginAssets/katex.css`;
+		const outFilePath = `${Setting.value('tempDir')}/pluginAssets/output.css`;
+		await createEmbededFontCss(cssFilePath, outFilePath);
+
 	}
 
 	private static createBase64Resource(imgPath: string): string {
