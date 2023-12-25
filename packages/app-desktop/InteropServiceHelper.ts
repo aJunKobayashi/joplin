@@ -91,8 +91,8 @@ export default class InteropServiceHelper {
 								if (filepath) {
 									const pathComponent = filepath.split('.');
 									pathComponent[pathComponent.length - 1] = 'html';
-									const targetPath = pathComponent.join('.');
-									await win.webContents.savePage(targetPath, 'HTMLComplete');
+									// const targetPath = pathComponent.join('.');
+									// await win.webContents.savePage(targetPath, 'HTMLComplete');
 								}
 								resolve(data);
 							} catch (error) {
