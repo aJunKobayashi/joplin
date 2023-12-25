@@ -12,11 +12,14 @@ import * as cheerio from 'cheerio';
 import * as PATH from 'path';
 import * as URL from 'url';
 import NoteListUtils from '../../../app-desktop/gui/utils/NoteListUtils';
-import { revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
+import { copyPluginAssetsIfNotExit, revertResourceDirToJoplinScheme } from '../../../app-desktop/commands/showBrowser';
 
 import * as fs from 'fs';
 import { RenderResult } from '@joplin/renderer/MarkupToHtml';
 import { extractToCAndPutHead } from '../../../app-desktop/gui/MainScreen/commands/mergeNotes';
+import { createEmbededFontCss } from '../../../app-desktop/commands/font_embed_css';
+
+
 
 const { basename, friendlySafeFilename, rtrimSlashes } = require('../../path-utils');
 const { themeStyle } = require('../../theme');
@@ -67,11 +70,16 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	private style_: any;
 	private embededImage: boolean = false;
 	private merged: boolean = false;
+	private embededFontCss: string;
 
 	async init(path: string, options: any = {}) {
 		this.customCss_ = options.customCss ? options.customCss : '';
 
 		this.embededImage = options.embededImage ? options.embededImage : false;
+		if (this.embededImage) {
+			this.embededFontCss = await InteropService_Exporter_Html.embededFontCss();
+		}
+
 		this.merged = options.merged ? options.merged : false;
 		console.log(`merged: ${this.merged}`);
 		if (this.metadata().target === 'file') {
@@ -361,6 +369,7 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 
+
 		const resourceDir = Setting.value('resourceDir');
 		let $ = cheerio.load(fullHtml);
 		$ = await NoteListUtils.updateSubpageLists($, noteId);
@@ -370,6 +379,9 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		$ = this.deleteScriptTag($);
 		$ = this.modifyJoplinLinkAnchor($, noteFilePath, noteIdToPath);
 		$ = this.convertJoplinSchemeAnchorToRelativePath($, dstResourcePath, noteFilePath);
+		if (this.embededImage) {
+			$('<style>').text(this.embededFontCss).appendTo($('head'));
+		}
 		return $.html();
 	}
 
@@ -442,6 +454,17 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			console.log(`new img.src:  ${img.attribs.src}`);
 		}
 		return $;
+	}
+
+
+
+	private static async embededFontCss(): Promise<string> {
+		await copyPluginAssetsIfNotExit();
+		const cssFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/katex.css`;
+		const outFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/output.css`;
+		const css = await createEmbededFontCss(cssFilePath, outFilePath);
+		return css;
+
 	}
 
 	private static createBase64Resource(imgPath: string): string {
