@@ -369,9 +369,6 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		console.log(`dstResourcePath ${dstResourcePath}`);
 		console.log(`noteFilePath: ${noteFilePath}`);
 
-		if (this.embededImage) {
-			await InteropService_Exporter_Html.embededFontCss();
-		}
 
 		const resourceDir = Setting.value('resourceDir');
 		let $ = cheerio.load(fullHtml);
@@ -382,6 +379,9 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 		$ = this.deleteScriptTag($);
 		$ = this.modifyJoplinLinkAnchor($, noteFilePath, noteIdToPath);
 		$ = this.convertJoplinSchemeAnchorToRelativePath($, dstResourcePath, noteFilePath);
+		if (this.embededImage) {
+			$('<style>').text(this.embededFontCss).appendTo($('head'));
+		}
 		return $.html();
 	}
 
