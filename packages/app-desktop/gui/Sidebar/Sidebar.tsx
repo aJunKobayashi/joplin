@@ -325,6 +325,7 @@ class SidebarComponent extends React.Component<Props, State> {
 				);
 			}
 		}
+		menu.append(new MenuItem(menuUtils.commandToStatefulMenuItem('exportMergedPdf', itemId)));
 
 		menu.popup(bridge().window());
 	}

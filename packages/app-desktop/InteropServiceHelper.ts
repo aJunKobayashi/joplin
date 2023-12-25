@@ -10,8 +10,10 @@ import Setting from '@joplin/lib/models/Setting';
 import Note from '@joplin/lib/models/Note';
 const { friendlySafeFilename } = require('@joplin/lib/path-utils');
 import time from '@joplin/lib/time';
+import uuid from '@joplin/lib/uuid';
 const md5 = require('md5');
 const url = require('url');
+import * as fs from 'fs';
 
 interface ExportNoteOptions {
 	customCss?: string;
@@ -44,9 +46,9 @@ export default class InteropServiceHelper {
 		return tempFile;
 	}
 
-	private static async exportNoteTo_(target: string, noteId: string, options: ExportNoteOptions = {}, filepath?: string) {
+	private static async exportNoteTo_(target: string, noteId: string | undefined, options: ExportNoteOptions = {}, filepath?: string, htmlBody?: string) {
 		let win: any = null;
-		let htmlFile: string = null;
+		const htmlFile: string = null;
 
 		const cleanup = () => {
 			if (win) win.destroy();
@@ -59,7 +61,14 @@ export default class InteropServiceHelper {
 				plugins: options.plugins,
 			};
 
-			htmlFile = await this.exportNoteToHtmlFile(noteId, exportOptions);
+			let htmlFile = '';
+			if (noteId) {
+				htmlFile = await this.exportNoteToHtmlFile(noteId, exportOptions);
+			} else {
+				const tempfile: string = uuid.create();
+				htmlFile = `${Setting.value('tempDir')}/${tempfile}.html`;
+				fs.writeFileSync(htmlFile, htmlBody);
+			}
 
 			const windowOptions = {
 				show: false,
@@ -82,8 +91,8 @@ export default class InteropServiceHelper {
 								if (filepath) {
 									const pathComponent = filepath.split('.');
 									pathComponent[pathComponent.length - 1] = 'html';
-									const targetPath = pathComponent.join('.');
-									await win.webContents.savePage(targetPath, 'HTMLComplete');
+									// const targetPath = pathComponent.join('.');
+									// await win.webContents.savePage(targetPath, 'HTMLComplete');
 								}
 								resolve(data);
 							} catch (error) {
@@ -123,8 +132,8 @@ export default class InteropServiceHelper {
 		}
 	}
 
-	public static async exportNoteToPdf(noteId: string, options: ExportNoteOptions = {}, filepath?: string) {
-		return this.exportNoteTo_('pdf', noteId, options, filepath);
+	public static async exportNoteToPdf(noteId: string | undefined, options: ExportNoteOptions = {}, filepath?: string, htmlBody?: string) {
+		return this.exportNoteTo_('pdf', noteId, options, filepath, htmlBody);
 	}
 
 	public static async printNote(noteId: string, options: ExportNoteOptions = {}) {

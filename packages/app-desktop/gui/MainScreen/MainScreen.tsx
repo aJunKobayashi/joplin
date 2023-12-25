@@ -123,6 +123,7 @@ const commands = [
 	require('./commands/openFolder'),
 	require('./commands/openTag'),
 	require('./commands/mergeNotes'),
+	require('./commands/exportMergedPdf'),
 ];
 
 class MainScreenComponent extends React.Component<Props, State> {
@@ -379,7 +380,7 @@ class MainScreenComponent extends React.Component<Props, State> {
 					landscape: Setting.value('export.pdfPageOrientation') === 'landscape',
 					customCss: this.props.customCss,
 					plugins: this.props.plugins,
-				}, options.path);
+				}, options.path, options.htmlBody);
 				await shim.fsDriver().writeFile(options.path, pdfData, 'buffer');
 			} catch (error) {
 				console.error(error);

@@ -88,31 +88,39 @@ export const showNoteByBrowser = async (noteId: string) => {
 	}
 };
 
+export const copyPluginAssetsIfNotExit = async () => {
+	const curDir = process.cwd();
+	// joplin/packages/app-desktop --> joplin/packages/lib/node_modules/@joplin/renderer/assets/katex
+	console.log(`curDir: ${curDir}`);
+	const srcDir = `${PATH.dirname(curDir)}/lib/node_modules/@joplin/renderer/assets/katex`;
+	console.log(`srcDir: ${srcDir}`);
+	const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
+	console.log(`pluginDir: ${pluginDir}`);
+	if (fs.existsSync(pluginDir)) {
+		console.log(`pluginDir exists. ${pluginDir}`);
+	} else {
+		console.log(`pluginDir not exists. create ${pluginDir}`);
+		fs.mkdirSync(pluginDir);
+		await fsext.copy(srcDir, `${pluginDir}/katex`);
+	}
+};
+
+export const modifyJoplinResourceAndSetPlugin = (noteBody: string, resourceDir: string): string =>{
+	let $ = cheerio.load(noteBody);
+	$ = modifyJoplinResource($, resourceDir);
+	// headタグにlinkタグを追加する
+	$('head').append('<link rel="stylesheet" href="pluginAssets/katex/katex.css">');
+	return $.html();
+};
 
 export const showNoteBodyByBrowser = async (noteBody: string, noteTitle: string) => {
 	try {
 		const path = `${Setting.value('tempDir')}/${noteTitle}.html`;
 		const resourceDir = `${Setting.value('resourceDir')}`;
-		const curDir = process.cwd();
-		// joplin/packages/app-desktop --> joplin/packages/lib/node_modules/@joplin/renderer/assets/katex
-		console.log(`curDir: ${curDir}`);
-		const srcDir = `${PATH.dirname(curDir)}/lib/node_modules/@joplin/renderer/assets/katex`;
-		console.log(`srcDir: ${srcDir}`);
-		const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
-		console.log(`pluginDir: ${pluginDir}`);
-		if (fs.existsSync(pluginDir)) {
-			console.log(`pluginDir exists. ${pluginDir}`);
-		} else {
-			console.log(`pluginDir not exists. create ${pluginDir}`);
-			fs.mkdirSync(pluginDir);
-			await fsext.copy(srcDir, `${pluginDir}/katex`);
-		}
+		await copyPluginAssetsIfNotExit();
 
-		let $ = cheerio.load(noteBody);
-		$ = modifyJoplinResource($, resourceDir);
-		// headタグにlinkタグを追加する
-		$('head').append('<link rel="stylesheet" href="pluginAssets/katex/katex.css">');
-		fs.writeFileSync(path, $.html());
+		const htmlBody = modifyJoplinResourceAndSetPlugin(noteBody, resourceDir);
+		fs.writeFileSync(path, htmlBody);
 		const url = `file://${path}`;
 		await shell.openExternal(url);
 	} catch (error) {
