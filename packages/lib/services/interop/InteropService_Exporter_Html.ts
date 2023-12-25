@@ -70,11 +70,16 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 	private style_: any;
 	private embededImage: boolean = false;
 	private merged: boolean = false;
+	private embededFontCss: string;
 
 	async init(path: string, options: any = {}) {
 		this.customCss_ = options.customCss ? options.customCss : '';
 
 		this.embededImage = options.embededImage ? options.embededImage : false;
+		if (this.embededImage) {
+			this.embededFontCss = await InteropService_Exporter_Html.embededFontCss();
+		}
+
 		this.merged = options.merged ? options.merged : false;
 		console.log(`merged: ${this.merged}`);
 		if (this.metadata().target === 'file') {
@@ -453,11 +458,12 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 
 
 
-	private static async embededFontCss() {
+	private static async embededFontCss(): Promise<string> {
 		await copyPluginAssetsIfNotExit();
 		const cssFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/katex.css`;
 		const outFilePath = `${Setting.value('tempDir')}/pluginAssets/katex/output.css`;
-		await createEmbededFontCss(cssFilePath, outFilePath);
+		const css = await createEmbededFontCss(cssFilePath, outFilePath);
+		return css;
 
 	}
 
