@@ -431,7 +431,7 @@ export default class Note extends BaseItem {
 		return this.modelSelectOne(`SELECT ${this.previewFieldsSql(options.fields)} FROM notes WHERE is_conflict = 0 AND id = ?`, [noteId]);
 	}
 
-	public static async getAllIds() {
+	static async getAllIds() {
 		const sql = 'SELECT id FROM notes;';
 		const outputs = await this.modelSelectAll(sql, []);
 		const ids = outputs.map(output => output.id);
