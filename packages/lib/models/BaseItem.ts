@@ -844,13 +844,13 @@ export default class BaseItem extends BaseModel {
 		return output.join('');
 	}
 
-	static copyAnchorTag(itemOrId: any) {
+	public static copyAnchorTag(itemOrId: any) {
 		const item = typeof itemOrId === 'object' ? itemOrId : {
 			id: itemOrId,
 			title: '',
 		};
 
-		return `<a href="joplin://${item.id}">${item.title}</a>`
+		return `<a href="joplin://${item.id}">${item.title}</a>`;
 	}
 
 	static isMarkdownTag(md: any) {
