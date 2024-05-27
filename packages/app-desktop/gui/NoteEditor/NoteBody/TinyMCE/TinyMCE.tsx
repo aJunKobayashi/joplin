@@ -693,6 +693,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								// <br> 要素を取得
 								const brElement = nextSibling;
 								console.log('次の兄弟要素の <br> 要素:', brElement);
+								editor.dom.remove(brElement);
 							} else {
 								console.log('次の兄弟要素は <br> 要素ではありません。');
 							}
