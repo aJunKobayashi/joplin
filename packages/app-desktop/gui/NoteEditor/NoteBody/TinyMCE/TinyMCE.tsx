@@ -669,7 +669,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tooltip: 'command',
 					text: 'Cmd',
 					onAction: function() {
-						editor.insertContent('<pre style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, \'Courier New\', monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;"></pre>');
+						// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+						const preElement = document.createElement('pre');
+						preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+
+						// 現在のカーソル位置に挿入
+						editor.selection.setNode(preElement);
+
+						// <pre>タグの内部にキャレットを移動
+						const range = document.createRange();
+						range.setStart(preElement, 0);
+						range.setEnd(preElement, 0);
+						editor.selection.setRng(range);
+						editor.nodeChanged();
 					},
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('pre'));
