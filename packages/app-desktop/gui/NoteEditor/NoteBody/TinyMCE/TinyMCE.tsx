@@ -592,6 +592,44 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	// Create and setup the editor
 	// -----------------------------------------------------------------------------------------
 
+	const insertCommandPre = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const preElement = document.createElement('pre');
+		const preId = `${new Date().getTime()}`;
+		preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+		// set id to preElement
+		preElement.id = preId;
+		preElement.innerText = ' ';
+
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(preElement);
+		const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
+		let nextSibling = tcePreElement.nextSibling;
+
+		// 次の兄弟要素が <br> であるかを確認
+		while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
+			nextSibling = nextSibling.nextSibling;
+		}
+
+		if (nextSibling && nextSibling.nodeName === 'BR') {
+			// <br> 要素を取得
+			const brElement = nextSibling;
+			console.log('次の兄弟要素の <br> 要素:', brElement);
+			editor.dom.remove(brElement);
+		} else {
+			console.log('次の兄弟要素は <br> 要素ではありません。');
+		}
+		const range = document.createRange();
+		range.setStart(tcePreElement, 0);
+		range.setEnd(tcePreElement, 0);
+		editor.selection.setRng(range);
+		editor.nodeChanged();
+		editor.focus();
+	}, [document]);
+
+
+
 	useEffect(() => {
 		if (!scriptLoaded) return;
 
@@ -620,7 +658,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', 'example',
+				'|', 'toc', /* 'example', */ 'cmd',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -664,6 +702,23 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						openDialog();
 				  },
 				});
+
+				editor.ui.registry.addToggleButton('cmd', {
+					tooltip: 'command',
+					text: 'Cmd',
+					onAction: function() {
+						insertCommandPre(editor);
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('pre'));
+						const unbind = editor.formatter.formatChanged('pre', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
+
+
 				/* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
 				editor.ui.registry.addMenuItem('example', {
 				  text: 'Example plugin',
@@ -683,6 +738,59 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				};
 			  });
 
+			(window as any).tinymce.PluginManager.add('text_color_plug', function(editor: any, _url: any) {
+				const tinymce = (window as any).tinymce;
+
+				// カスタムコマンドを定義
+				editor.addCommand('text_color_command_b', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = '#000000';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_w', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = '#FFFFFF';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_r', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = '#FF0000';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_g', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = 'rgb(22, 145, 121)';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_b', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = 'rgb(35, 111, 161)';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+
+				// ショートカットキーを定義
+				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
+				editor.addShortcut('meta+shift+w', 'text_color_desc', 'text_color_command_w');
+				editor.addShortcut('meta+shift+r', 'text_color_desc', 'text_color_command_r');
+				editor.addShortcut('meta+shift+g', 'text_color_desc', 'text_color_command_g');
+				editor.addShortcut('meta+shift+p', 'text_color_desc', 'text_color_command_b');
+			});
+
 			const editors = await (window as any).tinymce.init({
 				selector: `#${rootIdRef.current}`,
 				root_name: 'pre',
@@ -693,7 +801,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				resize: false,
 				icons: 'Joplin',
 				icons_url: 'gui/NoteEditor/NoteBody/TinyMCE/icons.js',
-				plugins: 'noneditable link, lists, hr, searchreplace, codesample table toc example',
+				plugins: 'noneditable link, lists, hr, searchreplace, codesample table toc example, text_color_plug',
 				noneditable_noneditable_class: 'joplin-editable', // Can be a regex too
 				valid_elements: '*[*]', // We already filter in sanitize_html
 				menubar: false,
@@ -778,6 +886,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							enableTextAreaTab(true);
 						});
 					}
+
+					editor.addShortcut('meta+shift+b', 'Insert pre element', function() {
+						console.log('meta+shift+b ==> commandline');
+						insertCommandPre(editor);
+					});
 
 					editor.ui.registry.addButton('joplinAttach', {
 						tooltip: _('Attach file'),
