@@ -381,6 +381,24 @@ export default function(theme: any) {
 				   needed to override the style set by JavaScript at the element-level. */
 				height: auto !important;
 			}
+			
+			.commandline-code {
+				box-sizing: border-box;
+				overflow: auto;
+				font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+				font-size: 11px;
+				padding: 8px;
+				margin-top: 0px;
+				margin-bottom: 0px;
+				line-height: 1.42857;
+				word-break: break-all;
+				overflow-wrap: break-word;
+				color: rgb(157, 165, 180);
+				background: rgb(49, 54, 63);
+				border: none;
+				border-radius: 3px;
+				box-shadow: none;
+			}
 		}
 	`;
 

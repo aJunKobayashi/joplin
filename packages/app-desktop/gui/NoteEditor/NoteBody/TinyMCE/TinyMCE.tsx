@@ -620,7 +620,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', 'example',
+				'|', 'toc', 'example', 'cmd',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -664,6 +664,23 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						openDialog();
 				  },
 				});
+
+				editor.ui.registry.addToggleButton('cmd', {
+					tooltip: 'command',
+					text: 'Cmd',
+					onAction: function() {
+						editor.insertContent('<pre style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, \'Courier New\', monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;"></pre>');
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('pre'));
+						const unbind = editor.formatter.formatChanged('pre', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
+
+
 				/* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
 				editor.ui.registry.addMenuItem('example', {
 				  text: 'Example plugin',
