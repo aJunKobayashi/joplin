@@ -671,12 +671,32 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					onAction: function() {
 						// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 						const preElement = document.createElement('pre');
+						const preId = `${new Date().getTime()}`;
 						preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+						// set id to preElement
+						preElement.id = preId;
 						preElement.innerText = ' ';
+
 
 						// 現在のカーソル位置に挿入
 						editor.selection.setNode(preElement);
 						setTimeout(() => {
+							const preElement = editor.dom.select(`pre#${preId}`)[0];
+							let nextSibling = preElement.nextSibling;
+
+							// 次の兄弟要素が <br> であるかを確認
+							while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
+								nextSibling = nextSibling.nextSibling;
+							}
+
+							if (nextSibling && nextSibling.nodeName === 'BR') {
+								// <br> 要素を取得
+								const brElement = nextSibling;
+								console.log('次の兄弟要素の <br> 要素:', brElement);
+							} else {
+								console.log('次の兄弟要素は <br> 要素ではありません。');
+							}
+
 							//  editor.setCursorLocation(preElement, 0);
 							// dispatchClickEvent to preElement
 							// const event = new MouseEvent('click', { bubbles: true, cancelable: true });
