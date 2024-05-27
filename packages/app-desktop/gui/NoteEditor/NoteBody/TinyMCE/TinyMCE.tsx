@@ -680,37 +680,35 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 						// 現在のカーソル位置に挿入
 						editor.selection.setNode(preElement);
-						setTimeout(() => {
-							const preElement = editor.dom.select(`pre#${preId}`)[0];
-							let nextSibling = preElement.nextSibling;
+						const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
+						let nextSibling = tcePreElement.nextSibling;
 
-							// 次の兄弟要素が <br> であるかを確認
-							while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
-								nextSibling = nextSibling.nextSibling;
-							}
+						// 次の兄弟要素が <br> であるかを確認
+						while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
+							nextSibling = nextSibling.nextSibling;
+						}
 
-							if (nextSibling && nextSibling.nodeName === 'BR') {
-								// <br> 要素を取得
-								const brElement = nextSibling;
-								console.log('次の兄弟要素の <br> 要素:', brElement);
-								editor.dom.remove(brElement);
-							} else {
-								console.log('次の兄弟要素は <br> 要素ではありません。');
-							}
+						if (nextSibling && nextSibling.nodeName === 'BR') {
+							// <br> 要素を取得
+							const brElement = nextSibling;
+							console.log('次の兄弟要素の <br> 要素:', brElement);
+							editor.dom.remove(brElement);
+						} else {
+							console.log('次の兄弟要素は <br> 要素ではありません。');
+						}
 
-							//  editor.setCursorLocation(preElement, 0);
-							// dispatchClickEvent to preElement
-							// const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-							// editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
-							// preElement.dispatchEvent(event);
-							// // <pre>タグの内部にキャレットを移動
-							const range = document.createRange();
-							range.setStart(preElement, 0);
-							range.setEnd(preElement, 0);
-							editor.selection.setRng(range);
-							editor.nodeChanged();
-							editor.focus();
-						}, 100);
+						//  editor.setCursorLocation(preElement, 0);
+						// dispatchClickEvent to preElement
+						// const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+						// editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
+						// preElement.dispatchEvent(event);
+						// // <pre>タグの内部にキャレットを移動
+						const range = document.createRange();
+						range.setStart(tcePreElement, 0);
+						range.setEnd(tcePreElement, 0);
+						editor.selection.setRng(range);
+						editor.nodeChanged();
+						editor.focus();
 					},
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('pre'));
