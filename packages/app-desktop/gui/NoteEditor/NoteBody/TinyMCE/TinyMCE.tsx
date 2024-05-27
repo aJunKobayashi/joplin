@@ -738,6 +738,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				};
 			  });
 
+			(window as any).tinymce.PluginManager.add('background_color_plug', function(editor: any, _url: any) {
+				const tinymce = (window as any).tinymce;
+				editor.addCommand('background_color_command', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'background-color', true);
+					console.log(color);
+					const newcolor = '#000000';
+					tinymce.activeEditor.execCommand('HiliteColor', false, newcolor);
+				});
+
+				editor.addShortcut('meta+shift+w', 'background_color_desc', 'background_color_command');
+			});
+
 			const editors = await (window as any).tinymce.init({
 				selector: `#${rootIdRef.current}`,
 				root_name: 'pre',
@@ -748,7 +761,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				resize: false,
 				icons: 'Joplin',
 				icons_url: 'gui/NoteEditor/NoteBody/TinyMCE/icons.js',
-				plugins: 'noneditable link, lists, hr, searchreplace, codesample table toc example',
+				plugins: 'noneditable link, lists, hr, searchreplace, codesample table toc example, background_color_plug',
 				noneditable_noneditable_class: 'joplin-editable', // Can be a regex too
 				valid_elements: '*[*]', // We already filter in sanitize_html
 				menubar: false,
