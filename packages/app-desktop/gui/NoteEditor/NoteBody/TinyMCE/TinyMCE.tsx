@@ -742,7 +742,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				const tinymce = (window as any).tinymce;
 
 				// カスタムコマンドを定義
-				editor.addCommand('text_color_command', function() {
+				editor.addCommand('text_color_command_b', function() {
 					const node = tinymce.activeEditor.selection.getNode();
 					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
 					console.log(color);
@@ -750,8 +750,45 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
 				});
 
+				editor.addCommand('text_color_command_w', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = '#FFFFFF';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_r', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = '#FF0000';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_g', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = 'rgb(22, 145, 121)';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+				editor.addCommand('text_color_command_b', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = 'rgb(35, 111, 161)';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
+
 				// ショートカットキーを定義
-				editor.addShortcut('meta+shift+w', 'text_color_desc', 'text_color_command');
+				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
+				editor.addShortcut('meta+shift+w', 'text_color_desc', 'text_color_command_w');
+				editor.addShortcut('meta+shift+r', 'text_color_desc', 'text_color_command_r');
+				editor.addShortcut('meta+shift+g', 'text_color_desc', 'text_color_command_g');
+				editor.addShortcut('meta+shift+p', 'text_color_desc', 'text_color_command_b');
 			});
 
 			const editors = await (window as any).tinymce.init({
