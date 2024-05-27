@@ -592,7 +592,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	// Create and setup the editor
 	// -----------------------------------------------------------------------------------------
 
-	const insertCommandPre = (editor: any) => {
+	const insertCommandPre = useCallback((editor: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const preElement = document.createElement('pre');
 		const preId = `${new Date().getTime()}`;
@@ -626,7 +626,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.selection.setRng(range);
 		editor.nodeChanged();
 		editor.focus();
-	};
+	}, [document]);
 
 
 
