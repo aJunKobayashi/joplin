@@ -782,6 +782,14 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
 				});
 
+				editor.addCommand('text_color_command_h', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const color = tinymce.activeEditor.dom.getStyle(node, 'color', true);
+					console.log(color);
+					const newcolor = 'rgb(52, 73, 94)';
+					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
+				});
+
 
 				// ショートカットキーを定義
 				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
@@ -789,6 +797,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.addShortcut('meta+shift+r', 'text_color_desc', 'text_color_command_r');
 				editor.addShortcut('meta+shift+g', 'text_color_desc', 'text_color_command_g');
 				editor.addShortcut('meta+shift+p', 'text_color_desc', 'text_color_command_b');
+				editor.addShortcut('meta+shift+h', 'text_color_desc', 'text_color_command_h');
 			});
 
 			const editors = await (window as any).tinymce.init({
