@@ -620,7 +620,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', 'example', 'cmd',
+				'|', 'toc', /* 'example', */ 'cmd',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -672,6 +672,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 						const preElement = document.createElement('pre');
 						preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+						preElement.innerText = ' ';
 
 						// 現在のカーソル位置に挿入
 						editor.selection.setNode(preElement);
