@@ -676,13 +676,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 						// 現在のカーソル位置に挿入
 						editor.selection.setNode(preElement);
-
-						// <pre>タグの内部にキャレットを移動
-						const range = document.createRange();
-						range.setStart(preElement, 0);
-						range.setEnd(preElement, 0);
-						editor.selection.setRng(range);
-						editor.nodeChanged();
+						setTimeout(() => {
+							//  editor.setCursorLocation(preElement, 0);
+							// dispatchClickEvent to preElement
+							// const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+							// editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
+							// preElement.dispatchEvent(event);
+							// // <pre>タグの内部にキャレットを移動
+							const range = document.createRange();
+							range.setStart(preElement, 0);
+							range.setEnd(preElement, 0);
+							editor.selection.setRng(range);
+							editor.nodeChanged();
+							editor.focus();
+						}, 100);
 					},
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('pre'));
