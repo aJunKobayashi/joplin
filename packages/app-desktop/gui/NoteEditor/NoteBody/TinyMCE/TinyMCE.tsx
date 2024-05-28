@@ -790,6 +790,21 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tinymce.activeEditor.execCommand('ForeColor', false, newcolor);
 				});
 
+				editor.addCommand('text_size_command_8', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const fontSize = tinymce.activeEditor.dom.getStyle(node, 'font-size', true);
+					console.log(fontSize);
+					const newSize = '8pt';
+					tinymce.activeEditor.dom.setStyle(node, 'font-size', newSize);
+				});
+
+				editor.addCommand('text_size_command_10', function() {
+					const node = tinymce.activeEditor.selection.getNode();
+					const fontSize = tinymce.activeEditor.dom.getStyle(node, 'font-size', true);
+					console.log(fontSize);
+					const newSize = '10pt';
+					tinymce.activeEditor.dom.setStyle(node, 'font-size', newSize);
+				});
 
 				// ショートカットキーを定義
 				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
@@ -798,6 +813,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.addShortcut('meta+shift+g', 'text_color_desc', 'text_color_command_g');
 				editor.addShortcut('meta+shift+p', 'text_color_desc', 'text_color_command_b');
 				editor.addShortcut('meta+shift+h', 'text_color_desc', 'text_color_command_h');
+				editor.addShortcut('meta+shift+e', 'text_color_desc', 'text_size_command_8');
+				editor.addShortcut('meta+shift+t', 'text_color_desc', 'text_size_command_10');
 			});
 
 			const editors = await (window as any).tinymce.init({
