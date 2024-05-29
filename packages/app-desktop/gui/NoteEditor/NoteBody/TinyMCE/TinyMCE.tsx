@@ -712,22 +712,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.selection.setRng(range);
 		editor.nodeChanged();
 		editor.focus();
-		// TinyMCEのAPIを利用してクリックイベントを登録
-		editor.on('click', (e: any) => {
-			// console.log(`clicked event: ${e.target.id}`);
-			let targetElement = e.target;
-			while (targetElement) {
-				console.log(`targetId: ${targetElement.id}`);
-				if (targetElement.id === divMermaidRoot.id) {
-					console.log(`MermaidRoot clicked: ${divMermaidRoot.id}`);
-					openMermaidDialog(editor);
-					return; // 処理が行われたのでループを終了
-				}
-				targetElement = targetElement.parentElement; // 親要素に移動
-			}
-			// console.log(`not matched with ${divMermaidRoot.id}`);
-			// 一致するIDが見つからない場合は何も処理を行わない
-		});
 	}, [document]);
 
 
@@ -1093,6 +1077,26 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						const editable = findEditableContainer(event.target);
 						if (editable) openEditDialog(editable);
 					});
+
+					// Mermaidの図をダブルクリックした場合にダイアログを表示する
+					editor.on('DblClick', (e: any) => {
+						// console.log(`clicked event: ${e.target.id}`);
+						let targetElement = e.target;
+						while (targetElement) {
+							// console.log(`targetId: ${targetElement.id}`);
+							const targetIdPrefix = targetElement.id.split('_')[0];
+							if (targetIdPrefix === 'mermaidRoot') {
+								console.log(`MermaidRoot clicked: ${targetElement.id}}`);
+								openMermaidDialog(editor);
+								return; // 処理が行われたのでループを終了
+							}
+							targetElement = targetElement.parentElement; // 親要素に移動
+						}
+						// console.log(`not matched with ${divMermaidRoot.id}`);
+						// 一致するIDが見つからない場合は何も処理を行わない
+					});
+
+
 
 					// This is triggered when an external file is dropped on the editor
 					editor.on('drop', (event: any) => {
