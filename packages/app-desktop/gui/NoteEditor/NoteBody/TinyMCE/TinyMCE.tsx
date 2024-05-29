@@ -756,21 +756,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
 		divMermaidDialog.setAttribute('class', 'mermaid');
-		divMermaidDialog.innerText = `${txt}`;
+		divMermaidDialog.textContent = `${txt}`;
+		removeNextSiblingBr(divMermaidDialog, editor);
+		removeInnerBr(divMermaidDialog, editor);
 
 		preMermaidTxt.id = `mermaidJoplinTxt_${baseId}`;
-		preMermaidTxt.innerText = `${txt}`;
+		preMermaidTxt.textContent = `${txt}`;
 		preMermaidTxt.style.display = 'none';
+		removeNextSiblingBr(preMermaidTxt, editor);
 
 		// append new elements to diveMermaidRoot
 		divMermaidRoot.appendChild(divMermaidDialog);
 		divMermaidRoot.appendChild(preMermaidTxt);
 
-		// divMermaidDialog.innerHTML = '';
-		// divMermaidDialog.innerText = txt;
-
-		// preMermaidTxt.innerHTML = '';
-		// divMermaidDialog.innerText = txt;
+		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 	},[]);
 
 
