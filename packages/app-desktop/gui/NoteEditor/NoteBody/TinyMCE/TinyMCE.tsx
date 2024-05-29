@@ -622,6 +622,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
 			size: 'large',
+			initialData: {
+				'diagram': 'test',
+			},
 			body: {
 				type: 'panel',
 				items: [
@@ -629,10 +632,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						type: 'textarea',
 						name: 'diagram',
 						label: 'Diagram',
-						value: 'Your initial content here...', // 初期値を設定
-						multiline: true,
-						minHeight: 600, // 縦幅を高く設定
-						style: 'white-space: nowrap; overflow-x: auto;', // 横スクロールを有効にする
 					},
 				],
 			},
