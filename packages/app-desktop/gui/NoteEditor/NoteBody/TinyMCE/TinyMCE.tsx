@@ -638,8 +638,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// set id to preElement
 		divElement.id = divId;
 		divElement.setAttribute('class', 'mermaid');
-		divElement.innerText = `sequenceDiagram
-		Alice ->> Bob: Hello Bob, how are you?`;
+		divElement.innerText =
+`sequenceDiagram
+     Alice ->> Bob: Hello Bob, how are you?`;
 
 
 		// 現在のカーソル位置に挿入
@@ -660,6 +661,13 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		} else {
 			console.log('次の兄弟要素は <br> 要素ではありません。');
 		}
+
+		const brs = tceDivElement.querySelectorAll('br');
+		console.log(`brCount: ${brs.length}`);
+		for (let i = 0; i < brs.length; i++) {
+			editor.dom.remove(brs[i]);
+		}
+
 		const range = document.createRange();
 		range.setStart(tceDivElement, 0);
 		range.setEnd(tceDivElement, 0);
