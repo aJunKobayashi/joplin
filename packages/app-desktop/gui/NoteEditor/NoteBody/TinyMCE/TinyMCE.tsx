@@ -663,9 +663,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			],
 			onSubmit: function(api: any) {
 				console.log('Mermaid Submit');
-				// const data = api.getData();
-				/* Insert content when the window form is submitted */
-				// editor.insertContent(`Title: ${data.title}`);
+				// get textarea input string
+				const data = api.getData();
+				const inputTxt = data.diagram;
+				console.log(`submitted data: ${inputTxt}`);
+				updateMermaidDiv(editor, baseId, inputTxt);
 				api.close();
 			},
 		});
@@ -739,6 +741,37 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.nodeChanged();
 		editor.focus();
 	}, [document]);
+
+
+	const updateMermaidDiv = useCallback((editor: any, baseId: string, txt: string) => {
+		const divMermaidRoot = editor.dom.select(`div#mermaidJoplinRoot_${baseId}`)[0];
+
+		const oldDivMermaidDialog = editor.dom.select(`div#mermaidJoplinDialog_${baseId}`)[0];
+		const oldPreMermaidTxt = editor.dom.select(`pre#mermaidJoplinTxt_${baseId}`)[0];
+		editor.dom.remove(oldDivMermaidDialog);
+		editor.dom.remove(oldPreMermaidTxt);
+
+		const divMermaidDialog = document.createElement('div');
+		const preMermaidTxt = document.createElement('pre');
+
+		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
+		divMermaidDialog.setAttribute('class', 'mermaid');
+		divMermaidDialog.innerText = `${txt}`;
+
+		preMermaidTxt.id = `mermaidJoplinTxt_${baseId}`;
+		preMermaidTxt.innerText = `${txt}`;
+		preMermaidTxt.style.display = 'none';
+
+		// append new elements to diveMermaidRoot
+		divMermaidRoot.appendChild(divMermaidDialog);
+		divMermaidRoot.appendChild(preMermaidTxt);
+
+		// divMermaidDialog.innerHTML = '';
+		// divMermaidDialog.innerText = txt;
+
+		// preMermaidTxt.innerHTML = '';
+		// divMermaidDialog.innerText = txt;
+	},[]);
 
 
 	useEffect(() => {
