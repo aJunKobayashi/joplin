@@ -680,29 +680,36 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const divMermaidRoot = document.createElement('div');
 		const divMermaidDialog = document.createElement('div');
-		const baseId = `mermaid_${new Date().getTime()}`;
+		const preMermaidTxt = document.createElement('pre');
+		const baseId = `${new Date().getTime()}`;
 
 
 
 		// set id to preElement
-		divMermaidDialog.id = `mermaidDialog_${baseId}`;
+		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
 		divMermaidDialog.setAttribute('class', 'mermaid');
-		divMermaidDialog.innerText =
-			`sequenceDiagram
-     Alice ->> Bob: Hello Bob, how are you?`;
+		const txt = `sequenceDiagram
+		Alice ->> Bob: Hello Bob, how are you?`;
 
-		divMermaidRoot.id = `mermaidRoot_${baseId}`;
-		// divMermaidRoot.addEventListener('click', () => {
-		// 	console.log('MermaidRoot clicked');
-		// 	openMermaidDialog(editor);
-		// });
+		divMermaidDialog.innerText = `${txt}`;
+
+		preMermaidTxt.id = `mermaidJoplinTxt_${baseId}`;
+		preMermaidTxt.innerText = `${txt}`;
+		preMermaidTxt.style.display = 'none';
+
+		divMermaidRoot.id = `mermaidJoplinRoot_${baseId}`;
 
 		divMermaidRoot.appendChild(divMermaidDialog);
+		divMermaidRoot.appendChild(preMermaidTxt);
 		// 現在のカーソル位置に挿入
 		editor.selection.setNode(divMermaidRoot);
 		const tceDivElement = editor.dom.select(`div#${divMermaidDialog.id}`)[0];
 		removeNextSiblingBr(tceDivElement, editor);
 		removeInnerBr(tceDivElement, editor);
+		const tcePreElement = editor.dom.select(`pre#${preMermaidTxt.id}`)[0];
+		removeNextSiblingBr(tcePreElement, editor);
+		removeInnerBr(tcePreElement, editor);
+
 		const divMermaidRootElement = editor.dom.select(`div#${divMermaidRoot.id}`)[0];
 		removeNextSiblingBr(divMermaidRootElement, editor);
 
@@ -1085,8 +1092,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						while (targetElement) {
 							// console.log(`targetId: ${targetElement.id}`);
 							const targetIdPrefix = targetElement.id.split('_')[0];
-							if (targetIdPrefix === 'mermaidRoot') {
-								console.log(`MermaidRoot clicked: ${targetElement.id}}`);
+							if (targetIdPrefix === 'mermaidJoplinRoot') {
+								console.log(`MermaidJoplinRoot clicked: ${targetElement.id}}`);
 								openMermaidDialog(editor);
 								return; // 処理が行われたのでループを終了
 							}
