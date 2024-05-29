@@ -618,6 +618,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		}
 	}, []);
 
+	const decodeHtmlSpecialEntities = useCallback((str: string): string => {
+		const entities = {
+			'&lt;': '<',
+			'&gt;': '>',
+			'&amp;': '&',
+			'&nbsp;': ' ',
+			'&ensp;': ' ',
+			'&emsp;': ' ',
+			'&ndash;': '–',
+			'&mdash;': '—',
+		} as any;
+		return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
+	}, []);
+
 	const openMermaidDialog = useCallback((editor: any, initialValue: string) => {
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
@@ -1102,7 +1116,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								const txtId = `mermaidJoplinTxt_${baseId}`;
 								const txtPre = editor.dom.select(`pre#${txtId}`)[0];
 								const dialogHtml = txtPre.innerHTML;
-								const dialogTxt = dialogHtml.replace(/<br>/g, '\n');
+								const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
+								const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
 								openMermaidDialog(editor, dialogTxt);
 								return; // 処理が行われたのでループを終了
 							}
