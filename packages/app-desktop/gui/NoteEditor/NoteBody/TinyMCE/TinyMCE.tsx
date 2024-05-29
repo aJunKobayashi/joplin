@@ -618,19 +618,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		}
 	}, []);
 
-	const decodeHtmlSpecialEntities = useCallback((str: string): string => {
-		const entities = {
-			'&lt;': '<',
-			'&gt;': '>',
-			'&amp;': '&',
-			'&nbsp;': ' ',
-			'&ensp;': ' ',
-			'&emsp;': ' ',
-			'&ndash;': '–',
-			'&mdash;': '—',
-		} as any;
-		return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
-	}, []);
+	// const decodeHtmlSpecialEntities = useCallback((str: string): string => {
+	// 	const entities = {
+	// 		'&lt;': '<',
+	// 		'&gt;': '>',
+	// 		'&amp;': '&',
+	// 		'&nbsp;': ' ',
+	// 		'&ensp;': ' ',
+	// 		'&emsp;': ' ',
+	// 		'&ndash;': '–',
+	// 		'&mdash;': '—',
+	// 	} as any;
+	// 	return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
+	// }, []);
 
 	const openMermaidDialog = useCallback((editor: any, initialValue: string, baseId: string, mermaidRootElement: any) => {
 		console.log(`baseId: ${baseId}`);
@@ -719,6 +719,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		preMermaidTxt.style.display = 'none';
 
 		divMermaidRoot.id = `mermaidJoplinRoot_${baseId}`;
+		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
 
 		divMermaidRoot.appendChild(divMermaidDialog);
 		divMermaidRoot.appendChild(preMermaidTxt);
@@ -1144,11 +1145,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							if (targetIdPrefix === 'mermaidJoplinRoot') {
 								console.log(`MermaidJoplinRoot clicked: ${targetElement.id}}`);
 								const baseId = targetElement.id.split('_')[1];
-								const txtId = `mermaidJoplinTxt_${baseId}`;
-								const txtPre = editor.dom.select(`pre#${txtId}`)[0];
-								const dialogHtml = txtPre.innerHTML;
-								const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
-								const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
+								// const txtId = `mermaidJoplinTxt_${baseId}`;
+								const dialogTxt = targetElement.getAttribute('mermaidTxt');
+								// const dialogHtml = txtPre.innerHTML;
+								// const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
+								// const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
 								openMermaidDialog(editor, dialogTxt, baseId, targetElement);
 								return; // 処理が行われたのでループを終了
 							}
