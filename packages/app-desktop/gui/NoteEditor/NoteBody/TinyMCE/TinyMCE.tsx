@@ -712,7 +712,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		removeInnerBr(tceDivElement, editor);
 		const tcePreElement = editor.dom.select(`pre#${preMermaidTxt.id}`)[0];
 		removeNextSiblingBr(tcePreElement, editor);
-		removeInnerBr(tcePreElement, editor);
+		// removeInnerBr(tcePreElement, editor);
 
 		const divMermaidRootElement = editor.dom.select(`div#${divMermaidRoot.id}`)[0];
 		removeNextSiblingBr(divMermaidRootElement, editor);
@@ -1101,7 +1101,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								const baseId = targetElement.id.split('_')[1];
 								const txtId = `mermaidJoplinTxt_${baseId}`;
 								const txtPre = editor.dom.select(`pre#${txtId}`)[0];
-								const dialogTxt = txtPre.innerText;
+								const dialogHtml = txtPre.innerHTML;
+								const dialogTxt = dialogHtml.replace(/<br>/g, '\n');
 								openMermaidDialog(editor, dialogTxt);
 								return; // 処理が行われたのでループを終了
 							}
