@@ -15,7 +15,6 @@ const { render } = require('react-dom');
 const { connect, Provider } = require('react-redux');
 import Setting from '@joplin/lib/models/Setting';
 import shim from '@joplin/lib/shim';
-import { copyMermaidPluginAssetsIfNotExit } from '../commands/showBrowser';
 const { ImportScreen } = require('./ImportScreen.min.js');
 const { ResourceScreen } = require('./ResourceScreen.js');
 const { Navigator } = require('./Navigator.min.js');
@@ -57,7 +56,6 @@ async function initialize() {
 			wcsTimeoutId_ = null;
 		}, 10);
 	});
-	await copyMermaidPluginAssetsIfNotExit();
 
 	// Need to dispatch this to make sure the components are
 	// displayed at the right size. The windowContentSize is
