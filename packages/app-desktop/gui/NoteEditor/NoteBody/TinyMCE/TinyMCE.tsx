@@ -629,6 +629,45 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	}, [document]);
 
 
+	const insertMermaidDiv = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const divElement = document.createElement('div');
+		const divId = `mermaid_${new Date().getTime()}`;
+		// preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+
+		// set id to preElement
+		divElement.id = divId;
+		divElement.setAttribute('class', 'mermaid');
+		divElement.innerText = `sequenceDiagram
+		Alice ->> Bob: Hello Bob, how are you?`;
+
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(divElement);
+		const tceDivElement = editor.dom.select(`div#${divId}`)[0];
+		let nextSibling = tceDivElement.nextSibling;
+
+		// 次の兄弟要素が <br> であるかを確認
+		while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
+			nextSibling = nextSibling.nextSibling;
+		}
+
+		if (nextSibling && nextSibling.nodeName === 'BR') {
+			// <br> 要素を取得
+			const brElement = nextSibling;
+			console.log('次の兄弟要素の <br> 要素:', brElement);
+			editor.dom.remove(brElement);
+		} else {
+			console.log('次の兄弟要素は <br> 要素ではありません。');
+		}
+		const range = document.createRange();
+		range.setStart(tceDivElement, 0);
+		range.setEnd(tceDivElement, 0);
+		editor.selection.setRng(range);
+		editor.nodeChanged();
+		editor.focus();
+	}, [document]);
+
 
 	useEffect(() => {
 		if (!scriptLoaded) return;
@@ -658,7 +697,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', /* 'example', */ 'cmd',
+				'|', 'toc', /* 'example', */ 'cmd', 'mermaid',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -712,6 +751,21 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('pre'));
 						const unbind = editor.formatter.formatChanged('pre', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
+
+				editor.ui.registry.addToggleButton('mermaid', {
+					tooltip: 'mermaid',
+					text: 'Mer',
+					onAction: function() {
+						insertMermaidDiv(editor);
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('div'));
+						const unbind = editor.formatter.formatChanged('div', api.setActive).unbind;
 						return function() {
 							if (unbind) unbind();
 						};
