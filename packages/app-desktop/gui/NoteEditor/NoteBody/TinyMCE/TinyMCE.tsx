@@ -618,12 +618,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		}
 	}, []);
 
-	const openMermaidDialog = useCallback((editor: any) => {
+	const openMermaidDialog = useCallback((editor: any, initialValue: string) => {
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
 			size: 'large',
 			initialData: {
-				'diagram': 'test',
+				'diagram': initialValue,
 			},
 			body: {
 				type: 'panel',
@@ -646,12 +646,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					primary: true,
 				},
 			],
-			onSubmit: function(_api: any) {
+			onSubmit: function(api: any) {
 				console.log('Mermaid Submit');
 				// const data = api.getData();
 				/* Insert content when the window form is submitted */
 				// editor.insertContent(`Title: ${data.title}`);
-				// api.close();
+				api.close();
 			},
 		});
 	}, []);
@@ -1098,7 +1098,11 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							const targetIdPrefix = targetElement.id.split('_')[0];
 							if (targetIdPrefix === 'mermaidJoplinRoot') {
 								console.log(`MermaidJoplinRoot clicked: ${targetElement.id}}`);
-								openMermaidDialog(editor);
+								const baseId = targetElement.id.split('_')[1];
+								const txtId = `mermaidJoplinTxt_${baseId}`;
+								const txtPre = editor.dom.select(`pre#${txtId}`)[0];
+								const dialogTxt = txtPre.innerText;
+								openMermaidDialog(editor, dialogTxt);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
