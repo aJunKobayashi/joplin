@@ -592,20 +592,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	// Create and setup the editor
 	// -----------------------------------------------------------------------------------------
 
-	const insertCommandPre = useCallback((editor: any) => {
-		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
-		const preElement = document.createElement('pre');
-		const preId = `${new Date().getTime()}`;
-		preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
-		// set id to preElement
-		preElement.id = preId;
-		preElement.innerText = ' ';
-
-
-		// 現在のカーソル位置に挿入
-		editor.selection.setNode(preElement);
-		const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
-		let nextSibling = tcePreElement.nextSibling;
+	const removeNextSiblingBr = useCallback((htmlElement: any, editor: any) => {
+		let nextSibling = htmlElement.nextSibling;
 
 		// 次の兄弟要素が <br> であるかを確認
 		while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
@@ -620,6 +608,31 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		} else {
 			console.log('次の兄弟要素は <br> 要素ではありません。');
 		}
+	},[]);
+
+	const removeInnerBr = useCallback((htmlElement: any, editor: any) => {
+		const brs = htmlElement.querySelectorAll('br');
+		console.log(`brCount: ${brs.length}`);
+		for (let i = 0; i < brs.length; i++) {
+			editor.dom.remove(brs[i]);
+		}
+	}, []);
+
+	const insertCommandPre = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const preElement = document.createElement('pre');
+		const preId = `${new Date().getTime()}`;
+		preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+		// set id to preElement
+		preElement.id = preId;
+		preElement.innerText = ' ';
+
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(preElement);
+		const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
+		removeNextSiblingBr(tcePreElement, editor);
+
 		const range = document.createRange();
 		range.setStart(tcePreElement, 0);
 		range.setEnd(tcePreElement, 0);
@@ -646,28 +659,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// 現在のカーソル位置に挿入
 		editor.selection.setNode(divElement);
 		const tceDivElement = editor.dom.select(`div#${divId}`)[0];
-		let nextSibling = tceDivElement.nextSibling;
+		removeNextSiblingBr(tceDivElement, editor);
 
-		// 次の兄弟要素が <br> であるかを確認
-		while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
-			nextSibling = nextSibling.nextSibling;
-		}
-
-		if (nextSibling && nextSibling.nodeName === 'BR') {
-			// <br> 要素を取得
-			const brElement = nextSibling;
-			console.log('次の兄弟要素の <br> 要素:', brElement);
-			editor.dom.remove(brElement);
-		} else {
-			console.log('次の兄弟要素は <br> 要素ではありません。');
-		}
-
-		const brs = tceDivElement.querySelectorAll('br');
-		console.log(`brCount: ${brs.length}`);
-		for (let i = 0; i < brs.length; i++) {
-			editor.dom.remove(brs[i]);
-		}
-
+		removeInnerBr(tceDivElement, editor);
 		const range = document.createRange();
 		range.setStart(tceDivElement, 0);
 		range.setEnd(tceDivElement, 0);
