@@ -632,7 +632,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
 	}, []);
 
-	const openMermaidDialog = useCallback((editor: any, initialValue: string, baseId: string) => {
+	const openMermaidDialog = useCallback((editor: any, initialValue: string, baseId: string, mermaidRootElement: any) => {
 		console.log(`baseId: ${baseId}`);
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
@@ -667,7 +667,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				const data = api.getData();
 				const inputTxt = data.diagram;
 				console.log(`submitted data: ${inputTxt}`);
-				updateMermaidDiv(editor, baseId, inputTxt);
+				updateMermaidDiv(editor, baseId, inputTxt, mermaidRootElement);
 				api.close();
 			},
 		});
@@ -744,13 +744,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	}, [document]);
 
 
-	const updateMermaidDiv = useCallback((editor: any, baseId: string, txt: string) => {
-		const divMermaidRoot = editor.dom.select(`div#mermaidJoplinRoot_${baseId}`)[0];
+	const updateMermaidDiv = useCallback((editor: any, baseId: string, txt: string, mermaidRootElement: any) => {
+		const divMermaidRoot = mermaidRootElement;
 
-		const oldDivMermaidDialog = editor.dom.select(`div#mermaidJoplinDialog_${baseId}`)[0];
-		const oldPreMermaidTxt = editor.dom.select(`pre#mermaidJoplinTxt_${baseId}`)[0];
-		editor.dom.remove(oldDivMermaidDialog);
-		editor.dom.remove(oldPreMermaidTxt);
+		divMermaidRoot.innerHTML = '';
 
 		const divMermaidDialog = document.createElement('div');
 		const preMermaidTxt = document.createElement('pre');
@@ -1152,7 +1149,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								const dialogHtml = txtPre.innerHTML;
 								const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
 								const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
-								openMermaidDialog(editor, dialogTxt, baseId);
+								openMermaidDialog(editor, dialogTxt, baseId, targetElement);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
