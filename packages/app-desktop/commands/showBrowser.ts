@@ -105,24 +105,6 @@ export const copyPluginAssetsIfNotExit = async () => {
 	}
 };
 
-
-export const copyMermaidPluginAssetsIfNotExit = async () => {
-	const curDir = process.cwd();
-	// joplin/packages/app-desktop --> joplin/packages/lib/node_modules/@joplin/renderer/assets/mermaid
-	console.log(`curDir: ${curDir}`);
-	const srcDir = `${PATH.dirname(curDir)}/lib/node_modules/@joplin/renderer/assets/mermaid`;
-	console.log(`srcDir: ${srcDir}`);
-	const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
-	console.log(`pluginDir: ${pluginDir}`);
-	if (fs.existsSync(pluginDir)) {
-		console.log(`pluginDir exists. ${pluginDir}`);
-	} else {
-		console.log(`pluginDir not exists. create ${pluginDir}`);
-		fs.mkdirSync(pluginDir);
-		await fsext.copy(srcDir, `${pluginDir}/mermaid`);
-	}
-};
-
 export const modifyJoplinResourceAndSetPlugin = (noteBody: string, resourceDir: string): string =>{
 	let $ = cheerio.load(noteBody);
 	$ = modifyJoplinResource($, resourceDir);
