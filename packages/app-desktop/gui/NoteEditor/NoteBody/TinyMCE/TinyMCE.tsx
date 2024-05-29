@@ -740,6 +740,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.selection.setRng(range);
 		editor.nodeChanged();
 		editor.focus();
+		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 	}, [document]);
 
 
