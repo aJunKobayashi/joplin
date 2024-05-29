@@ -632,7 +632,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
 	}, []);
 
-	const openMermaidDialog = useCallback((editor: any, initialValue: string) => {
+	const openMermaidDialog = useCallback((editor: any, initialValue: string, baseId: string) => {
+		console.log(`baseId: ${baseId}`);
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
 			size: 'large',
@@ -1118,7 +1119,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								const dialogHtml = txtPre.innerHTML;
 								const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
 								const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
-								openMermaidDialog(editor, dialogTxt);
+								openMermaidDialog(editor, dialogTxt, baseId);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
