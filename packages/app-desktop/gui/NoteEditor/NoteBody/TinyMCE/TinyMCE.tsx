@@ -618,6 +618,40 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		}
 	}, []);
 
+	const openMermaidDialog = useCallback((editor: any) => {
+		return editor.windowManager.open({
+			title: 'Example plugin',
+			body: {
+				type: 'panel',
+				items: [
+					{
+						type: 'input',
+						name: 'title',
+						label: 'Title',
+					},
+				],
+			},
+			buttons: [
+				{
+					type: 'cancel',
+					text: 'Close',
+				},
+				{
+					type: 'submit',
+					text: 'Save',
+					primary: true,
+				},
+			],
+			onSubmit: function(_api: any) {
+				console.log('Mermaid Submit');
+				// const data = api.getData();
+				/* Insert content when the window form is submitted */
+				// editor.insertContent(`Title: ${data.title}`);
+				// api.close();
+			},
+		});
+	}, []);
+
 	const insertCommandPre = useCallback((editor: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const preElement = document.createElement('pre');
@@ -644,30 +678,56 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 	const insertMermaidDiv = useCallback((editor: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
-		const divElement = document.createElement('div');
-		const divId = `mermaid_${new Date().getTime()}`;
-		// preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+		const divMermaidRoot = document.createElement('div');
+		const divMermaidDialog = document.createElement('div');
+		const baseId = `mermaid_${new Date().getTime()}`;
+
+
 
 		// set id to preElement
-		divElement.id = divId;
-		divElement.setAttribute('class', 'mermaid');
-		divElement.innerText =
-`sequenceDiagram
+		divMermaidDialog.id = `mermaidDialog_${baseId}`;
+		divMermaidDialog.setAttribute('class', 'mermaid');
+		divMermaidDialog.innerText =
+			`sequenceDiagram
      Alice ->> Bob: Hello Bob, how are you?`;
 
+		divMermaidRoot.id = `mermaidRoot_${baseId}`;
+		// divMermaidRoot.addEventListener('click', () => {
+		// 	console.log('MermaidRoot clicked');
+		// 	openMermaidDialog(editor);
+		// });
 
+		divMermaidRoot.appendChild(divMermaidDialog);
 		// 現在のカーソル位置に挿入
-		editor.selection.setNode(divElement);
-		const tceDivElement = editor.dom.select(`div#${divId}`)[0];
+		editor.selection.setNode(divMermaidRoot);
+		const tceDivElement = editor.dom.select(`div#${divMermaidDialog.id}`)[0];
 		removeNextSiblingBr(tceDivElement, editor);
-
 		removeInnerBr(tceDivElement, editor);
+		const divMermaidRootElement = editor.dom.select(`div#${divMermaidRoot.id}`)[0];
+		removeNextSiblingBr(divMermaidRootElement, editor);
+
 		const range = document.createRange();
 		range.setStart(tceDivElement, 0);
 		range.setEnd(tceDivElement, 0);
 		editor.selection.setRng(range);
 		editor.nodeChanged();
 		editor.focus();
+		// TinyMCEのAPIを利用してクリックイベントを登録
+		editor.on('click', (e: any) => {
+			// console.log(`clicked event: ${e.target.id}`);
+			let targetElement = e.target;
+			while (targetElement) {
+				console.log(`targetId: ${targetElement.id}`);
+				if (targetElement.id === divMermaidRoot.id) {
+					console.log(`MermaidRoot clicked: ${divMermaidRoot.id}`);
+					openMermaidDialog(editor);
+					return; // 処理が行われたのでループを終了
+				}
+				targetElement = targetElement.parentElement; // 親要素に移動
+			}
+			// console.log(`not matched with ${divMermaidRoot.id}`);
+			// 一致するIDが見つからない場合は何も処理を行わない
+		});
 	}, [document]);
 
 
