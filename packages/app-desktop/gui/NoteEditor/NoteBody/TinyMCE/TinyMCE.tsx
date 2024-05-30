@@ -618,22 +618,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		}
 	}, []);
 
-	// const decodeHtmlSpecialEntities = useCallback((str: string): string => {
-	// 	const entities = {
-	// 		'&lt;': '<',
-	// 		'&gt;': '>',
-	// 		'&amp;': '&',
-	// 		'&nbsp;': ' ',
-	// 		'&ensp;': ' ',
-	// 		'&emsp;': ' ',
-	// 		'&ndash;': '–',
-	// 		'&mdash;': '—',
-	// 	} as any;
-	// 	return str.replace(/&lt;|&gt;|&amp;|&nbsp;|&ensp;|&emsp;|&ndash;|&mdash;/g, (match: string) => entities[match]);
-	// }, []);
-
-	const openMermaidDialog = useCallback((editor: any, initialValue: string, baseId: string, mermaidRootElement: any) => {
-		console.log(`baseId: ${baseId}`);
+	const openMermaidDialog = useCallback((editor: any, initialValue: string, mermaidRootElement: any) => {
+		// console.log(`baseId: ${baseId}`);
 		return editor.windowManager.open({
 			title: 'Mermaid Diagram',
 			size: 'large',
@@ -667,7 +653,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				const data = api.getData();
 				const inputTxt = data.diagram;
 				console.log(`submitted data: ${inputTxt}`);
-				updateMermaidDiv(editor, baseId, inputTxt, mermaidRootElement);
+				updateMermaidDiv(editor, inputTxt, mermaidRootElement);
 				api.close();
 			},
 		});
@@ -701,7 +687,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const divMermaidRoot = document.createElement('div');
 		const divMermaidDialog = document.createElement('div');
-		const preMermaidTxt = document.createElement('pre');
 		const baseId = `${new Date().getTime()}`;
 
 
@@ -714,23 +699,17 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		divMermaidDialog.innerText = `${txt}`;
 
-		preMermaidTxt.id = `mermaidJoplinTxt_${baseId}`;
-		preMermaidTxt.innerText = `${txt}`;
-		preMermaidTxt.style.display = 'none';
 
 		divMermaidRoot.id = `mermaidJoplinRoot_${baseId}`;
 		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
 
 		divMermaidRoot.appendChild(divMermaidDialog);
-		divMermaidRoot.appendChild(preMermaidTxt);
+
 		// 現在のカーソル位置に挿入
 		editor.selection.setNode(divMermaidRoot);
 		const tceDivElement = editor.dom.select(`div#${divMermaidDialog.id}`)[0];
 		removeNextSiblingBr(tceDivElement, editor);
 		removeInnerBr(tceDivElement, editor);
-		const tcePreElement = editor.dom.select(`pre#${preMermaidTxt.id}`)[0];
-		removeNextSiblingBr(tcePreElement, editor);
-		// removeInnerBr(tcePreElement, editor);
 
 		const divMermaidRootElement = editor.dom.select(`div#${divMermaidRoot.id}`)[0];
 		removeNextSiblingBr(divMermaidRootElement, editor);
@@ -745,13 +724,15 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	}, [document]);
 
 
-	const updateMermaidDiv = useCallback((editor: any, baseId: string, txt: string, mermaidRootElement: any) => {
+	const updateMermaidDiv = useCallback((editor: any, txt: string, mermaidRootElement: any) => {
 		const divMermaidRoot = mermaidRootElement;
+		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
+		const baseId = divMermaidRoot.id.split('_')[1];
 
 		divMermaidRoot.innerHTML = '';
 
+
 		const divMermaidDialog = document.createElement('div');
-		const preMermaidTxt = document.createElement('pre');
 
 		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
 		divMermaidDialog.setAttribute('class', 'mermaid');
@@ -759,14 +740,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		removeNextSiblingBr(divMermaidDialog, editor);
 		removeInnerBr(divMermaidDialog, editor);
 
-		preMermaidTxt.id = `mermaidJoplinTxt_${baseId}`;
-		preMermaidTxt.textContent = `${txt}`;
-		preMermaidTxt.style.display = 'none';
-		removeNextSiblingBr(preMermaidTxt, editor);
 
 		// append new elements to diveMermaidRoot
 		divMermaidRoot.appendChild(divMermaidDialog);
-		divMermaidRoot.appendChild(preMermaidTxt);
 
 		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 	},[]);
@@ -1143,14 +1119,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							// console.log(`targetId: ${targetElement.id}`);
 							const targetIdPrefix = targetElement.id.split('_')[0];
 							if (targetIdPrefix === 'mermaidJoplinRoot') {
-								console.log(`MermaidJoplinRoot clicked: ${targetElement.id}}`);
-								const baseId = targetElement.id.split('_')[1];
-								// const txtId = `mermaidJoplinTxt_${baseId}`;
+
 								const dialogTxt = targetElement.getAttribute('mermaidTxt');
-								// const dialogHtml = txtPre.innerHTML;
-								// const escapedDialogTxt = dialogHtml.replace(/<br>/g, '\n');
-								// const dialogTxt = decodeHtmlSpecialEntities(escapedDialogTxt);
-								openMermaidDialog(editor, dialogTxt, baseId, targetElement);
+								openMermaidDialog(editor, dialogTxt, targetElement);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
