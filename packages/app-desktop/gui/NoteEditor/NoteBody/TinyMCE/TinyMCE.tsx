@@ -592,20 +592,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	// Create and setup the editor
 	// -----------------------------------------------------------------------------------------
 
-	const insertCommandPre = useCallback((editor: any) => {
-		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
-		const preElement = document.createElement('pre');
-		const preId = `${new Date().getTime()}`;
-		preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
-		// set id to preElement
-		preElement.id = preId;
-		preElement.innerText = ' ';
-
-
-		// 現在のカーソル位置に挿入
-		editor.selection.setNode(preElement);
-		const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
-		let nextSibling = tcePreElement.nextSibling;
+	const removeNextSiblingBr = useCallback((htmlElement: any, editor: any) => {
+		let nextSibling = htmlElement.nextSibling;
 
 		// 次の兄弟要素が <br> であるかを確認
 		while (nextSibling && nextSibling.nodeType === 3) { // テキストノードをスキップ
@@ -620,6 +608,72 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		} else {
 			console.log('次の兄弟要素は <br> 要素ではありません。');
 		}
+	},[]);
+
+	const removeInnerBr = useCallback((htmlElement: any, editor: any) => {
+		const brs = htmlElement.querySelectorAll('br');
+		console.log(`brCount: ${brs.length}`);
+		for (let i = 0; i < brs.length; i++) {
+			editor.dom.remove(brs[i]);
+		}
+	}, []);
+
+	const openMermaidDialog = useCallback((editor: any, initialValue: string, mermaidRootElement: any) => {
+		// console.log(`baseId: ${baseId}`);
+		return editor.windowManager.open({
+			title: 'Mermaid Diagram',
+			size: 'large',
+			initialData: {
+				'diagram': initialValue,
+			},
+			body: {
+				type: 'panel',
+				items: [
+					{
+						type: 'textarea',
+						name: 'diagram',
+						label: 'Diagram',
+					},
+				],
+			},
+			buttons: [
+				{
+					type: 'cancel',
+					text: 'Close',
+				},
+				{
+					type: 'submit',
+					text: 'Save',
+					primary: true,
+				},
+			],
+			onSubmit: function(api: any) {
+				console.log('Mermaid Submit');
+				// get textarea input string
+				const data = api.getData();
+				const inputTxt = data.diagram;
+				console.log(`submitted data: ${inputTxt}`);
+				updateMermaidDiv(editor, inputTxt, mermaidRootElement);
+				api.close();
+			},
+		});
+	}, []);
+
+	const insertCommandPre = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const preElement = document.createElement('pre');
+		const preId = `${new Date().getTime()}`;
+		preElement.setAttribute('style', 'box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 11px; padding: 8px; margin-top: 0px; margin-bottom: 0px; line-height: 1.42857; word-break: break-all; overflow-wrap: break-word; color: rgb(157, 165, 180); background: rgb(49, 54, 63); border: none; border-radius: 3px; box-shadow: none;');
+		// set id to preElement
+		preElement.id = preId;
+		preElement.innerText = ' ';
+
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(preElement);
+		const tcePreElement = editor.dom.select(`pre#${preId}`)[0];
+		removeNextSiblingBr(tcePreElement, editor);
+
 		const range = document.createRange();
 		range.setStart(tcePreElement, 0);
 		range.setEnd(tcePreElement, 0);
@@ -628,6 +682,70 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.focus();
 	}, [document]);
 
+
+	const insertMermaidDiv = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const divMermaidRoot = document.createElement('div');
+		const divMermaidDialog = document.createElement('div');
+		const baseId = `${new Date().getTime()}`;
+
+
+
+		// set id to preElement
+		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
+		divMermaidDialog.setAttribute('class', 'mermaid');
+		const txt = `sequenceDiagram
+		Alice ->> Bob: Hello Bob, how are you?`;
+
+		divMermaidDialog.innerText = `${txt}`;
+
+
+		divMermaidRoot.id = `mermaidJoplinRoot_${baseId}`;
+		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
+
+		divMermaidRoot.appendChild(divMermaidDialog);
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(divMermaidRoot);
+		const tceDivElement = editor.dom.select(`div#${divMermaidDialog.id}`)[0];
+		removeNextSiblingBr(tceDivElement, editor);
+		removeInnerBr(tceDivElement, editor);
+
+		const divMermaidRootElement = editor.dom.select(`div#${divMermaidRoot.id}`)[0];
+		removeNextSiblingBr(divMermaidRootElement, editor);
+
+		const range = document.createRange();
+		range.setStart(tceDivElement, 0);
+		range.setEnd(tceDivElement, 0);
+		editor.selection.setRng(range);
+		editor.nodeChanged();
+		editor.focus();
+		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
+	}, [document]);
+
+
+	const updateMermaidDiv = useCallback((editor: any, txt: string, mermaidRootElement: any) => {
+		const divMermaidRoot = mermaidRootElement;
+		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
+		const baseId = divMermaidRoot.id.split('_')[1];
+
+		divMermaidRoot.innerHTML = '';
+
+
+		const divMermaidDialog = document.createElement('div');
+
+		divMermaidDialog.id = `mermaidJoplinDialog_${baseId}`;
+		divMermaidDialog.setAttribute('class', 'mermaid');
+		divMermaidDialog.textContent = `${txt}`;
+		removeNextSiblingBr(divMermaidDialog, editor);
+		removeInnerBr(divMermaidDialog, editor);
+
+
+		// append new elements to diveMermaidRoot
+		divMermaidRoot.appendChild(divMermaidDialog);
+
+		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
+	},[]);
 
 
 	useEffect(() => {
@@ -658,7 +776,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', /* 'example', */ 'cmd',
+				'|', 'toc', /* 'example', */ 'cmd', 'mermaid',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -712,6 +830,21 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('pre'));
 						const unbind = editor.formatter.formatChanged('pre', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
+
+				editor.ui.registry.addToggleButton('mermaid', {
+					tooltip: 'mermaid',
+					text: 'Mer',
+					onAction: function() {
+						insertMermaidDiv(editor);
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('div'));
+						const unbind = editor.formatter.formatChanged('div', api.setActive).unbind;
 						return function() {
 							if (unbind) unbind();
 						};
@@ -977,6 +1110,27 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						const editable = findEditableContainer(event.target);
 						if (editable) openEditDialog(editable);
 					});
+
+					// Mermaidの図をダブルクリックした場合にダイアログを表示する
+					editor.on('DblClick', (e: any) => {
+						// console.log(`clicked event: ${e.target.id}`);
+						let targetElement = e.target;
+						while (targetElement) {
+							// console.log(`targetId: ${targetElement.id}`);
+							const targetIdPrefix = targetElement.id.split('_')[0];
+							if (targetIdPrefix === 'mermaidJoplinRoot') {
+
+								const dialogTxt = targetElement.getAttribute('mermaidTxt');
+								openMermaidDialog(editor, dialogTxt, targetElement);
+								return; // 処理が行われたのでループを終了
+							}
+							targetElement = targetElement.parentElement; // 親要素に移動
+						}
+						// console.log(`not matched with ${divMermaidRoot.id}`);
+						// 一致するIDが見つからない場合は何も処理を行わない
+					});
+
+
 
 					// This is triggered when an external file is dropped on the editor
 					editor.on('drop', (event: any) => {
