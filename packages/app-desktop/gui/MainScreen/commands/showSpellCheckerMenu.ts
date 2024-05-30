@@ -3,7 +3,6 @@ import { _ } from '@joplin/lib/locale';
 import bridge from '../../../services/bridge';
 import SpellCheckerService from '@joplin/lib/services/spellChecker/SpellCheckerService';
 import { AppState } from '../../../app';
-import { MenuItemConstructorOptions } from 'electron';
 
 const Menu = bridge().Menu;
 
@@ -19,10 +18,8 @@ export const runtime = (): CommandRuntime => {
 			selectedLanguage = selectedLanguage === null ? context.state.settings['spellChecker.language'] : selectedLanguage;
 			useSpellChecker = useSpellChecker === null ? context.state.settings['spellChecker.enabled'] : useSpellChecker;
 
-			const menuItems = SpellCheckerService.instance().spellCheckerConfigMenuItems(selectedLanguage, useSpellChecker) as MenuItemConstructorOptions[];
-
+			const menuItems = SpellCheckerService.instance().spellCheckerConfigMenuItems(selectedLanguage, useSpellChecker);
 			const menu = Menu.buildFromTemplate(menuItems);
-
 			menu.popup(bridge().window());
 		},
 

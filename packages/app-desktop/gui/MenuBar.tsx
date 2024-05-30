@@ -833,10 +833,10 @@ function useMenu(props: Props) {
 					{
 						label: _('&Edit'),
 						submenu: [
-							(menuItemDic as any).textCopy,
-							(menuItemDic as any).textCut,
-							(menuItemDic as any).textPaste,
-							(menuItemDic as any).textSelectAll,
+							menuItemDic.textCopy,
+							menuItemDic.textCut,
+							menuItemDic.textPaste,
+							menuItemDic.textSelectAll,
 						],
 					},
 				]));

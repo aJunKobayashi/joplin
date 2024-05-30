@@ -82,10 +82,7 @@ export class Bridge {
 		if (!('defaultPath' in options) && this.lastSelectedPaths_.file) options.defaultPath = this.lastSelectedPaths_.file;
 		const filePath = dialog.showSaveDialogSync(this.window(), options);
 		if (filePath) {
-			this.lastSelectedPaths_.file = {
-				file: filePath,
-				directory: '',
-			};
+			this.lastSelectedPaths_.file = filePath;
 		}
 		return filePath;
 	}
