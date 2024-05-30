@@ -973,9 +973,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.addShortcut('meta+shift+h', 'text_color_desc', 'text_color_command_h');
 				editor.addShortcut('meta+shift+e', 'text_color_desc', 'text_size_command_8');
 				editor.addShortcut('meta+shift+t', 'text_color_desc', 'text_size_command_10');
-				editor.addShortcut('meta+shift+8', 'text_color_desc', 'change_to_h1');
-				editor.addShortcut('meta+shift+9', 'text_color_desc', 'change_to_h2');
-				editor.addShortcut('meta+shift+0', 'text_color_desc', 'change_to_h3');
+				editor.addShortcut('meta+1', 'text_color_desc', 'change_to_h1');
+				editor.addShortcut('meta+2', 'text_color_desc', 'change_to_h2');
+				editor.addShortcut('meta+3', 'text_color_desc', 'change_to_h3');
 				editor.addShortcut('meta+shift+u', 'text_color_desc', 'change_to_ul'); // 箇条書きに変更するショートカットキー
 				editor.addShortcut('meta+shift+o', 'text_color_desc', 'change_to_ol'); // 番号付き箇条書きに変更するショートカットキー
 			});
