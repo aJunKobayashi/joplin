@@ -939,6 +939,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tinymce.activeEditor.dom.setStyle(node, 'font-size', newSize);
 				});
 
+				// h1要素に変更するコマンドを追加
+				editor.addCommand('change_to_h1', function() {
+					tinymce.activeEditor.execCommand('FormatBlock', false, 'h1');
+				});
+
+				editor.addCommand('change_to_h2', function() {
+					tinymce.activeEditor.execCommand('FormatBlock', false, 'h2');
+				});
+
+				editor.addCommand('change_to_h3', function() {
+					tinymce.activeEditor.execCommand('FormatBlock', false, 'h3');
+				});
+
+
 				// ショートカットキーを定義
 				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
 				editor.addShortcut('meta+shift+w', 'text_color_desc', 'text_color_command_w');
@@ -948,6 +962,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.addShortcut('meta+shift+h', 'text_color_desc', 'text_color_command_h');
 				editor.addShortcut('meta+shift+e', 'text_color_desc', 'text_size_command_8');
 				editor.addShortcut('meta+shift+t', 'text_color_desc', 'text_size_command_10');
+				editor.addShortcut('meta+shift+1', 'text_color_desc', 'change_to_h1');
+				editor.addShortcut('meta+shift+2', 'text_color_desc', 'change_to_h2');
+				editor.addShortcut('meta+shift+3', 'text_color_desc', 'change_to_h3');
 			});
 
 			const editors = await (window as any).tinymce.init({
