@@ -952,6 +952,17 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					tinymce.activeEditor.execCommand('FormatBlock', false, 'h3');
 				});
 
+				// 箇条書きに変更するコマンドを追加
+				editor.addCommand('change_to_ul', function() {
+					tinymce.activeEditor.execCommand('InsertUnorderedList');
+				});
+
+				// 番号付き箇条書きに変更するコマンドを追加
+				editor.addCommand('change_to_ol', function() {
+					tinymce.activeEditor.execCommand('InsertOrderedList');
+				});
+
+
 
 				// ショートカットキーを定義
 				// editor.addShortcut('meta+shift+b', 'text_color_desc', 'text_color_command_b');
@@ -965,6 +976,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				editor.addShortcut('meta+shift+8', 'text_color_desc', 'change_to_h1');
 				editor.addShortcut('meta+shift+9', 'text_color_desc', 'change_to_h2');
 				editor.addShortcut('meta+shift+0', 'text_color_desc', 'change_to_h3');
+				editor.addShortcut('meta+shift+u', 'text_color_desc', 'change_to_ul'); // 箇条書きに変更するショートカットキー
+				editor.addShortcut('meta+shift+o', 'text_color_desc', 'change_to_ol'); // 番号付き箇条書きに変更するショートカットキー
 			});
 
 			const editors = await (window as any).tinymce.init({
