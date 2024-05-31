@@ -10,7 +10,7 @@ import * as cheerio from 'cheerio';
 import * as PATH from 'path';
 import * as fsext from 'fs-extra';
 
-const bridge = require('electron').remote.require('./bridge').default;
+const bridge = require('@electron/remote').require('./bridge').default;
 
 
 

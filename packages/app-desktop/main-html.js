@@ -25,7 +25,7 @@ const FsDriverNode = require('@joplin/lib/fs-driver-node').default;
 const shim = require('@joplin/lib/shim').default;
 const { shimInit } = require('@joplin/lib/shim-init-node.js');
 const EncryptionService = require('@joplin/lib/services/EncryptionService').default;
-const bridge = require('electron').remote.require('./bridge').default;
+const bridge = require('@electron/remote').require('./bridge').default;
 const { FileApiDriverLocal } = require('@joplin/lib/file-api-driver-local.js');
 const React = require('react');
 
