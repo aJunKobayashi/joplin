@@ -121,6 +121,7 @@
     "7zip-bin-win": "^2.1.1"
   },
   "dependencies": {
+    "@electron/remote": "^2.0.1",
     "@fortawesome/fontawesome-free": "^5.13.0",
     "@joplin/lib": "^1.0.9",
     "@joplin/renderer": "^1.0.17",
