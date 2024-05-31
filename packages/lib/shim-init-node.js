@@ -123,7 +123,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 
 	shim.showMessageBox = (message, options = null) => {
 		if (shim.isElectron()) {
-			const bridge = require('@electron/remote').require('./bridge').default;
+			const bridge = require('electron').remote.require('./bridge').default;
 			return bridge().showMessageBox(message, options);
 		} else {
 			throw new Error('Not implemented');
@@ -472,7 +472,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 	shim.Buffer = Buffer;
 
 	shim.openUrl = url => {
-		const bridge = require('@electron/remote').require('./bridge').default;
+		const bridge = require('electron').remote.require('./bridge').default;
 		// Returns true if it opens the file successfully; returns false if it could
 		// not find the file.
 		return bridge().openExternal(url);

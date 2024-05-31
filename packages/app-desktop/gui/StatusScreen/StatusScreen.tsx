@@ -5,7 +5,7 @@ import { _ } from '@joplin/lib/locale';
 
 const { connect } = require('react-redux');
 import Setting from '@joplin/lib/models/Setting';
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 const { themeStyle } = require('@joplin/lib/theme');
 import ReportService from '@joplin/lib/services/ReportService';
 const fs = require('fs-extra');

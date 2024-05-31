@@ -4,7 +4,7 @@ import shim from '../shim';
 import Setting from '../models/Setting';
 
 const notifier = require('node-notifier');
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 
 interface Options {
 	appName: string;

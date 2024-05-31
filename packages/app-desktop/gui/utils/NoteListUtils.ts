@@ -10,7 +10,7 @@ import { _ } from '@joplin/lib/locale';
 import { MenuItemLocation } from '@joplin/lib/services/plugins/api/types';
 
 import BaseModel from '@joplin/lib/BaseModel';
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 const Menu = bridge().Menu;
 const MenuItem = bridge().MenuItem;
 import Note from '@joplin/lib/models/Note';
@@ -402,7 +402,7 @@ export default class NoteListUtils {
 		}
 		root.find('*').remove();
 		console.log(`removed update: ${$.html()}`);
-		const subpageList = await NoteListUtils.createSubPageList(noteId);
+		const subpageList = await NoteListUtils.createSubPageList(noteId)
 
 		await NoteListUtils.interConvertSubpageListToHTML(subpageList, root);
 		console.log(`update subpage: ${$.html()}`);

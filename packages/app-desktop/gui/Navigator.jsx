@@ -1,7 +1,7 @@
 const React = require('react');
 const Component = React.Component;
 const { connect } = require('react-redux');
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 const getWindowTitle = require('./getWindowTitle').default;
 
 

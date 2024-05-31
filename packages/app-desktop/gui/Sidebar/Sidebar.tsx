@@ -21,7 +21,7 @@ import Note from '@joplin/lib/models/Note';
 import Tag from '@joplin/lib/models/Tag';
 import { showMergedNoteByBrowser } from '../MainScreen/commands/mergeNotes';
 const { themeStyle } = require('@joplin/lib/theme');
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 const Menu = bridge().Menu;
 const MenuItem = bridge().MenuItem;
 const { substrWithEllipsis } = require('@joplin/lib/string-utils');

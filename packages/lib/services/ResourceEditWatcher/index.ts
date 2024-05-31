@@ -7,7 +7,7 @@ import Setting from '../../models/Setting';
 import Resource from '../../models/Resource';
 const EventEmitter = require('events');
 const chokidar = require('chokidar');
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 
 interface WatchedItem {
 	resourceId: string;

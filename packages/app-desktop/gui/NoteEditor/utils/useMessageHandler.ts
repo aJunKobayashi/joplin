@@ -8,7 +8,7 @@ import PostMessageService from '@joplin/lib/services/PostMessageService';
 import BaseItem from '@joplin/lib/models/BaseItem';
 import BaseModel from '@joplin/lib/BaseModel';
 import Resource from '@joplin/lib/models/Resource';
-const bridge = require('@electron/remote').require('./bridge').default;
+const bridge = require('electron').remote.require('./bridge').default;
 const { urlDecode } = require('@joplin/lib/string-utils');
 const urlUtils = require('@joplin/lib/urlUtils');
 import ResourceFetcher from '@joplin/lib/services/ResourceFetcher';
