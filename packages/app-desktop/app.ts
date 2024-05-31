@@ -43,6 +43,7 @@ import MigrationService from '@joplin/lib/services/MigrationService';
 const TemplateUtils = require('@joplin/lib/TemplateUtils');
 const CssUtils = require('@joplin/lib/CssUtils');
 // import  populateDatabase from '@joplin/lib/services/debug/populateDatabase';
+const electronContextMenu = require('./services/electron-context-menu');
 
 const commands = [
 	require('./gui/MainScreen/commands/editAlarm'),
@@ -499,7 +500,7 @@ class Application extends BaseApplication {
 
 		// The context menu must be setup in renderer process because that's where
 		// the spell checker service lives.
-		require('electron-context-menu')({
+		electronContextMenu({
 			shouldShowMenu: (_event: any, params: any) => {
 				// params.inputFieldType === 'none' when right-clicking the text editor. This is a bit of a hack to detect it because in this
 				// case we don't want to use the built-in context menu but a custom one.
