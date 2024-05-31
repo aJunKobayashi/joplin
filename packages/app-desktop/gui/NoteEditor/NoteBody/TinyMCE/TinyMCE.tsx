@@ -1164,6 +1164,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 					// This is triggered when an external file is dropped on the editor
 					editor.on('drop', (event: any) => {
+						event.preventDefault();
 						props_onDrop.current(event);
 					});
 
