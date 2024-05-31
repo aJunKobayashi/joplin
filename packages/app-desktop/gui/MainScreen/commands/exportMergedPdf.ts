@@ -6,9 +6,9 @@ import { createMergedNoteBody } from './mergeNotes';
 import Folder from '@joplin/lib/models/Folder';
 import { copyPluginAssetsIfNotExit, modifyJoplinResourceAndSetPlugin } from '../../../commands/showBrowser';
 import Setting from '@joplin/lib/models/Setting';
-const bridge = require('electron').remote.require('./bridge').default;
+const bridge = require('@electron/remote').require('./bridge').default;
 // import Note from '@joplin/lib/models/Note';
-// const bridge = require('electron').remote.require('./bridge').default;
+// const bridge = require('@electron/remote').require('./bridge').default;
 
 export const declaration: CommandDeclaration = {
 	name: 'exportMergedPdf',
