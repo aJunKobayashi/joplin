@@ -1322,17 +1322,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 					editor.on('init', () => {
 						setEditorReady(true);
-						editor.getDoc().dispatchEvent(new Event('joplin-mathJaxLoad'));
 					});
 
 					editor.on('SetContent', () => {
 						props_onMessage.current({ channel: 'noteRenderComplete' });
-						editor.getDoc().dispatchEvent(new Event('joplin-mathJaxLoad'));
-						const sheet = document.querySelector('#MJX-CHTML-styles');
-						if (sheet) sheet.parentNode.removeChild(sheet);
-					});
-
-					editor.on('load', () => {
 						editor.getDoc().dispatchEvent(new Event('joplin-mathJaxLoad'));
 					});
 				},
