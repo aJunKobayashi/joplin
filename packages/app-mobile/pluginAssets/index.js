@@ -1,5 +1,5 @@
 module.exports = {
-hash:"4d81759889ca3c9d3ef930dbe01c8c07", files: {
+hash:"922e631a8e918ff17d1d0dbf07e356be", files: {
 'highlight.js/atom-one-dark-reasonable.css': { data: require('./highlight.js/atom-one-dark-reasonable.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'highlight.js/atom-one-light.css': { data: require('./highlight.js/atom-one-light.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'katex/fonts/KaTeX_AMS-Regular.woff2': { data: require('./katex/fonts/KaTeX_AMS-Regular.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
@@ -23,6 +23,7 @@ hash:"4d81759889ca3c9d3ef930dbe01c8c07", files: {
 'katex/fonts/KaTeX_Size4-Regular.woff2': { data: require('./katex/fonts/KaTeX_Size4-Regular.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
 'katex/fonts/KaTeX_Typewriter-Regular.woff2': { data: require('./katex/fonts/KaTeX_Typewriter-Regular.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
 'katex/katex.css': { data: require('./katex/katex.css.base64.js'), mime: 'text/css', encoding: 'base64' },
+'mathjax/mathjax_render.js': { data: require('./mathjax/mathjax_render.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mathjax/tex-mml-chtml.js': { data: require('./mathjax/tex-mml-chtml.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mermaid/mermaid.min.js': { data: require('./mermaid/mermaid.min.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mermaid/mermaid_render.js': { data: require('./mermaid/mermaid_render.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },

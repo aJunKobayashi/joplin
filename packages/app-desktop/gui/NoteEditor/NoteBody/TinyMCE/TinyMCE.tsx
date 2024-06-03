@@ -724,6 +724,51 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	}, [document]);
 
 
+	const insertMathJaxDiv = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const divMathjaxRoot = document.createElement('div');
+		const pMathjaxDialog = document.createElement('p');
+		const baseId = `${new Date().getTime()}`;
+
+
+
+		// set id to preElement
+		pMathjaxDialog.id = `mathJaxDialog_${baseId}`;
+		pMathjaxDialog.setAttribute('class', 'JoplinMathJax');
+		const txt = '\\( E=mc^2 \\)';
+
+		pMathjaxDialog.innerText = `${txt}`;
+		const id = `mathJaxJoplinRoot_${baseId}`;
+
+
+		divMathjaxRoot.id = `mathJaxJoplinRoot_${baseId}`;
+		divMathjaxRoot.setAttribute('mathjaxTxt', `${txt}`);
+
+		divMathjaxRoot.appendChild(pMathjaxDialog);
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(divMathjaxRoot);
+		const tcePElement = editor.dom.select(`p#${pMathjaxDialog.id}`)[0];
+		removeNextSiblingBr(tcePElement, editor);
+		removeInnerBr(tcePElement, editor);
+
+		const divMathjaxRootElement = editor.dom.select(`div#${divMathjaxRoot.id}`)[0];
+		removeNextSiblingBr(divMathjaxRootElement, editor);
+
+		const range = document.createRange();
+		range.setStart(tcePElement, 0);
+		range.setEnd(tcePElement, 0);
+		editor.selection.setRng(range);
+		editor.nodeChanged();
+		editor.focus();
+		// カスタムイベントの作成とディスパッチ
+		const event = new CustomEvent('joplin-mathJaxUpdate', {
+			detail: { id: id },
+		});
+		editor.getDoc().dispatchEvent(event);
+	}, [document]);
+
+
 	const updateMermaidDiv = useCallback((editor: any, txt: string, mermaidRootElement: any) => {
 		const divMermaidRoot = mermaidRootElement;
 		divMermaidRoot.setAttribute('mermaidTxt', `${txt}`);
@@ -776,7 +821,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', /* 'example', */ 'cmd', 'mermaid',
+				'|', 'toc', /* 'example', */ 'cmd', 'mermaid', 'mathjax',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -838,7 +883,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 				editor.ui.registry.addToggleButton('mermaid', {
 					tooltip: 'mermaid',
-					text: 'Mer',
+					text: '図',
 					onAction: function() {
 						insertMermaidDiv(editor);
 					},
@@ -851,6 +896,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					},
 				});
 
+				editor.ui.registry.addToggleButton('mathjax', {
+					tooltip: 'mathjax',
+					text: '式',
+					onAction: function() {
+						insertMathJaxDiv(editor);
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('div'));
+						const unbind = editor.formatter.formatChanged('div', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
 
 				/* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
 				editor.ui.registry.addMenuItem('example', {
