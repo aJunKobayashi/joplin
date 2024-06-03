@@ -1482,6 +1482,9 @@ packages/renderer/MdToHtml/rules/link_close.js.map
 packages/renderer/MdToHtml/rules/link_open.d.ts
 packages/renderer/MdToHtml/rules/link_open.js
 packages/renderer/MdToHtml/rules/link_open.js.map
+packages/renderer/MdToHtml/rules/mathjax.d.ts
+packages/renderer/MdToHtml/rules/mathjax.js
+packages/renderer/MdToHtml/rules/mathjax.js.map
 packages/renderer/MdToHtml/rules/mermaid.d.ts
 packages/renderer/MdToHtml/rules/mermaid.js
 packages/renderer/MdToHtml/rules/mermaid.js.map
