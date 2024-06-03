@@ -2,16 +2,23 @@ document.addEventListener('joplin-mathJaxUpdate', (event) => {
     console.log(`joplin-mathJaxUpdate event triggered!`);
     const targetId = event.detail.id;
     const target = document.getElementById(targetId);
-    MathJax.typesetPromise([target]);
+    MathJax.Hub.Typeset(target);
     console.log(`fiinished typesetting!. id: ${targetId}`);
 });
 
 
-let mathJaxStyleTimerRef = null;
 
-const removeMathjaxStyleTimer = (document, count) => {
+
+const removeMathJaxStyleTimerFunc = (document, count) => {
+    let mathJaxStyleTimerRef = null;
+    return () => {
+        removeMathjaxStyleTimer(document, count, mathJaxStyleTimerRef);
+    }
+}
+
+const removeMathjaxStyleTimer = (document, count, mathJaxStyleTimerRef) => {
     if (mathJaxStyleTimerRef !== null) {
-        clearTimeout(mathJaxStyleTimerRef.current);
+        clearTimeout(mathJaxStyleTimerRef);
         mathJaxStyleTimerRef = null;
     }
     console.log(`removeMathjaxTimer is called ${count} times.`);
@@ -22,7 +29,7 @@ const removeMathjaxStyleTimer = (document, count) => {
             return;
         }
         mathJaxStyleTimerRef = setTimeout(() => {
-            removeMathjaxStyleTimer(document, count + 1);
+            removeMathjaxStyleTimer(document, count + 1, mathJaxStyleTimerRef);
         }, 500);
         return;
     }
@@ -31,5 +38,6 @@ const removeMathjaxStyleTimer = (document, count) => {
 };
 
 document.addEventListener('joplin-mathJaxOnload', (event) => {
-    removeMathjaxStyleTimer(document, 0);
+    const timerFunc = removeMathJaxStyleTimerFunc(document, 0);
+    timerFunc();
 });
