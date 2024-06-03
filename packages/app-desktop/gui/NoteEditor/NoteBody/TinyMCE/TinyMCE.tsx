@@ -661,17 +661,23 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	}, []);
 
 
-	const openMathJaxDialog = useCallback((editor: any, initialValue: string, mathjaxRootElement: any) => {
+	const openMathJaxDialog = useCallback((editor: any, initialValue: string, mathjaxRootElement: any, fontsize: string) => {
 		// console.log(`baseId: ${baseId}`);
 		return editor.windowManager.open({
 			title: 'Mathjax Diagram',
 			size: 'large',
 			initialData: {
 				'diagram': initialValue,
+				'fontsize': fontsize,
 			},
 			body: {
 				type: 'panel',
 				items: [
+					{
+						type: 'input',
+						name: 'fontsize',
+						label: 'fontsize',
+					},
 					{
 						type: 'textarea',
 						name: 'diagram',
@@ -691,12 +697,13 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				},
 			],
 			onSubmit: function(api: any) {
-				console.log('Mermaid Submit');
+				console.log('Mathjax Submit');
 				// get textarea input string
 				const data = api.getData();
 				const inputTxt = data.diagram;
-				console.log(`submitted data: ${inputTxt}`);
-				updateMathjaxDiv(editor, inputTxt, mathjaxRootElement);
+				const fontsize = data.fontsize;
+				console.log(`submitted data: ${inputTxt}, fontsize: ${fontsize}`);
+				updateMathjaxDiv(editor, inputTxt, mathjaxRootElement, fontsize);
 				api.close();
 			},
 		});
@@ -784,8 +791,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const rootId = `mathJaxJoplinRoot_${baseId}`;
 
 
+		const fontSize = '20';
 		divMathjaxRoot.id = `mathJaxJoplinRoot_${baseId}`;
 		divMathjaxRoot.setAttribute('mathjaxTxt', `${txt}`);
+		divMathjaxRoot.setAttribute('mathjaxFontsize', fontSize);
 
 		divMathjaxRoot.appendChild(pMathjaxDialog);
 
@@ -806,7 +815,9 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.focus();
 		// カスタムイベントの作成とディスパッチ
 		const event = new CustomEvent('joplin-mathJaxUpdate', {
-			detail: { id: rootId },
+			detail: { id: rootId,
+				fontSize: fontSize,
+			},
 		});
 		editor.getDoc().dispatchEvent(event);
 	}, [document]);
@@ -835,9 +846,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 	},[]);
 
-	const updateMathjaxDiv = useCallback((editor: any, txt: string, mathjaxRootElement: any) => {
+	const updateMathjaxDiv = useCallback((editor: any, txt: string, mathjaxRootElement: any, fontsize: string) => {
 		const divMathjaxRoot = mathjaxRootElement;
 		divMathjaxRoot.setAttribute('mathjaxTxt', `${txt}`);
+		divMathjaxRoot.setAttribute('mathjaxFontsize', `${fontsize}`);
 		const baseId = divMathjaxRoot.id.split('_')[1];
 
 		divMathjaxRoot.innerHTML = '';
@@ -856,7 +868,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		divMathjaxRoot.appendChild(pMermaidDialog);
 		// カスタムイベントの作成とディスパッチ
 		const event = new CustomEvent('joplin-mathJaxUpdate', {
-			detail: { id: pMermaidDialog.id },
+			detail: { id: pMermaidDialog.id,
+				fontSize: fontsize },
 		});
 		editor.getDoc().dispatchEvent(event);
 	},[]);
@@ -1298,7 +1311,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							if (targetIdPrefix === 'mathJaxJoplinRoot') {
 
 								const dialogTxt = targetElement.getAttribute('mathjaxTxt');
-								openMathJaxDialog(editor, dialogTxt, targetElement);
+								const fontSize = targetElement.getAttribute('mathjaxFontsize') ?? '20';
+								openMathJaxDialog(editor, dialogTxt, targetElement, fontSize);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
