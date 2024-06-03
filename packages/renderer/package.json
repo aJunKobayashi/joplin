@@ -44,6 +44,7 @@
     "markdown-it-sub": "^1.0.0",
     "markdown-it-sup": "^1.0.0",
     "markdown-it-toc-done-right": "^4.1.0",
+    "mathjax": "^3.2.2",
     "md5": "^2.2.1",
     "mermaid": "^10.9.1",
     "uslug": "git+https://github.com/laurent22/uslug.git#emoji-support"
