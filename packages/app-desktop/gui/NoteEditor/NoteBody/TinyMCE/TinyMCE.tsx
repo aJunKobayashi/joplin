@@ -659,6 +659,48 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		});
 	}, []);
 
+
+	const openMathJaxDialog = useCallback((editor: any, initialValue: string, mathjaxRootElement: any) => {
+		// console.log(`baseId: ${baseId}`);
+		return editor.windowManager.open({
+			title: 'Mathjax Diagram',
+			size: 'large',
+			initialData: {
+				'diagram': initialValue,
+			},
+			body: {
+				type: 'panel',
+				items: [
+					{
+						type: 'textarea',
+						name: 'diagram',
+						label: 'Diagram',
+					},
+				],
+			},
+			buttons: [
+				{
+					type: 'cancel',
+					text: 'Close',
+				},
+				{
+					type: 'submit',
+					text: 'Save',
+					primary: true,
+				},
+			],
+			onSubmit: function(api: any) {
+				console.log('Mermaid Submit');
+				// get textarea input string
+				const data = api.getData();
+				const inputTxt = data.diagram;
+				console.log(`submitted data: ${inputTxt}`);
+				updateMathjaxDiv(editor, inputTxt, mathjaxRootElement);
+				api.close();
+			},
+		});
+	}, []);
+
 	const insertCommandPre = useCallback((editor: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const preElement = document.createElement('pre');
@@ -738,7 +780,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const txt = '\\( E=mc^2 \\)';
 
 		pMathjaxDialog.innerText = `${txt}`;
-		const id = `mathJaxJoplinRoot_${baseId}`;
+		const rootId = `mathJaxJoplinRoot_${baseId}`;
 
 
 		divMathjaxRoot.id = `mathJaxJoplinRoot_${baseId}`;
@@ -763,7 +805,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.focus();
 		// カスタムイベントの作成とディスパッチ
 		const event = new CustomEvent('joplin-mathJaxUpdate', {
-			detail: { id: id },
+			detail: { id: rootId },
 		});
 		editor.getDoc().dispatchEvent(event);
 	}, [document]);
@@ -790,6 +832,32 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		divMermaidRoot.appendChild(divMermaidDialog);
 
 		editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
+	},[]);
+
+	const updateMathjaxDiv = useCallback((editor: any, txt: string, mathjaxRootElement: any) => {
+		const divMathjaxRoot = mathjaxRootElement;
+		divMathjaxRoot.setAttribute('mathjaxTxt', `${txt}`);
+		const baseId = divMathjaxRoot.id.split('_')[1];
+
+		divMathjaxRoot.innerHTML = '';
+
+
+		const pMermaidDialog = document.createElement('p');
+
+		pMermaidDialog.id = `mathjaxJoplinDialog_${baseId}`;
+		pMermaidDialog.setAttribute('class', 'JoplinMathJax');
+		pMermaidDialog.textContent = `${txt}`;
+		removeNextSiblingBr(pMermaidDialog, editor);
+		removeInnerBr(pMermaidDialog, editor);
+
+
+		// append new elements to diveMermaidRoot
+		divMathjaxRoot.appendChild(pMermaidDialog);
+		// カスタムイベントの作成とディスパッチ
+		const event = new CustomEvent('joplin-mathJaxUpdate', {
+			detail: { id: pMermaidDialog.id },
+		});
+		editor.getDoc().dispatchEvent(event);
 	},[]);
 
 
@@ -1219,6 +1287,24 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 						// 一致するIDが見つからない場合は何も処理を行わない
 					});
 
+					// mathjaxの数式をダブルクリックした場合にダイアログを表示する
+					editor.on('DblClick', (e: any) => {
+						// console.log(`clicked event: ${e.target.id}`);
+						let targetElement = e.target;
+						while (targetElement) {
+							// console.log(`targetId: ${targetElement.id}`);
+							const targetIdPrefix = targetElement.id.split('_')[0];
+							if (targetIdPrefix === 'mathJaxJoplinRoot') {
+
+								const dialogTxt = targetElement.getAttribute('mathjaxTxt');
+								openMathJaxDialog(editor, dialogTxt, targetElement);
+								return; // 処理が行われたのでループを終了
+							}
+							targetElement = targetElement.parentElement; // 親要素に移動
+						}
+						// console.log(`not matched with ${divMermaidRoot.id}`);
+						// 一致するIDが見つからない場合は何も処理を行わない
+					});
 
 
 					// This is triggered when an external file is dropped on the editor
