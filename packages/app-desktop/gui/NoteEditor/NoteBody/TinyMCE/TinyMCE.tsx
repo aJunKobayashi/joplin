@@ -778,7 +778,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// set id to preElement
 		pMathjaxDialog.id = `mathJaxDialog_${baseId}`;
 		pMathjaxDialog.setAttribute('class', 'JoplinMathJax');
-		const txt = '\\( E=mc^2 \\)';
+		const txt = 'E=mc^2';
 
 		pMathjaxDialog.innerText = `${txt}`;
 		const rootId = `mathJaxJoplinRoot_${baseId}`;
