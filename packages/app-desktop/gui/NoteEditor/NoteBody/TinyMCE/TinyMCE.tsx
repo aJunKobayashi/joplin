@@ -181,7 +181,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			dispatchDidUpdateIID_ = null;
 			if (editor && editor.getDoc()) editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 		}, 10);
-
 	};
 
 	const insertResourcesIntoContent = useCallback(async (filePaths: string[] = null, options: any = null) => {
@@ -1327,6 +1326,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 					editor.on('SetContent', () => {
 						props_onMessage.current({ channel: 'noteRenderComplete' });
+						editor.getDoc().dispatchEvent(new Event('joplin-mathJaxOnload'));
 					});
 
 				},
@@ -1400,11 +1400,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		if (jsFiles.length) {
 			const editorElementId = editor.dom.uniqueId();
 
-			for (let jsFile of jsFiles) {
-				console.log(`jsFile: ${jsFile}`);
-				if ((jsFile as string).includes('tex-mml-chtml.js')) {
-					jsFile = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
-				}
+			for (const jsFile of jsFiles) {
 				const script = editor.dom.create('script', {
 					id: editorElementId,
 					type: 'text/javascript',
@@ -1522,7 +1518,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			await loadDocumentAssets(editor, await props.allAssets(props.contentMarkupLanguage));
 
 			dispatchDidUpdate(editor);
-			editor.getDoc().dispatchEvent(new Event('joplin-mathJaxOnload'));
 		};
 
 		void loadContent();
