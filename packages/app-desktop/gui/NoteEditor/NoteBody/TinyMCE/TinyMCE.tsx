@@ -181,6 +181,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			dispatchDidUpdateIID_ = null;
 			if (editor && editor.getDoc()) editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
 		}, 10);
+
 	};
 
 	const insertResourcesIntoContent = useCallback(async (filePaths: string[] = null, options: any = null) => {
@@ -1326,7 +1327,6 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 					editor.on('SetContent', () => {
 						props_onMessage.current({ channel: 'noteRenderComplete' });
-						editor.getDoc().dispatchEvent(new Event('joplin-mathJaxOnload'));
 					});
 
 				},
@@ -1518,6 +1518,12 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			await loadDocumentAssets(editor, await props.allAssets(props.contentMarkupLanguage));
 
 			dispatchDidUpdate(editor);
+			// setTimeout(() => {
+			// 	console.log('dispatchEvent: joplin-mathJaxOnload after 10s');
+			// 	editor.getDoc().dispatchEvent(new Event('joplin-mathJaxOnload'));
+			// 	// const sheet = document.querySelector('#MJX-CHTML-styles');
+			// 	// sheet.parentNode.removeChild(sheet);
+			// }, 10_000);
 		};
 
 		void loadContent();
