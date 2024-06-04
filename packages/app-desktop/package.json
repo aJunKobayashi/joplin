@@ -102,7 +102,6 @@
     "@types/styled-components": "^5.1.4",
     "ajv": "^6.5.0",
     "app-builder-bin": "^1.9.11",
-    "babel-cli": "^6.26.0",
     "babel-preset-react": "^6.24.1",
     "electron": "^30.0.9",
     "electron-builder": "22.9.1",
