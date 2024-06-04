@@ -20,7 +20,7 @@ import NoteListWrapper from '../NoteListWrapper/NoteListWrapper';
 import { AppState } from '../../app';
 import { saveLayout, loadLayout } from '../ResizableLayout/utils/persist';
 import Setting from '@joplin/lib/models/Setting';
-import produce from 'immer';
+import { produce } from 'immer';
 import shim from '@joplin/lib/shim';
 import bridge from '../../services/bridge';
 import time from '@joplin/lib/time';
