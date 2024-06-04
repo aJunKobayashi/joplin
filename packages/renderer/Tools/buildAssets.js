@@ -47,6 +47,9 @@ async function main() {
 
 	await copyFile(`${rootDir}/node_modules/mermaid/dist/mermaid.min.js`, 'mermaid/mermaid.min.js');
 	await copyFile(`${rootDir}/MdToHtml/rules/mermaid_render.js`, 'mermaid/mermaid_render.js');
+
+	await copyFile(`${rootDir}/node_modules/mathjax/es5/tex-mml-chtml.js`, 'mathjax/tex-mml-chtml.js');
+
 }
 
 main().catch((error) => {
