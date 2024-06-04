@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import PluginService, { defaultPluginSetting, PluginSettings } from '@joplin/lib/services/plugins/PluginService';
-import produce from 'immer';
+import { produce } from 'immer';
 import { _ } from '@joplin/lib/locale';
 import Logger from '@joplin/lib/Logger';
 import { ItemEvent } from './PluginBox';

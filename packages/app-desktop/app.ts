@@ -22,7 +22,7 @@ import { LayoutItem } from './gui/ResizableLayout/utils/types';
 import stateToWhenClauseContext from './services/commands/stateToWhenClauseContext';
 import ResourceService from '@joplin/lib/services/ResourceService';
 import ExternalEditWatcher from '@joplin/lib/services/ExternalEditWatcher';
-import produce from 'immer';
+import { produce } from 'immer';
 import iterateItems from './gui/ResizableLayout/utils/iterateItems';
 import validateLayout from './gui/ResizableLayout/utils/validateLayout';
 
