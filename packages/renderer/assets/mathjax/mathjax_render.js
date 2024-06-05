@@ -9,7 +9,7 @@ document.addEventListener('joplin-mathJaxUpdate', (event) => {
     console.log(`joplin-mathJaxUpdate event triggered!`);
     const targetId = event.detail.id;
     const fontSize = event.detail.fontSize;
-    const mathJaxType = event.detail.mathJaxType;
+    const mathJaxType = event.detail.mathjaxType;
     const target = document.getElementById(targetId);
     const tex = target.innerText;
     target.innerHTML = "";
