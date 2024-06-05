@@ -708,6 +708,54 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		});
 	}, []);
 
+	const openKatexDialog = useCallback((editor: any, initialValue: string, katexRootElement: any, fontsize: string) => {
+		// console.log(`baseId: ${baseId}`);
+		return editor.windowManager.open({
+			title: 'Katex Diagram',
+			size: 'large',
+			initialData: {
+				'diagram': initialValue,
+				'fontsize': fontsize,
+			},
+			body: {
+				type: 'panel',
+				items: [
+					{
+						type: 'input',
+						name: 'fontsize',
+						label: 'fontsize (em)',
+					},
+					{
+						type: 'textarea',
+						name: 'diagram',
+						label: 'Diagram',
+					},
+				],
+			},
+			buttons: [
+				{
+					type: 'cancel',
+					text: 'Close',
+				},
+				{
+					type: 'submit',
+					text: 'Save',
+					primary: true,
+				},
+			],
+			onSubmit: function(api: any) {
+				console.log('Katex Submit');
+				// get textarea input string
+				const data = api.getData();
+				const inputTxt = data.diagram;
+				const fontsize = data.fontsize;
+				console.log(`submitted data: ${inputTxt}, fontsize: ${fontsize}`);
+				updateKatexDiv(editor, inputTxt, katexRootElement, fontsize);
+				api.close();
+			},
+		});
+	}, []);
+
 	const insertCommandPre = useCallback((editor: any) => {
 		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
 		const preElement = document.createElement('pre');
@@ -821,6 +869,54 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.getDoc().dispatchEvent(event);
 	}, [document]);
 
+	const insertKatexDiv = useCallback((editor: any) => {
+		// 現在のカーソル位置に <pre> タグを挿入し、その内部にカーソルを移動させる
+		const divKatexRoot = document.createElement('div');
+		const pKatexDialog = document.createElement('p');
+		const baseId = `${new Date().getTime()}`;
+
+
+
+		// set id to preElement
+		pKatexDialog.id = `katexDialog_${baseId}`;
+		pKatexDialog.setAttribute('class', 'JoplinKatex');
+		const txt = 'c = \\pm\\sqrt{a^2 + b^2}';
+
+		pKatexDialog.innerText = `\\[ ${txt} \\]`;
+		const rootId = `katexJoplinRoot_${baseId}`;
+
+
+		const fontSize = '1.2';
+		divKatexRoot.id = `katexJoplinRoot_${baseId}`;
+		divKatexRoot.setAttribute('katexTxt', `${txt}`);
+		divKatexRoot.setAttribute('katexFontsize', fontSize);
+
+		divKatexRoot.appendChild(pKatexDialog);
+
+		// 現在のカーソル位置に挿入
+		editor.selection.setNode(divKatexRoot);
+		const tcePElement = editor.dom.select(`p#${pKatexDialog.id}`)[0];
+		removeNextSiblingBr(tcePElement, editor);
+		removeInnerBr(tcePElement, editor);
+
+		const divKatexRootElement = editor.dom.select(`div#${divKatexRoot.id}`)[0];
+		removeNextSiblingBr(divKatexRootElement, editor);
+
+		const range = document.createRange();
+		range.setStart(tcePElement, 0);
+		range.setEnd(tcePElement, 0);
+		editor.selection.setRng(range);
+		editor.nodeChanged();
+		editor.focus();
+		// カスタムイベントの作成とディスパッチ
+		const event = new CustomEvent('joplin-kartexUpdate', {
+			detail: { id: rootId,
+				fontSize: fontSize,
+				element: divKatexRootElement,
+			},
+		});
+		editor.getDoc().dispatchEvent(event);
+	}, [document]);
 
 	const updateMermaidDiv = useCallback((editor: any, txt: string, mermaidRootElement: any) => {
 		const divMermaidRoot = mermaidRootElement;
@@ -873,6 +969,35 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		editor.getDoc().dispatchEvent(event);
 	},[]);
 
+	const updateKatexDiv = useCallback((editor: any, txt: string, mathjaxRootElement: any, fontsize: string) => {
+		const divKatexRoot = mathjaxRootElement;
+		divKatexRoot.setAttribute('katexTxt', `${txt}`);
+		divKatexRoot.setAttribute('katexFontsize', `${fontsize}`);
+		const baseId = divKatexRoot.id.split('_')[1];
+
+		divKatexRoot.innerHTML = '';
+
+
+		const pKatexDialog = document.createElement('p');
+
+		pKatexDialog.id = `katexDialog_${baseId}`;
+		pKatexDialog.setAttribute('class', 'JoplinKatex');
+		pKatexDialog.textContent = `\\[ ${txt}  \\]`;
+		removeNextSiblingBr(pKatexDialog, editor);
+		removeInnerBr(pKatexDialog, editor);
+
+
+		// append new elements to diveMermaidRoot
+		divKatexRoot.appendChild(pKatexDialog);
+		// カスタムイベントの作成とディスパッチ
+		const event = new CustomEvent('joplin-kartexUpdate', {
+			detail: { id: pKatexDialog.id,
+				fontSize: fontsize,
+				element: pKatexDialog },
+		});
+		editor.getDoc().dispatchEvent(event);
+	},[]);
+
 
 	useEffect(() => {
 		if (!scriptLoaded) return;
@@ -902,7 +1027,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', /* 'example', */ 'cmd', 'mermaid', 'mathjax',
+				'|', 'toc', /* 'example', */ 'cmd', 'mermaid', /* 'mathjax' ,*/ 'katexMath',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -982,6 +1107,21 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					text: '式',
 					onAction: function() {
 						insertMathJaxDiv(editor);
+					},
+					onSetup: function(api: any) {
+						api.setActive(editor.formatter.match('div'));
+						const unbind = editor.formatter.formatChanged('div', api.setActive).unbind;
+						return function() {
+							if (unbind) unbind();
+						};
+					},
+				});
+
+				editor.ui.registry.addToggleButton('katexMath', {
+					tooltip: 'katexMath',
+					text: '式',
+					onAction: function() {
+						insertKatexDiv(editor);
 					},
 					onSetup: function(api: any) {
 						api.setActive(editor.formatter.match('div'));
@@ -1312,6 +1452,26 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 								const dialogTxt = targetElement.getAttribute('mathjaxTxt');
 								const fontSize = targetElement.getAttribute('mathjaxFontsize') ?? '20';
 								openMathJaxDialog(editor, dialogTxt, targetElement, fontSize);
+								return; // 処理が行われたのでループを終了
+							}
+							targetElement = targetElement.parentElement; // 親要素に移動
+						}
+						// console.log(`not matched with ${divMermaidRoot.id}`);
+						// 一致するIDが見つからない場合は何も処理を行わない
+					});
+
+					// mathjaxの数式をダブルクリックした場合にダイアログを表示する
+					editor.on('DblClick', (e: any) => {
+						// console.log(`clicked event: ${e.target.id}`);
+						let targetElement = e.target;
+						while (targetElement) {
+							// console.log(`targetId: ${targetElement.id}`);
+							const targetIdPrefix = targetElement.id.split('_')[0];
+							if (targetIdPrefix === 'katexJoplinRoot') {
+
+								const dialogTxt = targetElement.getAttribute('katexTxt');
+								const fontSize = targetElement.getAttribute('katexFontsize') ?? '1.2';
+								openKatexDialog(editor, dialogTxt, targetElement, fontSize);
 								return; // 処理が行われたのでループを終了
 							}
 							targetElement = targetElement.parentElement; // 親要素に移動
