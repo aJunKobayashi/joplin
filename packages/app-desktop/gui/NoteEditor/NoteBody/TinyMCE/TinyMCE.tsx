@@ -880,7 +880,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// set id to preElement
 		pKatexDialog.id = `katexDialog_${baseId}`;
 		pKatexDialog.setAttribute('class', 'JoplinKatex');
-		const txt = '\\[ c = \\pm\\sqrt{a^2 + b^2} \\]';
+		const txt = 'c = \\pm\\sqrt{a^2 + b^2}';
 
 		pKatexDialog.innerText = `${txt}`;
 		const rootId = `katexJoplinRoot_${baseId}`;
@@ -982,7 +982,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		pKatexDialog.id = `katexDialog_${baseId}`;
 		pKatexDialog.setAttribute('class', 'JoplinKatex');
-		pKatexDialog.textContent = `${txt}`;
+		pKatexDialog.textContent = `\\[ ${txt}  \\]`;
 		removeNextSiblingBr(pKatexDialog, editor);
 		removeInnerBr(pKatexDialog, editor);
 
