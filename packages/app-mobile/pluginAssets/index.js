@@ -1,5 +1,5 @@
 module.exports = {
-hash:"35e8ef5149f5bb75a7153f4fd5614902", files: {
+hash:"f727c83719b9a31c1eb32323d3be79cd", files: {
 'highlight.js/atom-one-dark-reasonable.css': { data: require('./highlight.js/atom-one-dark-reasonable.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'highlight.js/atom-one-light.css': { data: require('./highlight.js/atom-one-light.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'katex/fonts/KaTeX_AMS-Regular.woff2': { data: require('./katex/fonts/KaTeX_AMS-Regular.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
@@ -25,6 +25,7 @@ hash:"35e8ef5149f5bb75a7153f4fd5614902", files: {
 'katex/katex.css': { data: require('./katex/katex.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'mathjax/mathjax_render.js': { data: require('./mathjax/mathjax_render.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mathjax/tex-mml-chtml.js': { data: require('./mathjax/tex-mml-chtml.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
+'mathjax/tex-svg.js': { data: require('./mathjax/tex-svg.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mermaid/mermaid.min.js': { data: require('./mermaid/mermaid.min.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'mermaid/mermaid_render.js': { data: require('./mermaid/mermaid_render.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 }
