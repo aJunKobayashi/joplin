@@ -1027,7 +1027,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 				'h1', 'h2', 'h3', 'hr', 'blockquote', 'table', `joplinInsertDateTime${toolbarPluginButtons}`,
 				'|', 'fontselect', 'fontsizeselect', 'formatselect',
 				'|', 'forecolor', 'backcolor', 'casechange', 'permanentpen', 'formatpainter', 'removeformat',
-				'|', 'toc', /* 'example', */ 'cmd', 'mermaid', 'mathjax', 'katexMath',
+				'|', 'toc', /* 'example', */ 'cmd', 'mermaid', /* 'mathjax' ,*/ 'katexMath',
 			];
 
 			(window as any).tinymce.PluginManager.add('example', function(editor: any, _url: string) {
@@ -1119,7 +1119,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 				editor.ui.registry.addToggleButton('katexMath', {
 					tooltip: 'katexMath',
-					text: '式2',
+					text: '式',
 					onAction: function() {
 						insertKatexDiv(editor);
 					},
