@@ -4,7 +4,7 @@ document.addEventListener('joplin-kartexUpdate', (event) => {
     console.log(`joplin-kartexUpdate event triggered!`);
     const targetId = event.detail.id;
     const fontSize = event.detail.fontSize;
-    const target = document.getElementById(targetId);
+    const target = event.detail.element;
     renderMathInElement(target);
     const elements = target.querySelectorAll(`.katex-display>.katex `);
     for(let i = 0; i < elements.length; i++) {

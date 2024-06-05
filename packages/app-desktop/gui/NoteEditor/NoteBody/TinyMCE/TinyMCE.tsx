@@ -912,6 +912,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const event = new CustomEvent('joplin-kartexUpdate', {
 			detail: { id: rootId,
 				fontSize: fontSize,
+				element: divKatexRootElement,
 			},
 		});
 		editor.getDoc().dispatchEvent(event);
@@ -991,7 +992,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		// カスタムイベントの作成とディスパッチ
 		const event = new CustomEvent('joplin-kartexUpdate', {
 			detail: { id: pKatexDialog.id,
-				fontSize: fontsize },
+				fontSize: fontsize,
+				element: pKatexDialog },
 		});
 		editor.getDoc().dispatchEvent(event);
 	},[]);
