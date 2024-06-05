@@ -723,7 +723,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 					{
 						type: 'input',
 						name: 'fontsize',
-						label: 'fontsize',
+						label: 'fontsize (em)',
 					},
 					{
 						type: 'textarea',
@@ -886,7 +886,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const rootId = `katexJoplinRoot_${baseId}`;
 
 
-		const fontSize = '20';
+		const fontSize = '1';
 		divKatexRoot.id = `katexJoplinRoot_${baseId}`;
 		divKatexRoot.setAttribute('katexTxt', `${txt}`);
 		divKatexRoot.setAttribute('katexFontsize', fontSize);
@@ -1470,7 +1470,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 							if (targetIdPrefix === 'katexJoplinRoot') {
 
 								const dialogTxt = targetElement.getAttribute('katexTxt');
-								const fontSize = targetElement.getAttribute('katexFontsize') ?? '20';
+								const fontSize = targetElement.getAttribute('katexFontsize') ?? '1';
 								openKatexDialog(editor, dialogTxt, targetElement, fontSize);
 								return; // 処理が行われたのでループを終了
 							}

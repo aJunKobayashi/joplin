@@ -10,7 +10,9 @@ document.addEventListener('joplin-kartexUpdate', (event) => {
     for(let i = 0; i < elements.length; i++) {
         const element = elements[i];
         element.style.setProperty('text-align', 'left', 'important');
+        element.style.setProperty('font-size', `${fontSize}em`, 'important');
     }
-    target.firstChild.style.fontSize = `${fontSize}px`;
+    
+    // target.firstChild.style.fontSize = `${fontSize}px`;
     console.log(`fiinished typesetting!. id: ${targetId}`);
 });
