@@ -4,6 +4,7 @@ export default {
 		return [
 			{ name: 'mathjax_render.js' },
 			{ name: 'tex-svg.js' },
+			{ name: 'tex-mml-chtml.js' },
 		];
 	},
 	plugin: function(markdownIt: any) {
