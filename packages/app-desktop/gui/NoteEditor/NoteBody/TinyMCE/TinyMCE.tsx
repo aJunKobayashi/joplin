@@ -882,7 +882,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		pKatexDialog.setAttribute('class', 'JoplinKatex');
 		const txt = 'c = \\pm\\sqrt{a^2 + b^2}';
 
-		pKatexDialog.innerText = `${txt}`;
+		pKatexDialog.innerText = `\\[ ${txt} \\]`;
 		const rootId = `katexJoplinRoot_${baseId}`;
 
 
