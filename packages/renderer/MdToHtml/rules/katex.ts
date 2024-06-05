@@ -85,6 +85,8 @@ function katexStyle() {
 		{ name: 'fonts/KaTeX_Size3-Regular.woff2' },
 		{ name: 'fonts/KaTeX_Size4-Regular.woff2' },
 		{ name: 'fonts/KaTeX_Typewriter-Regular.woff2' },
+		{ name: 'katex.min.js' },
+		{ name: 'contrib/auto-render.min.js' },
 	];
 }
 
