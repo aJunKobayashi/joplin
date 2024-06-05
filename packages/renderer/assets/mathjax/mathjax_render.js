@@ -11,6 +11,7 @@ document.addEventListener('joplin-mathJaxUpdate', (event) => {
     const fontSize = event.detail.fontSize;
     const target = document.getElementById(targetId);
     const tex = target.innerText;
+    target.innerHTML = "";
     const container = MathJax.tex2svg(tex, { display: false });
     const [svg] = container.children;
     target.appendChild(svg);
