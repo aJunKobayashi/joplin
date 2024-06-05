@@ -3,7 +3,7 @@ export default {
 	assets: function() {
 		return [
 			{ name: 'mathjax_render.js' },
-			{ name: 'tex-mml-chtml.js' },
+			{ name: 'tex-svg.js' },
 		];
 	},
 	plugin: function(markdownIt: any) {
