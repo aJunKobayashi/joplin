@@ -86,7 +86,7 @@ function NoteListItem(props: NoteListItemProps, ref: any) {
 	}
 
 	const onTitleClick = useCallback(async (event) => {
-		if (event && event.metaKey) {
+		if (event && (event.metaKey || (process.platform == 'linux' && event.ctrlKey))) {
 			console.log(`title metakey click: id: ${props.item.id},  title: ${props.item.title}`);
 			await showNoteByBrowser(props.item.id);
 		} else {

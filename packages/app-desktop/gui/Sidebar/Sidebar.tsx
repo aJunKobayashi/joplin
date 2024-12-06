@@ -332,7 +332,7 @@ class SidebarComponent extends React.Component<Props, State> {
 
 	async folderItem_click(folderId: string, event: React.MouseEvent) {
 		// console.log(`FOLDER_SELECT: ${event}`);
-		if (event.metaKey) {
+		if (event.metaKey || (process.platform == 'linux' && event.ctrlKey)) {
 			console.log('FOLDER SELECT with Metakey');
 			await showMergedNoteByBrowser(folderId);
 			return;
