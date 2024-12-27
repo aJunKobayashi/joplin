@@ -7,6 +7,7 @@ const { themeStyle } = require('@joplin/lib/theme');
 const bridge = require('@electron/remote').require('./bridge').default;
 const prettyBytes = require('pretty-bytes');
 import Resource from '@joplin/lib/models/Resource';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface Style {
 	width: number;
@@ -50,7 +51,11 @@ interface ActiveSorting {
 	type: SortingType;
 }
 
+const gTimerMSec = 300;
+
 const ResourceTableComp = (props: ResourceTable) => {
+	const [filterWords, setFilterWords] = useState<Array<string>>([]);
+	const timerRef = React.useRef<number | null>(null);
 	const theme = themeStyle(props.themeId);
 
 	const sortOrderEngagedMarker = (s: SortingOrder) => {
@@ -61,6 +66,15 @@ const ResourceTableComp = (props: ResourceTable) => {
 					(props.sorting.order === s && props.sorting.type === 'desc') ? '▾' : '▴'}</a>
 		);
 	};
+
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+		};
+	}, []);
 
 	const titleCellStyle = {
 		...theme.textStyle,
@@ -85,35 +99,62 @@ const ResourceTableComp = (props: ResourceTable) => {
 		fontWeight: 'bold',
 	};
 
+	const filteredResources = useMemo(() => {
+		if (!filterWords.length) return [...props.resources];
+		return props.resources.filter((resource) => {
+			const title = resource.title.toLowerCase();
+			return filterWords.every((word) => title.includes(word));
+		});
+	}, [filterWords, props.resources]);
+
+	const onFilterValueChanged = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+		const filteredValue = event.target.value;
+		console.log('filteredValue', filteredValue);
+		if (timerRef.current) {
+			clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		timerRef.current = setTimeout(() => {
+			const words = filteredValue.split(' ').filter((w) => w.length > 0);
+			setFilterWords(words);
+		}, gTimerMSec);
+	}, []);
+
 	return (
-		<table style={{ width: '100%' }}>
-			<thead>
-				<tr>
-					<th style={headerStyle}>{_('Title')} {sortOrderEngagedMarker('name')}</th>
-					<th style={headerStyle}>{_('Size')} {sortOrderEngagedMarker('size')}</th>
-					<th style={headerStyle}>{_('ID')}</th>
-					<th style={headerStyle}>{_('Action')}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{props.resources.map((resource: InnerResource, index: number) =>
-					<tr key={index}>
-						<td style={titleCellStyle} className="titleCell">
-							<a
-								style={{ color: theme.urlColor }}
-								href="#"
-								onClick={() => props.onResourceClick(resource)}>{resource.title || `(${_('Untitled')})`}
-							</a>
-						</td>
-						<td style={cellStyle} className="dataCell">{prettyBytes(resource.size)}</td>
-						<td style={cellStyle} className="dataCell">{resource.id}</td>
-						<td style={cellStyle} className="dataCell">
-							<button style={theme.buttonStyle} onClick={() => props.onResourceDelete(resource)}>{_('Delete')}</button>
-						</td>
+		<div>
+			<div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+				<label style={{ marginRight: '10px' }}>{'Filter: '}</label>
+				<input type="text" style={{ flex: 1 }} onChange={onFilterValueChanged} />
+			</div>
+			<table style={{ width: '100%' }}>
+				<thead>
+					<tr>
+						<th style={headerStyle}>{_('Title')} {sortOrderEngagedMarker('name')}</th>
+						<th style={headerStyle}>{_('Size')} {sortOrderEngagedMarker('size')}</th>
+						<th style={headerStyle}>{_('ID')}</th>
+						<th style={headerStyle}>{_('Action')}</th>
 					</tr>
-				)}
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					{filteredResources.map((resource: InnerResource, index: number) =>
+						<tr key={index}>
+							<td style={titleCellStyle} className="titleCell">
+								<a
+									style={{ color: theme.urlColor }}
+									href="#"
+									onClick={() => props.onResourceClick(resource)}>{resource.title || `(${_('Untitled')})`}
+								</a>
+							</td>
+							<td style={cellStyle} className="dataCell">{prettyBytes(resource.size)}</td>
+							<td style={cellStyle} className="dataCell">{resource.id}</td>
+							<td style={cellStyle} className="dataCell">
+								<button style={theme.buttonStyle} onClick={() => props.onResourceDelete(resource)}>{_('Delete')}</button>
+							</td>
+						</tr>
+					)}
+				</tbody>
+			</table>
+		</div>
 	);
 };
 
