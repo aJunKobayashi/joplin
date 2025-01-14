@@ -83,7 +83,7 @@ export default class OneDriveApi {
 		const driveId = this.accountProperties_.driveId;
 		const r = await this.execJson('GET', `/me/drives/${driveId}/special/approot`);
 		const rootFolder = PATHUtil.basename(Setting.value('profileDir'));
-		const path = PATHUtil.join(`${r.parentReference.path}/${r.name}`, rootFolder);
+		const path = PATHUtil.join(`${encodeURIComponent(r.parentReference.path)}/${encodeURIComponent(r.name)}`, encodeURIComponent(rootFolder));
 		return path;
 	}
 
