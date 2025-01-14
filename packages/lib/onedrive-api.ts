@@ -266,6 +266,8 @@ export default class OneDriveApi {
 			url += stringify(query);
 		}
 
+		console.log(`onedrive-api::exec: ${method} ${url}`);
+
 		if (data) options.body = data;
 
 		options.timeout = 1000 * 60 * 5; // in ms
