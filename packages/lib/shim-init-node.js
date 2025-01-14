@@ -346,8 +346,24 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		const validatedUrl = urlValidator.isUri(url);
 		if (!validatedUrl) throw new Error(`Not a valid URL: ${url}`);
 
-		return shim.fetchWithRetry(() => {
-			return nodeFetch(url, options);
+		const newOptions = {
+			...options,
+			redirect: 'manual',
+		};
+
+		return shim.fetchWithRetry(async () => {
+			let response = await nodeFetch(url, newOptions);
+			if (response.status >= 300 && response.status < 400) {
+				const redirectUrl = response.headers.get('location');
+				if (redirectUrl) {
+					const redirectOptions = { ...newOptions };
+					delete redirectOptions.headers['Authorization'];
+					delete redirectOptions.headers['redirect'];
+					response = await nodeFetch(redirectUrl, redirectOptions);
+				}
+			}
+			console.log(`response status: ${response.status}`);
+			return response;
 		}, options);
 	};
 
