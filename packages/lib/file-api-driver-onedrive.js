@@ -108,10 +108,10 @@ class FileApiDriverOneDrive {
 
 		try {
 			if (options.target == 'file') {
-				const response = await this.api_.exec('GET', `${this.makePath_(path)}`, null, null, options);
+				const response = await this.api_.exec('GET', `${this.makePath_(path)}:/content`, null, null, options);
 				return response;
 			} else {
-				const content = await this.api_.execText('GET', `${this.makePath_(path)}`);
+				const content = await this.api_.execText('GET', `${this.makePath_(path)}:/content`);
 				return content;
 			}
 		} catch (error) {
