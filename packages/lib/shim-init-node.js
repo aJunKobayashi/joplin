@@ -359,14 +359,22 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 			...options,
 			agent: proxyAgent,
 			rejectUnauthorized: false, // Ignore certificate errors
+			redirect: 'manual',
 		};
 
-		return shim.fetchWithRetry(() => {
-			const result = nodeFetch(url, newOptions);
-			result.then(response => {
-				console.log(`response status: ${response.status}`);
-			});
-			return result;
+		return shim.fetchWithRetry(async () => {
+			let response = await nodeFetch(url, newOptions);
+			if (response.status === 302) {
+				const redirectUrl = response.headers.get('location');
+				if (redirectUrl) {
+					const redirectOptions = { ...newOptions };
+					delete redirectOptions.headers['Authorization'];
+					delete redirectOptions.headers['redirect'];
+					response = await nodeFetch(redirectUrl, redirectOptions);
+				}
+			}
+			console.log(`response status: ${response.status}`);
+			return response;
 		}, options);
 	};
 
