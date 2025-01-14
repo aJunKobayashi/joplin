@@ -83,8 +83,11 @@ export default class OneDriveApi {
 		const driveId = this.accountProperties_.driveId;
 		const r = await this.execJson('GET', `/me/drives/${driveId}/special/approot`);
 		const rootFolder = PATHUtil.basename(Setting.value('profileDir'));
-		const path = PATHUtil.join(`${encodeURIComponent(r.parentReference.path)}/${encodeURIComponent(r.name)}`, encodeURIComponent(rootFolder));
-		return path;
+		const path = PATHUtil.join(`${r.parentReference.path}/${r.name}`, rootFolder);
+		const encodePath = path.split('/').map((part: string) => {
+			return /[^\x00-\x7F]/.test(part) ? encodeURIComponent(part) : part;
+		}).join('/');
+		return encodePath;
 	}
 
 	authCodeUrl(redirectUri: string) {
