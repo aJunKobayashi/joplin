@@ -1,6 +1,5 @@
 'use strict';
 
-
 const fs = require('fs-extra');
 const shim = require('./shim').default;
 const { GeolocationNode } = require('./geolocation-node.js');
@@ -336,7 +335,6 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 	};
 
 	const nodeFetch = require('node-fetch');
-	const { HttpsProxyAgent } = require('https-proxy-agent');
 
 	// Not used??
 	shim.readLocalFileBase64 = path => {
@@ -347,24 +345,15 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 	shim.fetch = async function(url, options = null) {
 		const validatedUrl = urlValidator.isUri(url);
 		if (!validatedUrl) throw new Error(`Not a valid URL: ${url}`);
-		const proxyAgent = new HttpsProxyAgent({
-			host: '127.0.0.1',
-			port: 8080,
-			rejectUnauthorized: false, // Ignore certificate errors
-		});
-
-		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // Ignore SSL certificate errors
 
 		const newOptions = {
 			...options,
-			agent: proxyAgent,
-			rejectUnauthorized: false, // Ignore certificate errors
 			redirect: 'manual',
 		};
 
 		return shim.fetchWithRetry(async () => {
 			let response = await nodeFetch(url, newOptions);
-			if (response.status === 302) {
+			if (response.status >= 300 && response.status < 400) {
 				const redirectUrl = response.headers.get('location');
 				if (redirectUrl) {
 					const redirectOptions = { ...newOptions };
