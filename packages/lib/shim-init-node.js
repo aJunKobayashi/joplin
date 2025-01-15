@@ -361,7 +361,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		return response;
 	};
 
-	shim.fetch = async function(url, options = null) {
+	shim.fetch = async function(url, options = null, retryCount = 0) {
 		const validatedUrl = urlValidator.isUri(url);
 		if (!validatedUrl) throw new Error(`Not a valid URL: ${url}`);
 
@@ -380,7 +380,9 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 					const waitSeconds = parseInt(waitSecondsStr, 10);
 					console.log(`waiting for ${waitSeconds} seconds due to 429 tooManyRequest response`);
 					await new Promise(resolve => setTimeout(resolve, (waitSeconds + 1) * 1000));
-					result = await fetchFunc(url, newOptions);
+					if (retryCount < 5) {
+						result = await shim.fetch(url, options, retryCount + 1);
+					}
 				}
 			}
 			return result;
