@@ -282,15 +282,20 @@ export default class OneDriveApi {
 			};
 
 			let response = null;
+			let apiType = '';
 			try {
 				if (path.includes('/createUploadSession')) {
+					apiType = 'uploadBigFile';
 					response = await this.uploadBigFile(url, options);
 				} else if (options.source == 'file' && (method == 'POST' || method == 'PUT')) {
+					apiType = 'uploadBlob';
 					response = await shim.uploadBlob(url, options);
 				} else if (options.target == 'string') {
+					apiType = 'fetch';
 					response = await shim.fetch(url, options);
 				} else {
 					// file
+					apiType = 'fetchBlob';
 					response = await shim.fetchBlob(url, options);
 				}
 			} catch (error) {
@@ -302,6 +307,8 @@ export default class OneDriveApi {
 					throw error;
 				}
 			}
+
+			console.log(`onedrive-api::exec result status: ${response.status} in type:${apiType} ${method} ${url}`);
 
 			if (!response.ok) {
 				const errorResponseText = await response.text();

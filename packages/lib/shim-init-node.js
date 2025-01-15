@@ -361,7 +361,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		return response;
 	};
 
-	shim.fetch = async function(url, options = null) {
+	shim.fetch = async function(url, options = null, retryCount = 0) {
 		const validatedUrl = urlValidator.isUri(url);
 		if (!validatedUrl) throw new Error(`Not a valid URL: ${url}`);
 
@@ -380,7 +380,9 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 					const waitSeconds = parseInt(waitSecondsStr, 10);
 					console.log(`waiting for ${waitSeconds} seconds due to 429 tooManyRequest response`);
 					await new Promise(resolve => setTimeout(resolve, (waitSeconds + 1) * 1000));
-					result = await fetchFunc(url, newOptions);
+					if (retryCount < 5) {
+						result = await shim.fetch(url, options, retryCount + 1);
+					}
 				}
 			}
 			return result;
@@ -425,7 +427,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 			headers: headers,
 		};
 
-		const doFetchOperation = async () => {
+		const doFetchOperation = async (retryCount = 0) => {
 			return new Promise((resolve, reject) => {
 				let file = null;
 
@@ -453,7 +455,21 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 						cleanUpOnError(error);
 					});
 
-					const request = http.request(requestOptions, function(response) {
+					const request = http.request(requestOptions, async function(response) {
+						if (response.statusCode === 429) {
+							// Retry after handling
+							console.log(`fetchBlob 429 response: ${method} ${url}`);
+							const retryAfter = parseInt(response.headers['retry-after'], 10) || 1; // デフォルトで1秒待機
+							if (retryCount < (options.maxRetry || 5)) {
+								console.log(`Retrying after ${retryAfter} seconds...`);
+								await new Promise(r => setTimeout(r, (retryAfter + 1) * 1000)); // 待機
+								resolve(await doFetchOperation(retryCount + 1)); // 再試行
+							} else {
+								reject(new Error('Max retries reached. Status: 429'));
+							}
+							return;
+						}
+
 						response.pipe(file);
 
 						const isGzipped = response.headers['content-encoding'] === 'gzip';
