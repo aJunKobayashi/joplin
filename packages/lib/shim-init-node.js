@@ -460,7 +460,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 							const retryAfter = parseInt(response.headers['retry-after'], 10) || 1; // デフォルトで1秒待機
 							if (retryCount < (options.maxRetry || 5)) {
 								console.log(`Retrying after ${retryAfter} seconds...`);
-								await new Promise(r => setTimeout(r, retryAfter * 1000)); // 待機
+								await new Promise(r => setTimeout(r, (retryAfter + 1) * 1000)); // 待機
 								resolve(await doFetchOperation(retryCount + 1)); // 再試行
 							} else {
 								reject(new Error('Max retries reached. Status: 429'));
