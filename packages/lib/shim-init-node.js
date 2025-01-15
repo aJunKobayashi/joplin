@@ -372,6 +372,10 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 
 		return shim.fetchWithRetry(async () => {
 			const result = fetchFunc(url, newOptions);
+			if (result.status === 429) {
+				console.log(`Too many Request: ${JSON.stringify(result, null, 2)}`);
+				console.log(`fetch: 429 response, retrying after ${result.headers.get('retry-after')} seconds`);
+			}
 			return result;
 		}, options);
 	};
