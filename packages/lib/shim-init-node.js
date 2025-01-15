@@ -425,7 +425,7 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 			headers: headers,
 		};
 
-		const doFetchOperation = async () => {
+		const doFetchOperation = async (retryCount = 0) => {
 			return new Promise((resolve, reject) => {
 				let file = null;
 
@@ -453,7 +453,21 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 						cleanUpOnError(error);
 					});
 
-					const request = http.request(requestOptions, function(response) {
+					const request = http.request(requestOptions, async function(response) {
+						if (response.statusCode === 429) {
+							// Retry after handling
+							console.log(`fetchBlob 429 response: ${method} ${url}`);
+							const retryAfter = parseInt(response.headers['retry-after'], 10) || 1; // デフォルトで1秒待機
+							if (retryCount < (options.maxRetry || 5)) {
+								console.log(`Retrying after ${retryAfter} seconds...`);
+								await new Promise(r => setTimeout(r, retryAfter * 1000)); // 待機
+								resolve(await doFetchOperation(retryCount + 1)); // 再試行
+							} else {
+								reject(new Error('Max retries reached. Status: 429'));
+							}
+							return;
+						}
+
 						response.pipe(file);
 
 						const isGzipped = response.headers['content-encoding'] === 'gzip';
