@@ -371,10 +371,17 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		};
 
 		return shim.fetchWithRetry(async () => {
-			const result = await fetchFunc(url, newOptions);
+			let result = await fetchFunc(url, newOptions);
 			if (result.status === 429) {
-				console.log(`Too many Request: ${JSON.stringify(result, null, 2)}`);
-				console.log(`fetch: 429 response, retrying after ${result.headers.get('retry-after')} seconds`);
+				// console.log(`Too many Request: ${JSON.stringify(result, null, 2)}`);
+				const waitSecondsStr = result.headers.get('retry-after');
+				console.log(`fetch: 429 response tooManyRequest, retrying after ${waitSecondsStr} seconds`);
+				if (waitSecondsStr) {
+					const waitSeconds = parseInt(waitSecondsStr, 10);
+					console.log(`waiting for ${waitSeconds} seconds due to 429 tooManyRequest response`);
+					await new Promise(resolve => setTimeout(resolve, (waitSeconds + 1) * 1000));
+					result = await fetchFunc(url, newOptions);
+				}
 			}
 			return result;
 		}, options);
