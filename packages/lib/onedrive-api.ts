@@ -303,6 +303,8 @@ export default class OneDriveApi {
 				}
 			}
 
+			console.log(`onedrive-api::exec result status: ${response.status} in ${method} ${url}`);
+
 			if (!response.ok) {
 				const errorResponseText = await response.text();
 				let errorResponse = null;
