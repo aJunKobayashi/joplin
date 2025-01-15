@@ -342,6 +342,25 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		return new Buffer(data).toString('base64');
 	};
 
+	const fetchFunc = async (url, options) => {
+		const newOptions = {
+			...options,
+			redirect: 'manual',
+		};
+		let response = await nodeFetch(url, newOptions);
+		if (response.status >= 300 && response.status < 400) {
+			const redirectUrl = response.headers.get('location');
+			if (redirectUrl) {
+				const redirectOptions = { ...newOptions };
+				delete redirectOptions.headers['Authorization'];
+				delete redirectOptions.headers['redirect'];
+				response = await nodeFetch(redirectUrl, redirectOptions);
+			}
+		}
+		console.log(`response status: ${response.status}`);
+		return response;
+	};
+
 	shim.fetch = async function(url, options = null) {
 		const validatedUrl = urlValidator.isUri(url);
 		if (!validatedUrl) throw new Error(`Not a valid URL: ${url}`);
@@ -352,20 +371,11 @@ function shimInit(sharp = null, keytar = null, React = null, appVersion = null) 
 		};
 
 		return shim.fetchWithRetry(async () => {
-			let response = await nodeFetch(url, newOptions);
-			if (response.status >= 300 && response.status < 400) {
-				const redirectUrl = response.headers.get('location');
-				if (redirectUrl) {
-					const redirectOptions = { ...newOptions };
-					delete redirectOptions.headers['Authorization'];
-					delete redirectOptions.headers['redirect'];
-					response = await nodeFetch(redirectUrl, redirectOptions);
-				}
-			}
-			console.log(`response status: ${response.status}`);
-			return response;
+			const result = fetchFunc(url, newOptions);
+			return result;
 		}, options);
 	};
+
 
 	shim.fetchBlob = async function(url, options) {
 		if (!options || !options.path) throw new Error('fetchBlob: target file path is missing');
