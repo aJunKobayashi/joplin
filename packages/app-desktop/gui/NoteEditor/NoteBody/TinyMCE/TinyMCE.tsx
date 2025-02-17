@@ -28,7 +28,7 @@ import NoteListUtils from '../../../utils/NoteListUtils';
 const { themeStyle } = require('@joplin/lib/theme');
 const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
-import { modifyJoplinResource, revertResourceDirToJoplinScheme } from '../../../../commands/showBrowser';
+import { modifyJoplinResource } from '../../../../commands/showBrowser';
 
 let gWorker: Worker = undefined;
 
@@ -422,11 +422,8 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			console.log('creating webworker');
 			gWorker = new Worker('./WebWorker.js', { type: 'module' });
 			// gWorker = new Worker('./WebWorker.js');
-		}
 
-		gWorker.onmessage = function(e) {
-			console.log('Result from worker:', e.data);
-		};
+		}
 
 		async function loadScripts() {
 			const scriptsToLoad: any[] = [
@@ -1771,17 +1768,20 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const contentMd = await prop_htmlToMarkdownRef.current(info.contentMarkupLanguage, info.editor.getContent(), info.contentOriginalCss);
 		const resourceDir = Setting.value('resourceDir');
 
+		gWorker.onmessage = (event: MessageEvent) => {
+			const modifiedMd = event.data;
+			console.log(`main modifiedMd: ${modifiedMd}`);
+			lastOnChangeEventInfo.current.content = modifiedMd;
+			props_onChangeRef.current({
+				changeId: info.changeId,
+				content: modifiedMd,
+			});
+			dispatchDidUpdate(info.editor);
+		};
+
 		gWorker.postMessage({ md: contentMd, resourceDir: resourceDir });
-		const modifiedMd: string = revertResourceDirToJoplinScheme(contentMd, resourceDir).html();
 
-		lastOnChangeEventInfo.current.content = modifiedMd;
-
-		props_onChangeRef.current({
-			changeId: info.changeId,
-			content: modifiedMd,
-		});
-
-		dispatchDidUpdate(info.editor);
+		// const modifiedMd: string = revertResourceDirToJoplinScheme(contentMd, resourceDir).html();
 	}
 
 	// When the component unmount, we dispatch the change event

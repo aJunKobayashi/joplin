@@ -10,7 +10,13 @@ import * as cheerio from 'cheerio';
 // const cheerio = require('cheerio');
 const PATH = require('path');
 
+interface Task {
+    md: string;
+    resourceDir: string;
+}
 
+const gTaskQueue: Task[] = [];
+let gTaskQueueRunning = false;
 
 const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string) => {
 	const $ = cheerio.load(htmlBody);
@@ -34,10 +40,17 @@ const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string) 
 	return $;
 };
 
-self.onmessage = function(e) {
+self.onmessage = function(e: MessageEvent<any>) {
 	console.log(`work received: ${JSON.stringify(e.data, null, 2)}`);
-	const newData = revertResourceDirToJoplinScheme(e.data.md, e.data.resourceDir).html();
+	gTaskQueue.push({ md: e.data.md, resourceDir: e.data.resourceDir });
+	if (gTaskQueueRunning) return;
 
-	(self as any).postMessage(newData);
+	gTaskQueueRunning = true;
+	while (gTaskQueue.length > 0) {
+		const task = gTaskQueue.shift();
+		const newData = revertResourceDirToJoplinScheme(task.md, task.resourceDir).html();
+		(self as any).postMessage(newData);
+	}
+	gTaskQueueRunning = false;
 };
 // # sourceMappingURL=WebWorker.js.map
