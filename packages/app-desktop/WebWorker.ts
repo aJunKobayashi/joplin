@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
+const PATH = require('path');
 
-const revertResourceDirToJoplinScheme = (htmlBody, resourceDir) => {
+const revertResourceDirToJoplinScheme = (htmlBody: any, resourceDir: any) => {
 	const $ = cheerio.load(htmlBody);
 	const anchors = [...$(`a[href^="file://${resourceDir}"]`), ...$(`a[href^="${resourceDir}"]`)];
 	for (let i = 0; i < anchors.length; i++) {
@@ -22,9 +23,9 @@ const revertResourceDirToJoplinScheme = (htmlBody, resourceDir) => {
 	return $;
 };
 
-self.onmessage = function (e) {
-    console.log(`work received: ${JSON.stringify(e.data, null, 2)}`);
-    const newData = revertResourceDirToJoplinScheme(e.data.md, e.data.resourceDir).html();
-    self.postMessage(newData);
+self.onmessage = function(e) {
+	console.log(`work received: ${JSON.stringify(e.data, null, 2)}`);
+	const newData = revertResourceDirToJoplinScheme(e.data.md, e.data.resourceDir).html();
+	self.postMessage(newData);
 };
-//# sourceMappingURL=WebWorker.js.map
+// # sourceMappingURL=WebWorker.js.map
