@@ -1770,7 +1770,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		gWorker.onmessage = (event: MessageEvent) => {
 			const modifiedMd = event.data;
-			console.log(`main modifiedMd: ${modifiedMd}`);
+			// console.log(`main modifiedMd: ${modifiedMd}`);
 			lastOnChangeEventInfo.current.content = modifiedMd;
 			props_onChangeRef.current({
 				changeId: info.changeId,

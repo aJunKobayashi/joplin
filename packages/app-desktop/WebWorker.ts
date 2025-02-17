@@ -41,7 +41,7 @@ const revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string) 
 };
 
 self.onmessage = function(e: MessageEvent<any>) {
-	console.log(`work received: ${JSON.stringify(e.data, null, 2)}`);
+	// console.log(`work received: ${JSON.stringify(e.data, null, 2)}`);
 	gTaskQueue.push({ md: e.data.md, resourceDir: e.data.resourceDir });
 	if (gTaskQueueRunning) return;
 
