@@ -417,6 +417,13 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	useEffect(() => {
 		let cancelled = false;
 
+		const worker = new Worker('./gui/NoteEditor/NoteBody/TinyMCE/WebWorker.js');
+
+		worker.onmessage = function(e) {
+			console.log('Result from worker:', e.data);
+		};
+		worker.postMessage(10);
+
 		async function loadScripts() {
 			const scriptsToLoad: any[] = [
 				{
