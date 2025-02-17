@@ -30,6 +30,7 @@ const { clipboard } = require('electron');
 const supportedLocales = require('./supportedLocales');
 import { modifyJoplinResource, revertResourceDirToJoplinScheme } from '../../../../commands/showBrowser';
 
+let gWorker: Worker = undefined;
 
 function markupRenderOptions(override: any = null) {
 	return {
@@ -417,12 +418,15 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 	useEffect(() => {
 		let cancelled = false;
 
-		const worker = new Worker('./gui/NoteEditor/NoteBody/TinyMCE/WebWorker.js');
+		if (!gWorker) {
+			console.log('creating webworker');
+			gWorker = new Worker('./gui/NoteEditor/NoteBody/TinyMCE/WebWorker.js');
+		}
 
-		worker.onmessage = function(e) {
+		gWorker.onmessage = function(e) {
 			console.log('Result from worker:', e.data);
 		};
-		worker.postMessage(10);
+		gWorker.postMessage(10);
 
 		async function loadScripts() {
 			const scriptsToLoad: any[] = [
