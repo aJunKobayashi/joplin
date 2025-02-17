@@ -104,6 +104,7 @@ export default class PluginRunner extends BasePluginRunner {
 			webPreferences: {
 				nodeIntegration: true,
 				contextIsolation: false,
+				nodeIntegrationInWorker: true,
 			},
 		});
 
