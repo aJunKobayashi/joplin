@@ -420,13 +420,13 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 
 		if (!gWorker) {
 			console.log('creating webworker');
-			gWorker = new Worker('./gui/NoteEditor/NoteBody/TinyMCE/WebWorker.js');
+			gWorker = new Worker('./WebWorker.js', { type: 'module' });
+			// gWorker = new Worker('./WebWorker.js');
 		}
 
 		gWorker.onmessage = function(e) {
 			console.log('Result from worker:', e.data);
 		};
-		gWorker.postMessage(10);
 
 		async function loadScripts() {
 			const scriptsToLoad: any[] = [
@@ -1771,6 +1771,7 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 		const contentMd = await prop_htmlToMarkdownRef.current(info.contentMarkupLanguage, info.editor.getContent(), info.contentOriginalCss);
 		const resourceDir = Setting.value('resourceDir');
 
+		gWorker.postMessage({ md: contentMd, resourceDir: resourceDir });
 		const modifiedMd: string = revertResourceDirToJoplinScheme(contentMd, resourceDir).html();
 
 		lastOnChangeEventInfo.current.content = modifiedMd;
