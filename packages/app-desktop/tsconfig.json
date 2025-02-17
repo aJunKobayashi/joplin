@@ -7,6 +7,5 @@
 	"exclude": [
 		"**/node_modules",
 		"**/dist",
-		"./WebWorker.ts"
 	],
 }
