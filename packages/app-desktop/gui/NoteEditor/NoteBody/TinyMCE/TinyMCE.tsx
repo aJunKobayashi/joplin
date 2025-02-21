@@ -1869,27 +1869,10 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			}
 		}
 
-		// async function onPaste(event: any) {
-		// 	const resourceMds = await handlePasteEvent(event);
-		// 	if (resourceMds.length) {
-		// 		const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, resourceMds.join('\n'), markupRenderOptions({ bodyOnly: true }));
-		// 		editor.insertContent(result.html);
-		// 	} else {
-		// 		const pastedText = event.clipboardData.getData('text');
-
-		// 		if (BaseItem.isMarkdownTag(pastedText)) { // Paste a link to a note
-		// 			event.preventDefault();
-		// 			const result = await markupToHtml.current(MarkupToHtml.MARKUP_LANGUAGE_MARKDOWN, pastedText, markupRenderOptions({ bodyOnly: true }));
-		// 			editor.insertContent(result.html);
-		// 		} else { // Paste regular text
-		// 			// HACK: TinyMCE doesn't add an undo step when pasting, for unclear reasons
-		// 			// so we manually add it here. We also can't do it immediately it seems, or
-		// 			// else nothing is added to the stack, so do it on the next frame.
-		// 			window.requestAnimationFrame(() => editor.undoManager.add());
-		// 			onChangeHandler();
-		// 		}
-		// 	}
-		// }
+		async function onPaste(_event: any) {
+			console.log(`onPaste`);
+			onChangeHandler();
+		}
 
 		// async function onCopy(event: any) {
 		// 	const copiedContent = editor.selection.getContent();
@@ -1918,15 +1901,19 @@ const TinyMCE = (props: NoteBodyEditorProps, ref: any) => {
 			if (!shim.isWindows()) {
 				if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'KeyV') {
 					const pastedText = clipboard.readText();
-					if (pastedText) editor.insertContent(pastedText);
+					if (pastedText) {
+						editor.insertContent(pastedText);
+						// execOnChangeEvent();
+					}
 				}
 			}
 		}
 
 		editor.on('keyup', onKeyUp);
 		editor.on('keydown', onKeyDown);
+		// editor.on('paste_postprocess', onPaste);
 		editor.on('keypress', onKeypress);
-		// editor.on('paste', onPaste);
+		editor.on('paste', onPaste);
 		// editor.on('copy', onCopy);
 		// `compositionend` means that a user has finished entering a Chinese
 		// (or other languages that require IME) character.
