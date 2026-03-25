@@ -15,6 +15,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
@@ -412,46 +413,32 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Canvas API を使って画像ファイルを指定幅にリサイズし、WebP 形式の File に変換する。
- * アスペクト比は維持される。
+ * browser-image-compression を使って画像ファイルを指定幅にリサイズし、
+ * WebP 形式の File に変換する。アスペクト比は維持される。
+ *
+ * browser-image-compression の maxWidthOrHeight は「長辺の上限」なので、
+ * 縦長画像でも幅が targetWidth になるよう maxWidthOrHeight を逆算する。
  */
 async function resizeImageToWebP(file: File, targetWidth: number): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const aspectRatio = img.height / img.width;
-      const width = targetWidth;
-      const height = Math.round(width * aspectRatio);
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Canvas 2D context is unavailable'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('canvas.toBlob failed'));
-            return;
-          }
-          const baseName = file.name.replace(/\.[^.]+$/, '');
-          resolve(new File([blob], `${baseName}.webp`, { type: 'image/webp' }));
-        },
-        'image/webp',
-        0.85
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Failed to load image for resizing'));
-    };
-    img.src = objectUrl;
+  // 画像の実寸を取得して maxWidthOrHeight を逆算する
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+  bitmap.close();
+
+  // 幅 targetWidth を実現するための maxWidthOrHeight:
+  //   横長 (width >= height): 幅が長辺 → そのまま targetWidth を渡せばよい
+  //   縦長 (height > width) : 高さが長辺 → maxWidthOrHeight = targetWidth * (height/width)
+  const maxWidthOrHeight =
+    width >= height ? targetWidth : Math.round(targetWidth * (height / width));
+
+  const compressed = await imageCompression(file, {
+    maxWidthOrHeight,
+    fileType: 'image/webp',
+    initialQuality: 1.0,
+    useWebWorker: true,
   });
+  const baseName = file.name.replace(/\.[^.]+$/, '');
+  return new File([compressed], `${baseName}.webp`, { type: 'image/webp' });
 }
 
 /**
@@ -476,7 +463,7 @@ function openImageResizeDialog(editor: any, file: File): Promise<number | null> 
           {
             type: 'input',
             name: 'width',
-            label: '変換後の幅 (px)',
+            label: '変換後の幅 (px)  ※アスペクト比を維持してリサイズ',
           },
         ],
       },

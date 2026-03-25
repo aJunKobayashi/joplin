@@ -33,6 +33,7 @@
     "@types/tinymce": "^4.6.9",
     "@types/turndown": "^5.0.6",
     "better-sqlite3": "^12.6.2",
+    "browser-image-compression": "^2.0.2",
     "cheerio": "^1.2.0",
     "express": "^5.2.1",
     "faiss-node": "^0.5.1",
