@@ -412,15 +412,118 @@ function escapeHtml(str: string): string {
 }
 
 /**
+ * Canvas API を使って画像ファイルを指定幅にリサイズし、WebP 形式の File に変換する。
+ * アスペクト比は維持される。
+ */
+async function resizeImageToWebP(file: File, targetWidth: number): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const aspectRatio = img.height / img.width;
+      const width = targetWidth;
+      const height = Math.round(width * aspectRatio);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas 2D context is unavailable'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('canvas.toBlob failed'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^.]+$/, '');
+          resolve(new File([blob], `${baseName}.webp`, { type: 'image/webp' }));
+        },
+        'image/webp',
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image for resizing'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * 画像が 200KB を超えている場合にリサイズ確認ダイアログを表示する。
+ * ユーザーが「リサイズして変換」を選択した場合は指定幅（px）を返し、
+ * 「このままアップロード」を選択した場合は null を返す。
+ */
+function openImageResizeDialog(editor: any, file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    let submitted = false;
+    const sizeKB = Math.round(file.size / 1024);
+    editor.windowManager.open({
+      title: '画像のリサイズ',
+      initialData: { width: '1500' },
+      body: {
+        type: 'panel',
+        items: [
+          {
+            type: 'htmlpanel',
+            html: `<p style="margin:0 0 8px">画像サイズが <strong>${sizeKB} KB</strong> です。<br>WebP 形式にリサイズして圧縮しますか？</p>`,
+          },
+          {
+            type: 'input',
+            name: 'width',
+            label: '変換後の幅 (px)',
+          },
+        ],
+      },
+      buttons: [
+        { type: 'cancel', text: 'このままアップロード' },
+        { type: 'submit', text: 'リサイズして変換', primary: true },
+      ],
+      onSubmit: (api: any) => {
+        const data = api.getData();
+        const w = parseInt(data.width, 10);
+        submitted = true;
+        api.close();
+        resolve(isNaN(w) || w <= 0 ? 800 : w);
+      },
+      onClose: () => {
+        if (!submitted) resolve(null);
+      },
+    });
+  });
+}
+
+/**
  * ドロップされたファイルを PUT /api/resource/{filename} でアップロードし、
  * 成功したら画像は <img>、その他は <a> タグとしてエディタに挿入する。
+ * 画像が 200KB を超える場合はリサイズダイアログを表示し、WebP に変換する。
  */
 async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
   try {
-    const res = await fetch(`/api/resource/${encodeURIComponent(file.name)}`, {
+    let uploadFile: File = file;
+
+    // 画像かつ 200KB 超の場合はリサイズダイアログを表示
+    if (file.type.startsWith('image/') && file.size > 200 * 1024) {
+      const targetWidth = await openImageResizeDialog(editor, file);
+      if (targetWidth !== null) {
+        try {
+          uploadFile = await resizeImageToWebP(file, targetWidth);
+        } catch (resizeErr) {
+          console.warn('TinyMCEBody: resize failed, uploading original', resizeErr);
+          uploadFile = file;
+        }
+      }
+    }
+
+    const res = await fetch(`/api/resource/${encodeURIComponent(uploadFile.name)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file,
+      headers: { 'Content-Type': uploadFile.type || 'application/octet-stream' },
+      body: uploadFile,
     });
     const json = await res.json();
     if (!json.success) {
@@ -429,8 +532,8 @@ async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
     }
     // URL は encodeURIComponent 済み、表示名は escapeHtml でエスケープ
     const url = `/api/resource/${encodeURIComponent(json.filename as string)}`;
-    const safeName = escapeHtml(file.name);
-    if (file.type.startsWith('image/')) {
+    const safeName = escapeHtml(uploadFile.name);
+    if (uploadFile.type.startsWith('image/')) {
       editor.insertContent(`<img src="${url}" alt="${safeName}" />`);
     } else if (isVideoFile(json.filename as string)) {
       editor.insertContent(`<video controls src="${url}" title="${safeName}"></video>`);
