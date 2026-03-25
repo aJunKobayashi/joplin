@@ -19,6 +19,7 @@ import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
+import { Config } from '../../config';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -460,7 +461,10 @@ function openImageResizeDialog(
     const sizeKB = Math.round(file.size / 1024);
     editor.windowManager.open({
       title: '画像のリサイズ',
-      initialData: { width: '1000', maxSizeKB: '100' },
+      initialData: {
+        width: String(Config.imageCompressDefaultWidth),
+        maxSizeKB: String(Config.imageCompressDefaultMaxSizeKB),
+      },
       body: {
         type: 'panel',
         items: [
@@ -491,8 +495,8 @@ function openImageResizeDialog(
         submitted = true;
         api.close();
         resolve({
-          width: isNaN(w) || w <= 0 ? 800 : w,
-          maxSizeKB: isNaN(kb) || kb <= 0 ? 100 : kb,
+          width: isNaN(w) || w <= 0 ? Config.imageCompressDefaultWidth : w,
+          maxSizeKB: isNaN(kb) || kb <= 0 ? Config.imageCompressDefaultMaxSizeKB : kb,
         });
       },
       onClose: () => {
@@ -520,7 +524,10 @@ async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
     let uploadFile: File = safeFile;
 
     // 画像かつ 200KB 超の場合はリサイズダイアログを表示
-    if (safeFile.type.startsWith('image/') && safeFile.size > 200 * 1024) {
+    if (
+      safeFile.type.startsWith('image/') &&
+      safeFile.size > Config.imageCompressThresholdKB * 1024
+    ) {
       const resizeParams = await openImageResizeDialog(editor, safeFile);
       if (resizeParams !== null) {
         try {
