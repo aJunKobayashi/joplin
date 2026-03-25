@@ -15,9 +15,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
+import { Config } from '../../config';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -412,15 +414,139 @@ function escapeHtml(str: string): string {
 }
 
 /**
+ * browser-image-compression を使って画像ファイルを指定幅にリサイズし、
+ * WebP 形式の File に変換する。アスペクト比は維持される。
+ *
+ * browser-image-compression の maxWidthOrHeight は「長辺の上限」なので、
+ * 縦長画像でも幅が targetWidth になるよう maxWidthOrHeight を逆算する。
+ */
+async function resizeImageToWebP(
+  file: File,
+  targetWidth: number,
+  maxSizeKB: number
+): Promise<File> {
+  // 画像の実寸を取得して maxWidthOrHeight を逆算する
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+  bitmap.close();
+
+  // 幅 targetWidth を実現するための maxWidthOrHeight:
+  //   横長 (width >= height): 幅が長辺 → そのまま targetWidth を渡せばよい
+  //   縦長 (height > width) : 高さが長辺 → maxWidthOrHeight = targetWidth * (height/width)
+  const maxWidthOrHeight =
+    width >= height ? targetWidth : Math.round(targetWidth * (height / width));
+
+  const compressed = await imageCompression(file, {
+    maxWidthOrHeight,
+    fileType: 'image/webp',
+    initialQuality: 1.0,
+    useWebWorker: true,
+    maxSizeMB: maxSizeKB / 1024,
+  });
+  const baseName = file.name.replace(/\.[^.]+$/, '');
+  return new File([compressed], `${baseName}.webp`, { type: 'image/webp' });
+}
+
+/**
+ * 画像が 200KB を超えている場合にリサイズ確認ダイアログを表示する。
+ * ユーザーが「リサイズして変換」を選択した場合は指定幅（px）を返し、
+ * 「このままアップロード」を選択した場合は null を返す。
+ */
+function openImageResizeDialog(
+  editor: any,
+  file: File
+): Promise<{ width: number; maxSizeKB: number } | null> {
+  return new Promise((resolve) => {
+    let submitted = false;
+    const sizeKB = Math.round(file.size / 1024);
+    editor.windowManager.open({
+      title: '画像のリサイズ',
+      initialData: {
+        width: String(Config.imageCompressDefaultWidth),
+        maxSizeKB: String(Config.imageCompressDefaultMaxSizeKB),
+      },
+      body: {
+        type: 'panel',
+        items: [
+          {
+            type: 'htmlpanel',
+            html: `<p style="margin:0 0 8px">画像サイズが <strong>${sizeKB} KB</strong> です。<br>WebP 形式にリサイズして圧縮しますか？</p>`,
+          },
+          {
+            type: 'input',
+            name: 'width',
+            label: '変換後の幅 (px)  ※アスペクト比を維持してリサイズ',
+          },
+          {
+            type: 'input',
+            name: 'maxSizeKB',
+            label: '圧縮後の最大サイズ (KB)',
+          },
+        ],
+      },
+      buttons: [
+        { type: 'cancel', text: 'このままアップロード' },
+        { type: 'submit', text: 'リサイズして変換', primary: true },
+      ],
+      onSubmit: (api: any) => {
+        const data = api.getData();
+        const w = parseInt(data.width, 10);
+        const kb = parseInt(data.maxSizeKB, 10);
+        submitted = true;
+        api.close();
+        resolve({
+          width: isNaN(w) || w <= 0 ? Config.imageCompressDefaultWidth : w,
+          maxSizeKB: isNaN(kb) || kb <= 0 ? Config.imageCompressDefaultMaxSizeKB : kb,
+        });
+      },
+      onClose: () => {
+        if (!submitted) resolve(null);
+      },
+    });
+  });
+}
+
+/**
  * ドロップされたファイルを PUT /api/resource/{filename} でアップロードし、
  * 成功したら画像は <img>、その他は <a> タグとしてエディタに挿入する。
+ * 画像が 200KB を超える場合はリサイズダイアログを表示し、WebP に変換する。
  */
 async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
   try {
-    const res = await fetch(`/api/resource/${encodeURIComponent(file.name)}`, {
+    // drag & drop イベント終了後でも File 参照が失効しないよう、
+    // ダイアログ表示前にデータを ArrayBuffer へ読み込んで新しい File を作成する
+    const buffer = await file.arrayBuffer();
+    const safeFile = new File([buffer], file.name, {
+      type: file.type,
+      lastModified: file.lastModified,
+    });
+
+    let uploadFile: File = safeFile;
+
+    // 画像かつ 200KB 超の場合はリサイズダイアログを表示
+    if (
+      safeFile.type.startsWith('image/') &&
+      safeFile.size > Config.imageCompressThresholdKB * 1024
+    ) {
+      const resizeParams = await openImageResizeDialog(editor, safeFile);
+      if (resizeParams !== null) {
+        try {
+          uploadFile = await resizeImageToWebP(
+            safeFile,
+            resizeParams.width,
+            resizeParams.maxSizeKB
+          );
+        } catch (resizeErr) {
+          console.warn('TinyMCEBody: resize failed, uploading original', resizeErr);
+          uploadFile = safeFile;
+        }
+      }
+    }
+
+    const res = await fetch(`/api/resource/${encodeURIComponent(uploadFile.name)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file,
+      headers: { 'Content-Type': uploadFile.type || 'application/octet-stream' },
+      body: uploadFile,
     });
     const json = await res.json();
     if (!json.success) {
@@ -429,8 +555,8 @@ async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
     }
     // URL は encodeURIComponent 済み、表示名は escapeHtml でエスケープ
     const url = `/api/resource/${encodeURIComponent(json.filename as string)}`;
-    const safeName = escapeHtml(file.name);
-    if (file.type.startsWith('image/')) {
+    const safeName = escapeHtml(uploadFile.name);
+    if (uploadFile.type.startsWith('image/')) {
       editor.insertContent(`<img src="${url}" alt="${safeName}" />`);
     } else if (isVideoFile(json.filename as string)) {
       editor.insertContent(`<video controls src="${url}" title="${safeName}"></video>`);
