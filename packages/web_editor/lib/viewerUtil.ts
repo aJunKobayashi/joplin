@@ -383,7 +383,7 @@ export class ViewerUtil {
       const url = new URL(href, 'http://localhost:3000'); // ベースURLは何でもいい
       const noteId = url.searchParams.get('note_id');
       if (noteId) {
-        anchor.attribs.href = `joplin://${noteId}`;
+        anchor.attribs.href = `joplin://${noteId}${url.hash}`;
       }
     }
 
