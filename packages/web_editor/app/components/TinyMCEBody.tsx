@@ -419,7 +419,11 @@ function escapeHtml(str: string): string {
  * browser-image-compression の maxWidthOrHeight は「長辺の上限」なので、
  * 縦長画像でも幅が targetWidth になるよう maxWidthOrHeight を逆算する。
  */
-async function resizeImageToWebP(file: File, targetWidth: number): Promise<File> {
+async function resizeImageToWebP(
+  file: File,
+  targetWidth: number,
+  maxSizeKB: number
+): Promise<File> {
   // 画像の実寸を取得して maxWidthOrHeight を逆算する
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
@@ -436,6 +440,7 @@ async function resizeImageToWebP(file: File, targetWidth: number): Promise<File>
     fileType: 'image/webp',
     initialQuality: 1.0,
     useWebWorker: true,
+    maxSizeMB: maxSizeKB / 1024,
   });
   const baseName = file.name.replace(/\.[^.]+$/, '');
   return new File([compressed], `${baseName}.webp`, { type: 'image/webp' });
@@ -446,13 +451,16 @@ async function resizeImageToWebP(file: File, targetWidth: number): Promise<File>
  * ユーザーが「リサイズして変換」を選択した場合は指定幅（px）を返し、
  * 「このままアップロード」を選択した場合は null を返す。
  */
-function openImageResizeDialog(editor: any, file: File): Promise<number | null> {
+function openImageResizeDialog(
+  editor: any,
+  file: File
+): Promise<{ width: number; maxSizeKB: number } | null> {
   return new Promise((resolve) => {
     let submitted = false;
     const sizeKB = Math.round(file.size / 1024);
     editor.windowManager.open({
       title: '画像のリサイズ',
-      initialData: { width: '1500' },
+      initialData: { width: '1000', maxSizeKB: '100' },
       body: {
         type: 'panel',
         items: [
@@ -465,6 +473,11 @@ function openImageResizeDialog(editor: any, file: File): Promise<number | null> 
             name: 'width',
             label: '変換後の幅 (px)  ※アスペクト比を維持してリサイズ',
           },
+          {
+            type: 'input',
+            name: 'maxSizeKB',
+            label: '圧縮後の最大サイズ (KB)',
+          },
         ],
       },
       buttons: [
@@ -474,9 +487,13 @@ function openImageResizeDialog(editor: any, file: File): Promise<number | null> 
       onSubmit: (api: any) => {
         const data = api.getData();
         const w = parseInt(data.width, 10);
+        const kb = parseInt(data.maxSizeKB, 10);
         submitted = true;
         api.close();
-        resolve(isNaN(w) || w <= 0 ? 800 : w);
+        resolve({
+          width: isNaN(w) || w <= 0 ? 800 : w,
+          maxSizeKB: isNaN(kb) || kb <= 0 ? 100 : kb,
+        });
       },
       onClose: () => {
         if (!submitted) resolve(null);
@@ -492,17 +509,29 @@ function openImageResizeDialog(editor: any, file: File): Promise<number | null> 
  */
 async function uploadAndInsertFile(file: File, editor: any): Promise<void> {
   try {
-    let uploadFile: File = file;
+    // drag & drop イベント終了後でも File 参照が失効しないよう、
+    // ダイアログ表示前にデータを ArrayBuffer へ読み込んで新しい File を作成する
+    const buffer = await file.arrayBuffer();
+    const safeFile = new File([buffer], file.name, {
+      type: file.type,
+      lastModified: file.lastModified,
+    });
+
+    let uploadFile: File = safeFile;
 
     // 画像かつ 200KB 超の場合はリサイズダイアログを表示
-    if (file.type.startsWith('image/') && file.size > 200 * 1024) {
-      const targetWidth = await openImageResizeDialog(editor, file);
-      if (targetWidth !== null) {
+    if (safeFile.type.startsWith('image/') && safeFile.size > 200 * 1024) {
+      const resizeParams = await openImageResizeDialog(editor, safeFile);
+      if (resizeParams !== null) {
         try {
-          uploadFile = await resizeImageToWebP(file, targetWidth);
+          uploadFile = await resizeImageToWebP(
+            safeFile,
+            resizeParams.width,
+            resizeParams.maxSizeKB
+          );
         } catch (resizeErr) {
           console.warn('TinyMCEBody: resize failed, uploading original', resizeErr);
-          uploadFile = file;
+          uploadFile = safeFile;
         }
       }
     }
