@@ -768,7 +768,10 @@ export default function TinyMCEBody({
     null
   );
   const [conflictError, setConflictError] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    message: string;
+    severity: 'success' | 'error';
+  } | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   // TinyMCE setup クロージャから React state を更新するための ref
@@ -1361,7 +1364,7 @@ export default function TinyMCEBody({
           editor.addShortcut('meta+shift+u', '箇条書き', 'change_to_ul');
           editor.addShortcut('meta+shift+o', '番号付き箇条書き', 'change_to_ol');
           editor.addShortcut('meta+s', '保存', () => handleSaveRef.current(editor));
-          editor.addShortcut('ctrl+s', '保存', () => handleSaveRef.current(editor));
+          // editor.addShortcut('ctrl+s', '保存', () => handleSaveRef.current(editor));
 
           // ---------- 変更時に目次を自動更新するコールバック (execOnChangeEvent に相当) ----------
           setupTocAutoUpdate(editor);
@@ -1429,7 +1432,9 @@ export default function TinyMCEBody({
               color={saved ? 'success' : isDirty ? 'primary' : 'default'}
               size="medium"
               disabled={isSaving || (!isDirty && !saved)}
-              onClick={handleSave}
+              onClick={() => {
+                handleSave(editorRef.current);
+              }}
               aria-label="保存"
             >
               {isSaving ? (
@@ -1463,7 +1468,11 @@ export default function TinyMCEBody({
         onClose={() => setSnackbar(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar?.severity ?? 'info'} onClose={() => setSnackbar(null)} sx={{ width: '100%' }}>
+        <Alert
+          severity={snackbar?.severity ?? 'info'}
+          onClose={() => setSnackbar(null)}
+          sx={{ width: '100%' }}
+        >
           {snackbar?.message}
         </Alert>
       </Snackbar>
@@ -1476,11 +1485,7 @@ export default function TinyMCEBody({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowDeleteConfirmDialog(false)}>いいえ</Button>
-          <Button
-            onClick={handleResourceDelete}
-            color="error"
-            variant="contained"
-          >
+          <Button onClick={handleResourceDelete} color="error" variant="contained">
             はい
           </Button>
         </DialogActions>
