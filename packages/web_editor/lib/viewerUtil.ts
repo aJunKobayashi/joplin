@@ -322,7 +322,8 @@ export class ViewerUtil {
       }
       const targetId = url.hostname;
       try {
-        joplinAnchor.attribs.href = `/note?note_id=${targetId}`;
+        const hash = url.hash || '';
+        joplinAnchor.attribs.href = `/note?note_id=${targetId}${hash}`;
       } catch (e) {
         console.log(`error: ${e?.toString()}`);
       }
