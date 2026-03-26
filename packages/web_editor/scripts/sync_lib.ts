@@ -44,6 +44,7 @@ const KeychainService = require('@joplin/lib/services/keychain/KeychainService')
 const KeychainServiceDriver =
   require('@joplin/lib/services/keychain/KeychainServiceDriver.node').default;
 const KvStore = require('@joplin/lib/services/KvStore').default;
+const ResourceFetcher = require('@joplin/lib/services/ResourceFetcher').default;
 const uuid = require('@joplin/lib/uuid').default;
 const fs = require('fs-extra');
 
@@ -444,12 +445,24 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   }
   console.log('Sync finished.');
 
+  // --- 10.5. FETCH_STATUS_IDLE のリソースファイルを実際にダウンロードする ---
+  // reg.scheduleSync() はメタデータのみ同期し、実ファイルは ResourceFetcher が担う。
+  console.log('Starting resource download...');
+  const fileApiFunc = async () => reg.syncTarget(syncTargetId).fileApi();
+  const fetcher: typeof ResourceFetcher = ResourceFetcher.instance();
+  fetcher.setFileApi(fileApiFunc);
+  fetcher.setLogger(globalLogger);
+  await fetcher.fetchAll();
+  await fetcher.waitForAllFinished();
+  console.log('Resource download finished.');
+
   const totalFolders: number = await Folder.count();
   const totalNotes: number = await Note.count();
   const totalResources: number = await Resource.count();
   const stats = reportToStats(lastReport, totalFolders, totalNotes, totalResources);
 
   // --- 11. 後処理 ---
+  await fetcher.destroy();
   await reg.cancelTimers();
 
   return stats;
