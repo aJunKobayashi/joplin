@@ -14,6 +14,7 @@ interface SyncStats {
   createRemote?: number;
   updateRemote?: number;
   deleteRemote?: number;
+  noteConflict?: number;
   totalFolders?: number;
   totalNotes?: number;
   totalResources?: number;
@@ -61,7 +62,11 @@ export default function SyncButton() {
         {syncing ? 'Syncing...' : 'Sync'}
       </Button>
       {syncResult && (
-        <Alert severity={syncResult.success ? 'success' : 'error'} sx={{ py: 0 }} onClose={() => setSyncResult(null)}>
+        <Alert
+          severity={syncResult.success ? 'success' : 'error'}
+          sx={{ py: 0 }}
+          onClose={() => setSyncResult(null)}
+        >
           {syncResult.success ? (
             <Box>
               <Typography variant="body2" fontWeight="bold">
@@ -116,6 +121,13 @@ export default function SyncButton() {
                     <li>
                       <Typography variant="caption">
                         削除 (リモート): {syncResult.stats.deleteRemote}
+                      </Typography>
+                    </li>
+                  )}
+                  {(syncResult.stats.noteConflict ?? 0) > 0 && (
+                    <li>
+                      <Typography variant="caption" color="warning.main">
+                        コンフリクト: {syncResult.stats.noteConflict}
                       </Typography>
                     </li>
                   )}

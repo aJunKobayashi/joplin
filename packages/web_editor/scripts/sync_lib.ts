@@ -60,6 +60,7 @@ export interface SyncStats {
   createRemote?: number;
   updateRemote?: number;
   deleteRemote?: number;
+  noteConflict?: number;
   totalFolders?: number;
   totalNotes?: number;
   totalResources?: number;
@@ -81,6 +82,7 @@ function reportToStats(
     createRemote: num(report['createRemote']),
     updateRemote: num(report['updateRemote']),
     deleteRemote: num(report['deleteRemote']),
+    noteConflict: num(report['noteConflict']),
     totalFolders,
     totalNotes,
     totalResources,
