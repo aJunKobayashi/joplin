@@ -1216,6 +1216,18 @@ export default function TinyMCEBody({
             },
           });
 
+          // Cmd/Ctrl+Shift+V: プレーンテキストとして貼り付け（HTML タグをエスケープ）
+          editor.on('keydown', (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyV') {
+              e.preventDefault();
+              navigator.clipboard.readText().then((text) => {
+                if (text) {
+                  editor.insertContent(escapeHtml(text));
+                }
+              });
+            }
+          });
+
           // クリップボードの生 HTML をそのまま挿入してシンタックスハイライトを保持する
           editor.on('paste', (e: ClipboardEvent) => {
             const clipboardData = e.clipboardData;
