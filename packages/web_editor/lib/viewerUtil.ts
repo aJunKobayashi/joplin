@@ -133,6 +133,17 @@ export class ViewerUtil {
     // attach notes to their parent folder's children
     const rootNodes: TreeNode[] = [...folderTree];
 
+    // virtual folder for conflict notes
+    const conflictFolder: FolderTreeNode = {
+      id: '__conflict__',
+      title: '衝突',
+      parent_id: '',
+      updated_time: 0,
+      created_time: 0,
+      type: 'Folder',
+      children: [],
+    };
+
     for (const note of allNoteMetadata) {
       const noteNode: NoteTreeNode = {
         id: note.id,
@@ -144,13 +155,21 @@ export class ViewerUtil {
         metadata: note,
       };
 
-      if (note.parent_id && idMap.has(note.parent_id)) {
+      if (note.is_conflict) {
+        // conflict notes go into the virtual 衝突 folder
+        conflictFolder.children.push(noteNode);
+      } else if (note.parent_id && idMap.has(note.parent_id)) {
         const parent = idMap.get(note.parent_id)!;
         parent.children.push(noteNode);
       } else {
         // orphan notes go to root
         rootNodes.push(noteNode);
       }
+    }
+
+    // add 衝突 folder to root if there are any conflict notes
+    if (conflictFolder.children.length > 0) {
+      rootNodes.unshift(conflictFolder);
     }
 
     // sort nodes by title, recursively for folders
