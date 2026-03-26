@@ -20,6 +20,7 @@ import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
 import { Config } from '../../config';
+import * as htmlEntity from 'html-entities';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -1222,7 +1223,8 @@ export default function TinyMCEBody({
               e.preventDefault();
               navigator.clipboard.readText().then((text) => {
                 if (text) {
-                  editor.insertContent(escapeHtml(text));
+                  const escapedText = htmlEntity.encode(text);
+                  editor.insertContent(escapedText);
                 }
               });
             }
