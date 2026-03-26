@@ -209,6 +209,44 @@ function openMarkdownInsertDialog(editor: any) {
 }
 
 /**
+ * 生 HTML 入力ダイアログを TinyMCE の windowManager で開き、
+ * OK 時にカーソル位置へ HTML をそのまま挿入する。
+ */
+function openHtmlInsertDialog(editor: any) {
+  const bookmark = editor.selection.getBookmark(2, true);
+
+  editor.windowManager.open({
+    title: 'Insert HTML',
+    size: 'large',
+    initialData: {
+      html: '',
+    },
+    body: {
+      type: 'panel',
+      items: [
+        {
+          type: 'textarea',
+          name: 'html',
+          label: 'HTML',
+        },
+      ],
+    },
+    buttons: [
+      { type: 'cancel', text: 'Cancel' },
+      { type: 'submit', text: 'OK', primary: true },
+    ],
+    onSubmit: function (api: any) {
+      const data = api.getData();
+      if (data.html && data.html.trim()) {
+        editor.selection.moveToBookmark(bookmark);
+        editor.insertContent(data.html);
+      }
+      api.close();
+    },
+  });
+}
+
+/**
  * Mermaid 編集ダイアログを TinyMCE の windowManager で開く。
  */
 function openMermaidDialog(editor: any, initialValue: string, mermaidRootElement: HTMLElement) {
@@ -1077,7 +1115,8 @@ export default function TinyMCEBody({
               'h1 h2 h3 hr blockquote table |',
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
-              'cmd mermaid katexMath toc markdownInsert',
+              'cmd mermaid katexMath toc markdownInsert htmlInsert',
+
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
@@ -1419,6 +1458,13 @@ export default function TinyMCEBody({
             tooltip: 'Insert Markdown',
             text: 'MD',
             onAction: () => openMarkdownInsertDialog(editor),
+          });
+
+          // htmlInsert: 生 HTML をそのまま挿入
+          editor.ui.registry.addButton('htmlInsert', {
+            tooltip: 'Insert HTML',
+            text: 'HTML',
+            onAction: () => openHtmlInsertDialog(editor),
           });
 
           // ---------- カスタムコマンド ----------
