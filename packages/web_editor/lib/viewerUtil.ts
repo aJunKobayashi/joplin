@@ -167,11 +167,6 @@ export class ViewerUtil {
       }
     }
 
-    // add 衝突 folder to root if there are any conflict notes
-    if (conflictFolder.children.length > 0) {
-      rootNodes.unshift(conflictFolder);
-    }
-
     // sort nodes by title, recursively for folders
     const sortByTitle = (nodes: TreeNode[]): TreeNode[] => {
       return nodes
@@ -197,7 +192,14 @@ export class ViewerUtil {
         });
     };
 
-    return sortByTitle(rootNodes);
+    const sorted = sortByTitle(rootNodes);
+
+    // add 衝突 folder to the bottom of root nodes
+    if (conflictFolder.children.length > 0) {
+      sorted.push(conflictFolder);
+    }
+
+    return sorted;
   }
 
   /**

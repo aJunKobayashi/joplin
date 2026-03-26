@@ -27,7 +27,9 @@ function renderTree(nodes: TreeNode[], onNoteClick?: () => void, currentNoteId?:
           label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
-              <span>{node.title}</span>
+              <span style={node.id === '__conflict__' ? { color: 'red' } : undefined}>
+                {node.title}
+              </span>
             </Box>
           }
         >
