@@ -20,6 +20,7 @@ import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
 import { Config } from '../../config';
+import * as htmlEntity from 'html-entities';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -1214,6 +1215,19 @@ export default function TinyMCEBody({
               pendingDeleteElementRef.current = null;
               return '';
             },
+          });
+
+          // Cmd/Ctrl+Shift+V: プレーンテキストとして貼り付け（HTML タグをエスケープ）
+          editor.on('keydown', (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyV') {
+              e.preventDefault();
+              navigator.clipboard.readText().then((text) => {
+                if (text) {
+                  const escapedText = htmlEntity.encode(text);
+                  editor.insertContent(escapedText);
+                }
+              });
+            }
           });
 
           // クリップボードの生 HTML をそのまま挿入してシンタックスハイライトを保持する
