@@ -190,7 +190,8 @@ function convertMarkdownToHtml(markdown: string): string {
       // 言語指定なし: HTMLエスケープのみ
       highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-    return `<pre style="${COMMAND_PRE_STYLE}"><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
+    const preStyle = lang ? '' : ` style="${COMMAND_PRE_STYLE}"`;
+    return `<pre${preStyle}><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
   };
   return marked.parse(markdown, { renderer }) as string;
 }
