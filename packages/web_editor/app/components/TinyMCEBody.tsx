@@ -19,6 +19,7 @@ import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
+import hljs from 'highlight.js';
 import { Config } from '../../config';
 import * as htmlEntity from 'html-entities';
 import 'tinymce/icons/default';
@@ -169,15 +170,27 @@ const COMMAND_PRE_STYLE =
 
 /**
  * Markdown テキストを HTML に変換する。
- * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用する。
+ * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
+ * 言語指定がある場合は highlight.js で VS Code 風のシンタックスハイライトを適用する。
  */
 function convertMarkdownToHtml(markdown: string): string {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
     // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
     const text: string = typeof token === 'string' ? token : (token.text ?? '');
-    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `<pre style="${COMMAND_PRE_STYLE}"><code>${escaped}</code></pre>\n`;
+    const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
+
+    let highlighted: string;
+    if (lang && hljs.getLanguage(lang)) {
+      highlighted = hljs.highlight(text, { language: lang }).value;
+    } else if (lang) {
+      // 未知の言語の場合は自動検出を試みる
+      highlighted = hljs.highlightAuto(text).value;
+    } else {
+      // 言語指定なし: HTMLエスケープのみ
+      highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    return `<pre style="${COMMAND_PRE_STYLE}"><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
   };
   return marked.parse(markdown, { renderer }) as string;
 }
@@ -1128,6 +1141,7 @@ export default function TinyMCEBody({
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
+        content_css: ['/pluginAssets/highlight.js/vs2015.min.css'],
         content_style: `
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
