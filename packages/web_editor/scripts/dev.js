@@ -33,9 +33,9 @@ if (profileName) {
   console.log(`Using profile: ${profileName}`);
 }
 
-// Next.js を起動 (webpack モードで起動 → source map が有効になる)
+// Next.js を起動
 const command = 'next';
-const commandArgs = ['dev', '--webpack', ...nextArgs];
+const commandArgs = ['dev', ...nextArgs];
 
 const child = spawn(command, commandArgs, {
   stdio: 'inherit',
