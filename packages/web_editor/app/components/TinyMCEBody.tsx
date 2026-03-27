@@ -273,7 +273,7 @@ function convertMarkdownToHtml(markdown: string): string {
 
     // フォールバック: HTMLエスケープのみ
     const escaped = htmlEntity.encode(text);
-    return `<pre style="${COMMAND_PRE_STYLE}"><code>${escaped}</code></pre>\n`;
+    return `<pre style="${COMMAND_PRE_STYLE}">${escaped}</pre>\n`;
   };
   return marked.parse(markdown, { renderer }) as string;
 }
