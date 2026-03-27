@@ -120,6 +120,19 @@ function injectKatexScripts(editor: any) {
 }
 
 /**
+ * TinyMCE の iframe 内に highlight.js の vs2015 テーマ CSS を注入する。
+ */
+function injectHighlightCss(editor: any) {
+  const doc = editor.getDoc() as Document;
+  if (doc.querySelector('link[data-hljs-css]')) return; // 二重注入防止
+  const link = doc.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/pluginAssets/highlight.js/vs2015.min.css';
+  link.setAttribute('data-hljs-css', '1');
+  doc.head.appendChild(link);
+}
+
+/**
  * ドキュメント内の全 KaTeX ブロックに joplin-kartexUpdate イベントを発火し、
  * 数式を再レンダリングする。スクリプト読み込み完了待ちのため遅延してから実行する。
  */
@@ -190,7 +203,9 @@ function convertMarkdownToHtml(markdown: string): string {
       // 言語指定なし: HTMLエスケープのみ
       highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-    const preStyle = lang ? '' : ` style="${COMMAND_PRE_STYLE}"`;
+    const preStyle = lang
+      ? ' style="background:#1e1e1e;padding:0;border:none;border-radius:4px;overflow:auto;"'
+      : ` style="${COMMAND_PRE_STYLE}"`;
     return `<pre${preStyle}><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
   };
   return marked.parse(markdown, { renderer }) as string;
@@ -1142,7 +1157,6 @@ export default function TinyMCEBody({
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
-        content_css: ['/pluginAssets/highlight.js/vs2015.min.css'],
         content_style: `
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -1213,6 +1227,7 @@ export default function TinyMCEBody({
               editorRef.current = editor;
               injectMermaidScripts(editor);
               injectKatexScripts(editor);
+              injectHighlightCss(editor);
               editor.setContent(preserveHtmlIndent(html ?? ''));
               editor.undoManager.reset();
               setEditorReady(true);
