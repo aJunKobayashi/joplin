@@ -19,7 +19,7 @@ import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
-import hljs from 'highlight.js';
+import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
 import { Config } from '../../config';
 import * as htmlEntity from 'html-entities';
 import 'tinymce/icons/default';
@@ -119,17 +119,73 @@ function injectKatexScripts(editor: any) {
   doc.head.appendChild(script);
 }
 
+// ---------- ヘルパー: Shiki シンタックスハイライト ----------
+
+/** プリロードする言語一覧 */
+const SHIKI_PRELOAD_LANGS: BundledLanguage[] = [
+  'javascript',
+  'typescript',
+  'jsx',
+  'tsx',
+  'python',
+  'bash',
+  'json',
+  'jsonc',
+  'html',
+  'css',
+  'scss',
+  'less',
+  'markdown',
+  'yaml',
+  'toml',
+  'sql',
+  'java',
+  'c',
+  'cpp',
+  'csharp',
+  'go',
+  'rust',
+  'ruby',
+  'php',
+  'swift',
+  'kotlin',
+  'xml',
+  'dockerfile',
+  'vue',
+  'svelte',
+  'graphql',
+  'lua',
+  'perl',
+  'r',
+  'scala',
+  'haskell',
+  'elixir',
+  'powershell',
+  'ini',
+  'diff',
+  'makefile',
+  'shellscript',
+  'shellsession',
+];
+
+let shikiHighlighter: Highlighter | null = null;
+let shikiPromise: Promise<Highlighter> | null = null;
+
 /**
- * TinyMCE の iframe 内に highlight.js の vs2015 テーマ CSS を注入する。
+ * Shiki ハイライターを遅延初期化する。
+ * 初回呼出時に非同期で生成し、以降はキャッシュを返す。
  */
-function injectHighlightCss(editor: any) {
-  const doc = editor.getDoc() as Document;
-  if (doc.querySelector('link[data-hljs-css]')) return; // 二重注入防止
-  const link = doc.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = '/pluginAssets/highlight.js/vs2015.min.css';
-  link.setAttribute('data-hljs-css', '1');
-  doc.head.appendChild(link);
+function initShikiHighlighter(): Promise<Highlighter> {
+  if (!shikiPromise) {
+    shikiPromise = createHighlighter({
+      themes: ['dark-plus'],
+      langs: SHIKI_PRELOAD_LANGS,
+    }).then((h) => {
+      shikiHighlighter = h;
+      return h;
+    });
+  }
+  return shikiPromise;
 }
 
 /**
@@ -184,7 +240,7 @@ const COMMAND_PRE_STYLE =
 /**
  * Markdown テキストを HTML に変換する。
  * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
- * 言語指定がある場合は highlight.js で VS Code 風のシンタックスハイライトを適用する。
+ * 言語指定がある場合は Shiki で VS Code と同一のシンタックスハイライトを適用する。
  */
 function convertMarkdownToHtml(markdown: string): string {
   const renderer = new marked.Renderer();
@@ -193,20 +249,24 @@ function convertMarkdownToHtml(markdown: string): string {
     const text: string = typeof token === 'string' ? token : (token.text ?? '');
     const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
 
-    let highlighted: string;
-    if (lang && hljs.getLanguage(lang)) {
-      highlighted = hljs.highlight(text, { language: lang }).value;
-    } else if (lang) {
-      // 未知の言語の場合は自動検出を試みる
-      highlighted = hljs.highlightAuto(text).value;
-    } else {
-      // 言語指定なし: HTMLエスケープのみ
-      highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
+    if (lang && shikiHighlighter) {
+      const loaded = shikiHighlighter.getLoadedLanguages();
+      if (loaded.includes(lang)) {
+        try {
+          return shikiHighlighter.codeToHtml(text, {
+            lang,
+            theme: 'dark-plus',
+          });
+        } catch {
+          // フォールバック
+        }
+      }
     }
-    const preStyle = lang
-      ? ' style="padding:0;border:none;border-radius:4px;overflow:auto;background:transparent;"'
-      : ` style="${COMMAND_PRE_STYLE}"`;
-    return `<pre${preStyle}><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
+
+    // フォールバック: HTMLエスケープのみ
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<pre style="${COMMAND_PRE_STYLE}"><code>${escaped}</code></pre>\n`;
   };
   return marked.parse(markdown, { renderer }) as string;
 }
@@ -1176,22 +1236,10 @@ export default function TinyMCEBody({
           code { font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
           pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
           pre code[data-mce-selected] { background-color: transparent !important; }
-          /* highlight.js (vs2015) ブロックは hljs 側のスタイルを完全に適用する */
-          /* oxide skin の content.css に含まれる Prism.js スタイルが
-             code[class*=language-] に text-shadow / color を付与するため上書きする */
-          pre:has(code.hljs) { background: transparent; padding: 0; border: none; border-radius: 0; }
-          pre code.hljs {
-            display: block;
-            overflow-x: auto;
-            padding: 1em;
-            background: #1e1e1e;
-            color: #dcdcdc;
-            text-shadow: none;
-            font-size: 13px;
-            line-height: 1.45;
-            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-            border-radius: 4px;
-          }
+          /* Shiki: インラインスタイルで色が付くため text-shadow 等の干渉を防止 */
+          pre.shiki { border-radius: 4px; padding: 1em; overflow-x: auto; font-size: 13px; line-height: 1.45; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+          pre.shiki code { background: transparent; padding: 0; border-radius: 0; color: inherit; text-shadow: none; }
+          pre.shiki code span { text-shadow: none; }
           img { max-width: 100%; }
           a { color: #1a73e8; }
           table { border-collapse: collapse; width: 100%; }
@@ -1243,7 +1291,7 @@ export default function TinyMCEBody({
               editorRef.current = editor;
               injectMermaidScripts(editor);
               injectKatexScripts(editor);
-              injectHighlightCss(editor);
+              initShikiHighlighter(); // Shiki を事前初期化（非同期）
               editor.setContent(preserveHtmlIndent(html ?? ''));
               editor.undoManager.reset();
               setEditorReady(true);
