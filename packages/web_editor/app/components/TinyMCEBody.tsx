@@ -304,7 +304,7 @@ function openMermaidDialog(editor: any, initialValue: string, mermaidRootElement
 
 function insertCommandPre(editor: any) {
   const preElement = document.createElement('pre');
-  const preId = `${Date.now()}`;
+  const preId = `cmd-${Date.now()}`;
   preElement.setAttribute('style', COMMAND_PRE_STYLE);
   preElement.id = preId;
   preElement.innerText = ' ';
