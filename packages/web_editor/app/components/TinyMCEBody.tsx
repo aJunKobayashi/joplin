@@ -22,6 +22,7 @@ import { marked } from 'marked';
 import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
 import { Config } from '../../config';
 import * as htmlEntity from 'html-entities';
+import { load as cheerioLoad } from 'cheerio';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -258,11 +259,12 @@ function convertMarkdownToHtml(markdown: string): string {
             lang,
             theme: 'dark-plus',
           });
-          // <code> タグに黒背景のインラインスタイルを付与（他セレクタに負けないよう !important）
-          return html.replace(
-            /<code>/,
-            '<code style="background-color:#1e1e1e !important; border:none !important;">'
-          );
+          // cheerio で <code> 要素を特定してスタイルを付与（正規表現置換より安全）
+          const $ = cheerioLoad(html, { decodeEntities: false });
+          $('code')
+            .first()
+            .attr('style', 'background-color:#1e1e1e !important; border:none !important;');
+          return $('body').html() ?? html;
         } catch {
           // フォールバック
         }
