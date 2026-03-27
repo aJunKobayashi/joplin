@@ -105,6 +105,17 @@
       "webRoot": "${workspaceFolder}",
       "runtimeArgs": [
         "--remote-debugging-port=9222"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack://_N_E/*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*",
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*"
+      },
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**",
+        "!**/_next/static/chunks/turbopack*",
+        "!**/react-server-dom-turbopack/**"
       ]
     }
   ]
