@@ -19,8 +19,10 @@ import imageCompression from 'browser-image-compression';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
+import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
 import { Config } from '../../config';
 import * as htmlEntity from 'html-entities';
+import { load as cheerioLoad } from 'cheerio';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/plugins/link';
@@ -118,6 +120,75 @@ function injectKatexScripts(editor: any) {
   doc.head.appendChild(script);
 }
 
+// ---------- ヘルパー: Shiki シンタックスハイライト ----------
+
+/** プリロードする言語一覧 */
+const SHIKI_PRELOAD_LANGS: BundledLanguage[] = [
+  'javascript',
+  'typescript',
+  'jsx',
+  'tsx',
+  'python',
+  'bash',
+  'json',
+  'jsonc',
+  'html',
+  'css',
+  'scss',
+  'less',
+  'markdown',
+  'yaml',
+  'toml',
+  'sql',
+  'java',
+  'c',
+  'cpp',
+  'csharp',
+  'go',
+  'rust',
+  'ruby',
+  'php',
+  'swift',
+  'kotlin',
+  'xml',
+  'dockerfile',
+  'vue',
+  'svelte',
+  'graphql',
+  'lua',
+  'perl',
+  'r',
+  'scala',
+  'haskell',
+  'elixir',
+  'powershell',
+  'ini',
+  'diff',
+  'makefile',
+  'shellscript',
+  'shellsession',
+];
+
+let shikiHighlighter: Highlighter | null = null;
+let shikiPromise: Promise<Highlighter> | null = null;
+
+/**
+ * Shiki ハイライターを遅延初期化する。
+ * 初回呼出時に非同期で生成し、以降はキャッシュを返す。
+ */
+function initShikiHighlighter(): Promise<Highlighter> {
+  if (!shikiPromise) {
+    shikiPromise = createHighlighter({
+      themes: ['dark-plus'],
+      langs: SHIKI_PRELOAD_LANGS,
+    }).then((h) => {
+      shikiHighlighter = h;
+      return h;
+    });
+  }
+  return shikiPromise;
+}
+
 /**
  * ドキュメント内の全 KaTeX ブロックに joplin-kartexUpdate イベントを発火し、
  * 数式を再レンダリングする。スクリプト読み込み完了待ちのため遅延してから実行する。
@@ -160,11 +231,51 @@ function updateMermaidDiv(editor: any, txt: string, mermaidRootElement: HTMLElem
 
 // ---------- ヘルパー: Markdown 挿入ダイアログ ----------
 
+/** insertCommandPre と共有するコードブロックのインラインスタイル */
+const COMMAND_PRE_STYLE =
+  "box-sizing:border-box;overflow:auto;font-family:Menlo,Monaco,Consolas,'Courier New',monospace;" +
+  'font-size:11px;padding:8px;margin:0;line-height:1.42857;word-break:break-all;' +
+  'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
+  'border:none;border-radius:3px;box-shadow:none;';
+
 /**
  * Markdown テキストを HTML に変換する。
+ * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
+ * 言語指定がある場合は Shiki で VS Code と同一のシンタックスハイライトを適用する。
  */
 function convertMarkdownToHtml(markdown: string): string {
-  return marked.parse(markdown) as string;
+  const renderer = new marked.Renderer();
+  renderer.code = function (token: any) {
+    // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
+    const text: string = typeof token === 'string' ? token : (token.text ?? '');
+    const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
+
+    // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
+    if (lang && shikiHighlighter) {
+      const loaded = shikiHighlighter.getLoadedLanguages();
+      if (loaded.includes(lang)) {
+        try {
+          const html = shikiHighlighter.codeToHtml(text, {
+            lang,
+            theme: 'dark-plus',
+          });
+          // cheerio で <code> 要素を特定してスタイルを付与（正規表現置換より安全）
+          const $ = cheerioLoad(html, { decodeEntities: false });
+          $('code')
+            .first()
+            .attr('style', 'background-color:#1e1e1e !important; border:none !important;');
+          return $('body').html() ?? html;
+        } catch {
+          // フォールバック
+        }
+      }
+    }
+
+    // フォールバック: HTMLエスケープのみ
+    const escaped = htmlEntity.encode(text);
+    return `<pre style="${COMMAND_PRE_STYLE}">${escaped}</pre>\n`;
+  };
+  return marked.parse(markdown, { renderer }) as string;
 }
 
 /**
@@ -289,14 +400,8 @@ function openMermaidDialog(editor: any, initialValue: string, mermaidRootElement
 
 function insertCommandPre(editor: any) {
   const preElement = document.createElement('pre');
-  const preId = `${Date.now()}`;
-  preElement.setAttribute(
-    'style',
-    'box-sizing:border-box;overflow:auto;font-family:Menlo,Monaco,Consolas,"Courier New",monospace;' +
-      'font-size:11px;padding:8px;margin:0;line-height:1.42857;word-break:break-all;' +
-      'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
-      'border:none;border-radius:3px;box-shadow:none;'
-  );
+  const preId = `cmd-${Date.now()}`;
+  preElement.setAttribute('style', COMMAND_PRE_STYLE);
   preElement.id = preId;
   preElement.innerText = ' ';
   editor.selection.setNode(preElement);
@@ -1116,7 +1221,6 @@ export default function TinyMCEBody({
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
               'cmd mermaid katexMath toc markdownInsert htmlInsert',
-
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
@@ -1137,6 +1241,12 @@ export default function TinyMCEBody({
             font-size: 13px;
           }
           code { font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+          pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
+          pre code[data-mce-selected] { background-color: transparent !important; }
+          /* Shiki: インラインスタイルで色が付くため text-shadow 等の干渉を防止 */
+          pre.shiki { border-radius: 4px; padding: 1em; overflow-x: auto; font-size: 13px; line-height: 1.45; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+          pre.shiki code { background: transparent; padding: 0; border-radius: 0; color: inherit; text-shadow: none; }
+          pre.shiki code span { text-shadow: none; }
           img { max-width: 100%; }
           a { color: #1a73e8; }
           table { border-collapse: collapse; width: 100%; }
@@ -1188,6 +1298,7 @@ export default function TinyMCEBody({
               editorRef.current = editor;
               injectMermaidScripts(editor);
               injectKatexScripts(editor);
+              initShikiHighlighter(); // Shiki を事前初期化（非同期）
               editor.setContent(preserveHtmlIndent(html ?? ''));
               editor.undoManager.reset();
               setEditorReady(true);
