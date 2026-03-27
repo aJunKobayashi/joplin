@@ -259,7 +259,10 @@ function convertMarkdownToHtml(markdown: string): string {
             theme: 'dark-plus',
           });
           // <code> タグに黒背景のインラインスタイルを付与（他セレクタに負けないよう !important）
-          return html.replace(/<code>/, '<code style="background-color:#1e1e1e !important;">');
+          return html.replace(
+            /<code>/,
+            '<code style="background-color:#1e1e1e !important; border:none !important;">'
+          );
         } catch {
           // フォールバック
         }
