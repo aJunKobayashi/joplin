@@ -1177,6 +1177,8 @@ export default function TinyMCEBody({
           pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
           pre code[data-mce-selected] { background-color: transparent !important; }
           /* highlight.js (vs2015) ブロックは hljs 側のスタイルを完全に適用する */
+          /* oxide skin の content.css に含まれる Prism.js スタイルが
+             code[class*=language-] に text-shadow / color を付与するため上書きする */
           pre:has(code.hljs) { background: transparent; padding: 0; border: none; border-radius: 0; }
           pre code.hljs {
             display: block;
@@ -1184,6 +1186,7 @@ export default function TinyMCEBody({
             padding: 1em;
             background: #1e1e1e;
             color: #dcdcdc;
+            text-shadow: none;
             font-size: 13px;
             line-height: 1.45;
             font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
