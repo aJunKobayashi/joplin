@@ -204,7 +204,7 @@ function convertMarkdownToHtml(markdown: string): string {
       highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
     const preStyle = lang
-      ? ' style="background:#1e1e1e;padding:0;border:none;border-radius:4px;overflow:auto;"'
+      ? ' style="padding:0;border:none;border-radius:4px;overflow:auto;background:transparent;"'
       : ` style="${COMMAND_PRE_STYLE}"`;
     return `<pre${preStyle}><code class="hljs${lang ? ` language-${lang}` : ''}">${highlighted}</code></pre>\n`;
   };
@@ -1176,6 +1176,9 @@ export default function TinyMCEBody({
           code { font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
           pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
           pre code[data-mce-selected] { background-color: transparent !important; }
+          /* highlight.js (vs2015) ブロックは hljs 側のスタイルを優先させる */
+          pre:has(code.hljs) { background: transparent; padding: 0; border-radius: 0; }
+          pre code.hljs { background: #1e1e1e; font-size: 13px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
           img { max-width: 100%; }
           a { color: #1a73e8; }
           table { border-collapse: collapse; width: 100%; }
