@@ -160,11 +160,26 @@ function updateMermaidDiv(editor: any, txt: string, mermaidRootElement: HTMLElem
 
 // ---------- ヘルパー: Markdown 挿入ダイアログ ----------
 
+/** insertCommandPre と共有するコードブロックのインラインスタイル */
+const COMMAND_PRE_STYLE =
+  "box-sizing:border-box;overflow:auto;font-family:Menlo,Monaco,Consolas,'Courier New',monospace;" +
+  'font-size:11px;padding:8px;margin:0;line-height:1.42857;word-break:break-all;' +
+  'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
+  'border:none;border-radius:3px;box-shadow:none;';
+
 /**
  * Markdown テキストを HTML に変換する。
+ * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用する。
  */
 function convertMarkdownToHtml(markdown: string): string {
-  return marked.parse(markdown) as string;
+  const renderer = new marked.Renderer();
+  renderer.code = function (token: any) {
+    // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
+    const text: string = typeof token === 'string' ? token : (token.text ?? '');
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<pre style="${COMMAND_PRE_STYLE}"><code>${escaped}</code></pre>\n`;
+  };
+  return marked.parse(markdown, { renderer }) as string;
 }
 
 /**
@@ -290,13 +305,7 @@ function openMermaidDialog(editor: any, initialValue: string, mermaidRootElement
 function insertCommandPre(editor: any) {
   const preElement = document.createElement('pre');
   const preId = `${Date.now()}`;
-  preElement.setAttribute(
-    'style',
-    'box-sizing:border-box;overflow:auto;font-family:Menlo,Monaco,Consolas,"Courier New",monospace;' +
-      'font-size:11px;padding:8px;margin:0;line-height:1.42857;word-break:break-all;' +
-      'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
-      'border:none;border-radius:3px;box-shadow:none;'
-  );
+  preElement.setAttribute('style', COMMAND_PRE_STYLE);
   preElement.id = preId;
   preElement.innerText = ' ';
   editor.selection.setNode(preElement);
@@ -1116,7 +1125,6 @@ export default function TinyMCEBody({
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
               'cmd mermaid katexMath toc markdownInsert htmlInsert',
-
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
@@ -1137,6 +1145,8 @@ export default function TinyMCEBody({
             font-size: 13px;
           }
           code { font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+          pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
+          pre code[data-mce-selected] { background-color: transparent !important; }
           img { max-width: 100%; }
           a { color: #1a73e8; }
           table { border-collapse: collapse; width: 100%; }
