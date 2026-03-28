@@ -279,12 +279,25 @@ async function convertMarkdownToHtml(markdown: string): Promise<string> {
   const html = marked.parse(markdown, { renderer }) as string;
 
   const $html = cheerioLoad(html, { decodeEntities: false });
-  $html('img').each((_, el) => {
-    const src = $html(el).attr('src');
+  for (const el of $html('img').toArray()) {
+    const src = $html(el).attr('src') ?? '';
+    const filename = src.split('/').pop() ?? src;
     console.log('convertMarkdownToHtml img src:', src);
-  });
+    try {
+      const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        $html(el).attr('src', `/api/resource/${encodeURIComponent(json.filename as string)}`);
+        $html(el).attr('alt', json.originalName as string);
+      } else {
+        console.warn('convertMarkdownToHtml: POST resource failed', json.error);
+      }
+    } catch (err) {
+      console.warn('convertMarkdownToHtml: POST resource error', err);
+    }
+  }
 
-  return html;
+  return $html('body').html() ?? html;
 }
 
 /**
