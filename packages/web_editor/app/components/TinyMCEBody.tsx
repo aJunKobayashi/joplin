@@ -29,6 +29,7 @@ import 'tinymce/plugins/link';
 import 'tinymce/plugins/lists';
 import 'tinymce/plugins/table';
 import 'tinymce/plugins/codesample';
+import { basename } from 'path';
 
 /**
  * HTML テキストノードの連続スペースをノーブレークスペースに変換し、
@@ -243,7 +244,7 @@ const COMMAND_PRE_STYLE =
  * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
  * 言語指定がある場合は Shiki で VS Code と同一のシンタックスハイライトを適用する。
  */
-function convertMarkdownToHtml(markdown: string): string {
+async function convertMarkdownToHtml(markdown: string): Promise<string> {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
     // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
@@ -275,19 +276,15 @@ function convertMarkdownToHtml(markdown: string): string {
     return text;
   };
 
-  // img タグのカスタマイズ
-  renderer.image = function (token: any) {
-    // marked v9+ はオブジェクト { href, title, text } で渡される
-    const href: string = typeof token === 'string' ? token : (token.href ?? '');
-    const title: string = typeof token === 'string' ? '' : (token.title ?? '');
-    const alt: string = typeof token === 'string' ? '' : (token.text ?? '');
+  const html = marked.parse(markdown, { renderer }) as string;
 
-    console.log('Markdown image token:', { href, title, alt });
-    const titleAttr = title ? ` title="${title}"` : '';
-    return `<img src="${href}" alt="${alt}"${titleAttr} style="max-width:100%;height:auto;" />`;
-  };
+  const $html = cheerioLoad(html, { decodeEntities: false });
+  $html('img').each((_, el) => {
+    const src = $html(el).attr('src');
+    console.log('convertMarkdownToHtml img src:', src);
+  });
 
-  return marked.parse(markdown, { renderer }) as string;
+  return html;
 }
 
 /**
@@ -318,12 +315,12 @@ function openMarkdownInsertDialog(editor: any) {
       { type: 'cancel', text: 'Cancel' },
       { type: 'submit', text: 'OK', primary: true },
     ],
-    onSubmit: function (api: any) {
+    onSubmit: async function (api: any) {
       const data = api.getData();
       if (data.markdown && data.markdown.trim()) {
         // bookmark を復元してカーソル位置を確定する
         editor.selection.moveToBookmark(bookmark);
-        const html = convertMarkdownToHtml(data.markdown);
+        const html = await convertMarkdownToHtml(data.markdown);
         editor.execCommand('mceInsertContent', false, html);
       }
       api.close();
