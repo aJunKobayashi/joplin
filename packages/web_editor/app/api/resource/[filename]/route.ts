@@ -105,6 +105,60 @@ export async function PUT(req: Request, { params }: Props) {
   }
 }
 
+export async function POST(_req: Request, { params }: Props) {
+  try {
+    const { filename } = await params;
+    if (!filename) {
+      return NextResponse.json({ success: false, error: 'filename is required' }, { status: 400 });
+    }
+
+    // prevent path traversal
+    const safeName = path.basename(filename);
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    const srcPath = path.join(homeDir, 'joplin_img', safeName);
+
+    const srcStat = await fs.stat(srcPath).catch(() => null);
+    if (!srcStat || !srcStat.isFile()) {
+      return NextResponse.json(
+        { success: false, error: `File not found in joplin_img: ${safeName}` },
+        { status: 404 }
+      );
+    }
+
+    const ext = path.extname(safeName).toLowerCase();
+    const resourceId = uuidv4().replace(/-/g, '');
+    const newFilename = ext ? `${resourceId}${ext}` : resourceId;
+
+    const resourceDir = ViewerUtil.getResourceFolderPath();
+    await fs.mkdir(resourceDir, { recursive: true });
+    const destPath = path.join(resourceDir, newFilename);
+
+    await fs.copyFile(srcPath, destPath);
+
+    const stat = await fs.stat(destPath);
+    const mime = MIME_MAP[ext] || 'application/octet-stream';
+    const fileExtension = ext.startsWith('.') ? ext.slice(1) : ext;
+
+    Resource.save({
+      id: resourceId,
+      title: safeName,
+      mime,
+      filename: '',
+      file_extension: fileExtension,
+      size: stat.size,
+      created_time: Date.now(),
+      updated_time: Date.now(),
+    });
+
+    return NextResponse.json({ success: true, filename: newFilename, originalName: safeName });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(_req: Request, { params }: Props) {
   try {
     const { filename } = await params;
