@@ -270,11 +270,23 @@ function convertMarkdownToHtml(markdown: string): string {
         }
       }
     }
-
     // フォールバック: HTMLエスケープのみ
     // const escaped = htmlEntity.encode(text);
     return text;
   };
+
+  // img タグのカスタマイズ
+  renderer.image = function (token: any) {
+    // marked v9+ はオブジェクト { href, title, text } で渡される
+    const href: string = typeof token === 'string' ? token : (token.href ?? '');
+    const title: string = typeof token === 'string' ? '' : (token.title ?? '');
+    const alt: string = typeof token === 'string' ? '' : (token.text ?? '');
+
+    console.log('Markdown image token:', { href, title, alt });
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<img src="${href}" alt="${alt}"${titleAttr} style="max-width:100%;height:auto;" />`;
+  };
+
   return marked.parse(markdown, { renderer }) as string;
 }
 
