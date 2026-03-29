@@ -293,7 +293,12 @@ async function convertMarkdownToHtml(
     const filename = src.split('/').pop() ?? src;
     console.log('convertMarkdownToHtml img src:', src);
     try {
-      const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, { method: 'POST' });
+      const compressQs = compressOptions?.compress
+        ? `?compress=1&width=${compressOptions.width}&maxSizeKB=${compressOptions.maxSizeKB}`
+        : '';
+      const res = await fetch(`/api/resource/${encodeURIComponent(filename)}${compressQs}`, {
+        method: 'POST',
+      });
       const json = await res.json();
       if (json.success) {
         $html(el).attr('src', `/api/resource/${encodeURIComponent(json.filename as string)}`);

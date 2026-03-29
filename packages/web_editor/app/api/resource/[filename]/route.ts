@@ -4,6 +4,7 @@ import { Resource } from '@/lib/resource';
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
 
 type Props = {
   params: Promise<{
@@ -105,12 +106,17 @@ export async function PUT(req: Request, { params }: Props) {
   }
 }
 
-export async function POST(_req: Request, { params }: Props) {
+export async function POST(req: Request, { params }: Props) {
   try {
     const { filename } = await params;
     if (!filename) {
       return NextResponse.json({ success: false, error: 'filename is required' }, { status: 400 });
     }
+
+    const url = new URL(req.url);
+    const compress = url.searchParams.get('compress') === '1';
+    const targetWidth = parseInt(url.searchParams.get('width') ?? '0', 10) || 0;
+    const maxSizeKB = parseInt(url.searchParams.get('maxSizeKB') ?? '0', 10) || 0;
 
     // prevent path traversal
     const safeName = path.basename(filename);
@@ -125,27 +131,52 @@ export async function POST(_req: Request, { params }: Props) {
       );
     }
 
-    const ext = path.extname(safeName).toLowerCase();
-    const resourceId = uuidv4().replace(/-/g, '');
-    const newFilename = ext ? `${resourceId}${ext}` : resourceId;
-
     const resourceDir = ViewerUtil.getResourceFolderPath();
     await fs.mkdir(resourceDir, { recursive: true });
+
+    const resourceId = uuidv4().replace(/-/g, '');
+    let newFilename: string;
+    let outputMime: string;
+    let outputExt: string;
+    let fileData: Buffer;
+
+    if (compress && targetWidth > 0) {
+      // sharp でリサイズ + WebP 変換（maxSizeKB を超えないよう quality を下げて再試行）
+      outputExt = '.webp';
+      outputMime = 'image/webp';
+      newFilename = `${resourceId}${outputExt}`;
+
+      let quality = 85;
+      let buf: Buffer;
+      do {
+        buf = await sharp(srcPath)
+          .resize({ width: targetWidth, withoutEnlargement: true })
+          .webp({ quality })
+          .toBuffer();
+        if (maxSizeKB <= 0 || buf.length <= maxSizeKB * 1024 || quality <= 20) break;
+        quality -= 10;
+      } while (quality > 0);
+      fileData = buf!;
+    } else {
+      // 圧縮なし: そのままコピー
+      const ext = path.extname(safeName).toLowerCase();
+      outputExt = ext;
+      outputMime = MIME_MAP[ext] || 'application/octet-stream';
+      newFilename = ext ? `${resourceId}${ext}` : resourceId;
+      fileData = await fs.readFile(srcPath);
+    }
+
     const destPath = path.join(resourceDir, newFilename);
+    await fs.writeFile(destPath, fileData);
 
-    await fs.copyFile(srcPath, destPath);
-
-    const stat = await fs.stat(destPath);
-    const mime = MIME_MAP[ext] || 'application/octet-stream';
-    const fileExtension = ext.startsWith('.') ? ext.slice(1) : ext;
-
+    const fileExtension = outputExt.startsWith('.') ? outputExt.slice(1) : outputExt;
     Resource.save({
       id: resourceId,
       title: safeName,
-      mime,
+      mime: outputMime,
       filename: '',
       file_extension: fileExtension,
-      size: stat.size,
+      size: fileData.length,
       created_time: Date.now(),
       updated_time: Date.now(),
     });
