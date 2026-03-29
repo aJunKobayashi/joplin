@@ -113,10 +113,10 @@ export async function POST(req: Request, { params }: Props) {
       return NextResponse.json({ success: false, error: 'filename is required' }, { status: 400 });
     }
 
-    const url = new URL(req.url);
-    const compress = url.searchParams.get('compress') === '1';
-    const targetWidth = parseInt(url.searchParams.get('width') ?? '0', 10) || 0;
-    const maxSizeKB = parseInt(url.searchParams.get('maxSizeKB') ?? '0', 10) || 0;
+    const body = await req.json().catch(() => ({}));
+    const compress = body.compress === true;
+    const targetWidth = parseInt(body.width ?? '0', 10) || 0;
+    const maxSizeKB = parseInt(body.maxSizeKB ?? '0', 10) || 0;
 
     // prevent path traversal
     const safeName = path.basename(filename);
