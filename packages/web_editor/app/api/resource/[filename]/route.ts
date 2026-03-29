@@ -149,10 +149,7 @@ export async function POST(req: Request, { params }: Props) {
       let quality = 85;
       let buf: Buffer;
       do {
-        buf = await sharp(srcPath)
-          .resize({ width: targetWidth, withoutEnlargement: true })
-          .webp({ quality })
-          .toBuffer();
+        buf = await sharp(srcPath).resize({ width: targetWidth }).webp({ quality }).toBuffer();
         if (maxSizeKB <= 0 || buf.length <= maxSizeKB * 1024 || quality <= 20) break;
         quality -= 10;
       } while (quality > 0);
