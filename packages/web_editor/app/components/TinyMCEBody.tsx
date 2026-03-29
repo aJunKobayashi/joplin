@@ -239,12 +239,21 @@ const COMMAND_PRE_STYLE =
   'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
   'border:none;border-radius:3px;box-shadow:none;';
 
+interface MarkdownImageCompressOptions {
+  compress: boolean;
+  width: number;
+  maxSizeKB: number;
+}
+
 /**
  * Markdown テキストを HTML に変換する。
  * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
  * 言語指定がある場合は Shiki で VS Code と同一のシンタックスハイライトを適用する。
  */
-async function convertMarkdownToHtml(markdown: string): Promise<string> {
+async function convertMarkdownToHtml(
+  markdown: string,
+  compressOptions?: MarkdownImageCompressOptions
+): Promise<string> {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
     // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
@@ -313,6 +322,9 @@ function openMarkdownInsertDialog(editor: any) {
     size: 'large',
     initialData: {
       markdown: '',
+      compressImages: false,
+      width: String(Config.imageCompressDefaultWidth),
+      maxSizeKB: String(Config.imageCompressDefaultMaxSizeKB),
     },
     body: {
       type: 'panel',
@@ -321,6 +333,21 @@ function openMarkdownInsertDialog(editor: any) {
           type: 'textarea',
           name: 'markdown',
           label: 'Markdown',
+        },
+        {
+          type: 'checkbox',
+          name: 'compressImages',
+          label: '画像を圧縮する (WebP 変換)',
+        },
+        {
+          type: 'input',
+          name: 'width',
+          label: '変換後の幅 (px)  ※アスペクト比を維持してリサイズ',
+        },
+        {
+          type: 'input',
+          name: 'maxSizeKB',
+          label: '圧縮後の最大サイズ (KB)',
         },
       ],
     },
@@ -333,7 +360,14 @@ function openMarkdownInsertDialog(editor: any) {
       if (data.markdown && data.markdown.trim()) {
         // bookmark を復元してカーソル位置を確定する
         editor.selection.moveToBookmark(bookmark);
-        const html = await convertMarkdownToHtml(data.markdown);
+        const compressOptions: MarkdownImageCompressOptions | undefined = data.compressImages
+          ? {
+              compress: true,
+              width: parseInt(data.width, 10) || Config.imageCompressDefaultWidth,
+              maxSizeKB: parseInt(data.maxSizeKB, 10) || Config.imageCompressDefaultMaxSizeKB,
+            }
+          : undefined;
+        const html = await convertMarkdownToHtml(data.markdown, compressOptions);
         editor.execCommand('mceInsertContent', false, html);
       }
       api.close();
