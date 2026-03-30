@@ -254,7 +254,8 @@ interface MarkdownImageCompressOptions {
  */
 async function convertMarkdownToHtml(
   markdown: string,
-  compressOptions?: MarkdownImageCompressOptions
+  compressOptions?: MarkdownImageCompressOptions,
+  editor?: any
 ): Promise<string> {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
@@ -262,11 +263,34 @@ async function convertMarkdownToHtml(
     const text: string = typeof token === 'string' ? token : (token.text ?? '');
     const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
 
-    // katex: KaTeX 数式ブロックとして HTML を生成
+    // katex: プレースホルダーを生成し、mceInsertContent 完了後に DOM API で KaTeX 構造に置換する
     if (lang === 'katex') {
       const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
-      const escaped = escapeHtml(text.trim());
-      return `<div id="katexJoplinRoot_${baseId}" katexTxt="${escaped}" katexFontsize="1.2"><p id="katexDialog_${baseId}" class="JoplinKatex">\\[ ${escaped} \\]</p></div>`;
+      const formula = text.trim();
+      const escaped = escapeHtml(formula);
+      if (editor) {
+        setTimeout(() => {
+          const doc = editor.getDoc() as Document;
+          const placeholder = doc.querySelector(`.katex-md-placeholder[data-katex-id="${baseId}"]`);
+          if (!placeholder) return;
+          const root = doc.createElement('div');
+          root.id = `katexJoplinRoot_${baseId}`;
+          root.setAttribute('katexTxt', formula);
+          root.setAttribute('katexFontsize', '1.2');
+          const p = doc.createElement('p');
+          p.id = `katexDialog_${baseId}`;
+          p.className = 'JoplinKatex';
+          p.textContent = `\\[ ${formula} \\]`;
+          root.appendChild(p);
+          placeholder.parentNode?.replaceChild(root, placeholder);
+          doc.dispatchEvent(
+            new CustomEvent('joplin-kartexUpdate', {
+              detail: { id: root.id, fontSize: '1.2', element: root },
+            })
+          );
+        }, 300);
+      }
+      return `<div class="katex-md-placeholder" data-katex-formula="${escaped}" data-katex-id="${baseId}">katex</div>`;
     }
 
     // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
@@ -384,9 +408,8 @@ function openMarkdownInsertDialog(editor: any) {
               maxSizeKB: parseInt(data.maxSizeKB, 10) || Config.imageCompressDefaultMaxSizeKB,
             }
           : undefined;
-        const html = await convertMarkdownToHtml(data.markdown, compressOptions);
+        const html = await convertMarkdownToHtml(data.markdown, compressOptions, editor);
         editor.execCommand('mceInsertContent', false, html);
-        triggerKatexRender(editor, 300);
       }
       api.close();
     },
