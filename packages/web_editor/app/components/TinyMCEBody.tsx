@@ -168,6 +168,8 @@ const SHIKI_PRELOAD_LANGS: BundledLanguage[] = [
   'makefile',
   'shellscript',
   'shellsession',
+  'tex',
+  'mermaid',
 ];
 
 let shikiHighlighter: Highlighter | null = null;
