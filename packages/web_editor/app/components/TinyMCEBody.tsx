@@ -330,7 +330,7 @@ function openMarkdownInsertDialog(editor: any) {
     size: 'large',
     initialData: {
       markdown: '',
-      compressImages: false,
+      compressImages: Config.importImgCompress,
       width: String(Config.imageCompressDefaultWidth),
       maxSizeKB: String(Config.imageCompressDefaultMaxSizeKB),
     },

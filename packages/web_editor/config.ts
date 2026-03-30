@@ -10,4 +10,16 @@ export class Config {
   public static readonly imageCompressDefaultWidth = 1000;
   /** 圧縮後のデフォルト最大画像サイズ (KB) */
   public static readonly imageCompressDefaultMaxSizeKB = 100;
+
+  /**
+   * Markdown インポート時に画像を取り込むフォルダ名（ホームディレクトリ直下）。
+   * 例: 'joplin_img' → ~/joplin_img/
+   */
+  public static readonly importImgDir = 'joplin_img';
+
+  /**
+   * Markdown インポート時に画像を自動的に WebP 圧縮するかどうか。
+   * false の場合はダイアログでオプションを選択しても圧縮フォームのデフォルトが無効になる。
+   */
+  public static readonly importImgCompress = true;
 }
