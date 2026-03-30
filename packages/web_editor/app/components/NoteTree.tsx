@@ -14,10 +14,17 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import { TreeNode, useFolderQuery } from '@/lib/hooks';
 
 // fetch logic moved to `useFolderQuery` in `lib/hooks`
-function renderTree(nodes: TreeNode[], onNoteClick?: () => void, currentNoteId?: string | null) {
+function renderTree(
+  nodes: TreeNode[],
+  onNoteClick?: () => void,
+  currentNoteId?: string | null,
+  onContextMenu?: (event: React.MouseEvent, node: TreeNode) => void
+) {
   return nodes.map((node) => {
     if (node.type === 'Folder') {
       return (
@@ -35,7 +42,7 @@ function renderTree(nodes: TreeNode[], onNoteClick?: () => void, currentNoteId?:
         >
           {node.children &&
             node.children.length > 0 &&
-            renderTree(node.children, onNoteClick, currentNoteId)}
+            renderTree(node.children, onNoteClick, currentNoteId, onContextMenu)}
         </TreeItem>
       );
     }
@@ -73,6 +80,7 @@ function renderTree(nodes: TreeNode[], onNoteClick?: () => void, currentNoteId?:
                   }
                 : undefined
             }
+            onContextMenu={(e: React.MouseEvent) => onContextMenu?.(e, node)}
           >
             {box}
           </Link>
@@ -102,9 +110,34 @@ export default function NoteTree() {
   const allIds = React.useMemo(() => collectIds(folders || []), [folders]);
   const [isClicked, setIsClicked] = React.useState(false);
 
+  const [contextMenu, setContextMenu] = React.useState<{
+    mouseX: number;
+    mouseY: number;
+    node: TreeNode;
+  } | null>(null);
+
   const onClickNote = useCallback(() => {
     setIsClicked(true);
   }, []);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent, node: TreeNode) => {
+    if (!event.metaKey) return;
+    event.preventDefault();
+    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, node });
+  }, []);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleCopyAsAnchor = useCallback(() => {
+    if (contextMenu) {
+      const href = `/note?note_id=${contextMenu.node.id}`;
+      const anchor = `<a href="${href}">${contextMenu.node.title}</a>`;
+      navigator.clipboard.writeText(anchor);
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
 
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
@@ -137,8 +170,8 @@ export default function NoteTree() {
   }, [noteIdFromUrl, folders]);
 
   const treeCompoent = useMemo(() => {
-    return renderTree(folders || [], onClickNote, noteIdFromUrl);
-  }, [folders, onClickNote, noteIdFromUrl]);
+    return renderTree(folders || [], onClickNote, noteIdFromUrl, handleContextMenu);
+  }, [folders, onClickNote, noteIdFromUrl, handleContextMenu]);
 
   if (isLoading) {
     return (
@@ -162,6 +195,16 @@ export default function NoteTree() {
 
   return (
     <Box sx={{ height: '100%' }}>
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleContextMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+      >
+        <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
+      </Menu>
       <SimpleTreeView
         aria-label="folder tree"
         slots={{
