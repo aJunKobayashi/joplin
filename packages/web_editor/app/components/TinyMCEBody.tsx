@@ -168,6 +168,8 @@ const SHIKI_PRELOAD_LANGS: BundledLanguage[] = [
   'makefile',
   'shellscript',
   'shellsession',
+  'tex',
+  'mermaid',
 ];
 
 let shikiHighlighter: Highlighter | null = null;
@@ -252,13 +254,70 @@ interface MarkdownImageCompressOptions {
  */
 async function convertMarkdownToHtml(
   markdown: string,
-  compressOptions?: MarkdownImageCompressOptions
+  compressOptions?: MarkdownImageCompressOptions,
+  editor?: any
 ): Promise<string> {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
     // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
     const text: string = typeof token === 'string' ? token : (token.text ?? '');
     const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
+
+    // katex: プレースホルダーを生成し、mceInsertContent 完了後に DOM API で KaTeX 構造に置換する
+    if (lang === 'katex') {
+      const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
+      const formula = text.trim();
+      const escaped = escapeHtml(formula);
+      if (editor) {
+        setTimeout(() => {
+          const doc = editor.getDoc() as Document;
+          const placeholder = doc.querySelector(`.katex-md-placeholder[data-katex-id="${baseId}"]`);
+          if (!placeholder) return;
+          const root = doc.createElement('div');
+          root.id = `katexJoplinRoot_${baseId}`;
+          root.setAttribute('katexTxt', formula);
+          root.setAttribute('katexFontsize', '1.2');
+          const p = doc.createElement('p');
+          p.id = `katexDialog_${baseId}`;
+          p.className = 'JoplinKatex';
+          p.textContent = `\\[ ${formula} \\]`;
+          root.appendChild(p);
+          placeholder.parentNode?.replaceChild(root, placeholder);
+          doc.dispatchEvent(
+            new CustomEvent('joplin-kartexUpdate', {
+              detail: { id: root.id, fontSize: '1.2', element: root },
+            })
+          );
+        }, 300);
+      }
+      return `<div class="katex-md-placeholder" data-katex-formula="${escaped}" data-katex-id="${baseId}">katex</div>`;
+    }
+
+    // mermaid: プレースホルダーを生成し、mceInsertContent 完了後に DOM API で Mermaid 構造に置換する
+    if (lang === 'mermaid_diagram') {
+      const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
+      const diagramTxt = text.trim();
+      if (editor) {
+        setTimeout(() => {
+          const doc = editor.getDoc() as Document;
+          const placeholder = doc.querySelector(
+            `.mermaid-md-placeholder[data-mermaid-id="${baseId}"]`
+          );
+          if (!placeholder) return;
+          const root = doc.createElement('div');
+          root.id = `mermaidJoplinRoot_${baseId}`;
+          root.setAttribute('mermaidTxt', diagramTxt);
+          const dialog = doc.createElement('div');
+          dialog.id = `mermaidJoplinDialog_${baseId}`;
+          dialog.className = 'mermaid';
+          dialog.textContent = diagramTxt;
+          root.appendChild(dialog);
+          placeholder.parentNode?.replaceChild(root, placeholder);
+          doc.dispatchEvent(new Event('joplin-noteDidUpdate'));
+        }, 300);
+      }
+      return `<div class="mermaid-md-placeholder" data-mermaid-id="${baseId}">mermaid</div>`;
+    }
 
     // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
     if (lang && shikiHighlighter) {
@@ -375,7 +434,7 @@ function openMarkdownInsertDialog(editor: any) {
               maxSizeKB: parseInt(data.maxSizeKB, 10) || Config.imageCompressDefaultMaxSizeKB,
             }
           : undefined;
-        const html = await convertMarkdownToHtml(data.markdown, compressOptions);
+        const html = await convertMarkdownToHtml(data.markdown, compressOptions, editor);
         editor.execCommand('mceInsertContent', false, html);
       }
       api.close();
