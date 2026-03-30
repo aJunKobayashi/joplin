@@ -294,7 +294,7 @@ async function convertMarkdownToHtml(
     }
 
     // mermaid: プレースホルダーを生成し、mceInsertContent 完了後に DOM API で Mermaid 構造に置換する
-    if (lang === 'mermaid') {
+    if (lang === 'mermaid_diagram') {
       const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
       const diagramTxt = text.trim();
       if (editor) {
