@@ -880,6 +880,30 @@ function getEditorContent(editor: any): string {
   return clone.innerHTML;
 }
 
+/**
+ * コンテンツ内の <a> タグの href が現在のオリジン + /note?note_id=... の形式であれば
+ * 相対 URL (/note?note_id=...) に正規化する。
+ */
+function normalizeNoteLinks(html: string): string {
+  const $ = cheerioLoad(html, { decodeEntities: false });
+  $('a[href]').each((_, el) => {
+    const href = $(el).attr('href') ?? '';
+    try {
+      const url = new URL(href);
+      if (
+        url.origin === window.location.origin &&
+        url.pathname === '/note' &&
+        url.searchParams.has('note_id')
+      ) {
+        $(el).attr('href', `${url.pathname}${url.search}`);
+      }
+    } catch {
+      // 相対 URL など parse 失敗は無視
+    }
+  });
+  return $('body').html() ?? html;
+}
+
 // ---------- ヘルパー: Audio 設定ボタン ----------
 
 /**
@@ -1202,7 +1226,8 @@ export default function TinyMCEBody({
       if (!noteId || !editorRef.current || isSaving) return;
       setIsSaving(true);
       try {
-        const content = getEditorContent(editorRef.current);
+        const content = normalizeNoteLinks(getEditorContent(editorRef.current));
+
         const res = await fetch('/api/note', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
