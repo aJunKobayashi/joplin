@@ -880,6 +880,38 @@ function getEditorContent(editor: any): string {
   return clone.innerHTML;
 }
 
+/**
+ * 絶対 URL が現在のオリジンと一致する場合に相対 URL へ変換するヘルパー。
+ */
+function toRelativeIfSameOrigin(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.origin === window.location.origin) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // 相対 URL など parse 失敗は無視
+  }
+  return value;
+}
+
+/**
+ * コンテンツ内の <a href>、<img src>、<video src>、<audio src> が
+ * 現在のオリジンの絶対 URL であれば相対 URL に正規化する。
+ */
+function normalizeNoteLinks(html: string): string {
+  const $ = cheerioLoad(html, { decodeEntities: false });
+  $('a[href]').each((_, el) => {
+    const href = $(el).attr('href') ?? '';
+    $(el).attr('href', toRelativeIfSameOrigin(href));
+  });
+  $('img[src], video[src], audio[src]').each((_, el) => {
+    const src = $(el).attr('src') ?? '';
+    $(el).attr('src', toRelativeIfSameOrigin(src));
+  });
+  return $('body').html() ?? html;
+}
+
 // ---------- ヘルパー: Audio 設定ボタン ----------
 
 /**
@@ -1202,7 +1234,8 @@ export default function TinyMCEBody({
       if (!noteId || !editorRef.current || isSaving) return;
       setIsSaving(true);
       try {
-        const content = getEditorContent(editorRef.current);
+        const content = normalizeNoteLinks(getEditorContent(editorRef.current));
+
         const res = await fetch('/api/note', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1416,6 +1449,9 @@ export default function TinyMCEBody({
           joplinSub: { inline: 'sub', remove: 'all' },
         },
         setup: (editor: any) => {
+          // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示するためのフラグ
+          let lastContextMenuMetaKey = false;
+
           editor.on('init', () => {
             if (!destroyed) {
               editorRef.current = editor;
@@ -1446,6 +1482,19 @@ export default function TinyMCEBody({
               // audio 要素に設定ボタン (⚙) をオーバーレイ
               attachAudioSettingsButtons(editor);
 
+              // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示する
+              // capture フェーズで Meta キー状態を記録し、Meta なしなら TinyMCE のハンドラをスキップ
+              iframeDoc.addEventListener(
+                'contextmenu',
+                (e: MouseEvent) => {
+                  lastContextMenuMetaKey = e.metaKey;
+                  if (!e.metaKey) {
+                    e.stopImmediatePropagation();
+                  }
+                },
+                true
+              );
+
               // audio 設定ボタンのクリックを委譲ハンドラーで処理
               iframeDoc.addEventListener('click', (e: MouseEvent) => {
                 const target = e.target as HTMLElement;
@@ -1472,6 +1521,7 @@ export default function TinyMCEBody({
 
           editor.ui.registry.addContextMenu('joplinResource', {
             update: (element: Element) => {
+              if (!lastContextMenuMetaKey) return '';
               let el: Element | null = element;
               while (el) {
                 const tag = el.tagName?.toLowerCase();

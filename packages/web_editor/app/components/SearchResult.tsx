@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -51,6 +53,36 @@ export default function SearchResult({ query }: { query: string }) {
   const [results, setResults] = React.useState<NoteEntity[] | null>(null);
   const { folders, isLoading, error } = useFolderQuery();
 
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    note: NoteEntity;
+  } | null>(null);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent, note: NoteEntity) => {
+    if (!event.metaKey) return;
+    event.preventDefault();
+    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, note });
+  }, []);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleCopyAsAnchor = useCallback(() => {
+    if (contextMenu) {
+      const href = `/note?note_id=${contextMenu.note.id}`;
+      const anchor = `<a href="${href}">${contextMenu.note.title}</a>`;
+      navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([anchor], { type: 'text/html' }),
+          'text/plain': new Blob([anchor], { type: 'text/plain' }),
+        }),
+      ]);
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   React.useEffect(() => {
     if (!query || query.trim() === '') {
       setResults(null);
@@ -76,10 +108,24 @@ export default function SearchResult({ query }: { query: string }) {
 
   return (
     <Box sx={{ height: '100%', overflowY: 'auto' }}>
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleContextMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+      >
+        <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
+      </Menu>
       <List>
         {results.map((r) => (
           <ListItem key={r.id} disablePadding>
-            <Link href={`/note?note_id=${r.id}`} prefetch={false}>
+            <Link
+              href={`/note?note_id=${r.id}`}
+              prefetch={false}
+              onContextMenu={(e) => handleContextMenu(e, r)}
+            >
               <ListItemButton>
                 <ListItemIcon>
                   <DescriptionIcon />
