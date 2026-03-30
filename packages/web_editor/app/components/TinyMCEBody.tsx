@@ -881,25 +881,33 @@ function getEditorContent(editor: any): string {
 }
 
 /**
- * コンテンツ内の <a> タグの href が現在のオリジン + /note?note_id=... の形式であれば
- * 相対 URL (/note?note_id=...) に正規化する。
+ * 絶対 URL が現在のオリジンと一致する場合に相対 URL へ変換するヘルパー。
+ */
+function toRelativeIfSameOrigin(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.origin === window.location.origin) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // 相対 URL など parse 失敗は無視
+  }
+  return value;
+}
+
+/**
+ * コンテンツ内の <a href>、<img src>、<video src>、<audio src> が
+ * 現在のオリジンの絶対 URL であれば相対 URL に正規化する。
  */
 function normalizeNoteLinks(html: string): string {
   const $ = cheerioLoad(html, { decodeEntities: false });
   $('a[href]').each((_, el) => {
     const href = $(el).attr('href') ?? '';
-    try {
-      const url = new URL(href);
-      if (
-        url.origin === window.location.origin &&
-        url.pathname === '/note' &&
-        url.searchParams.has('note_id')
-      ) {
-        $(el).attr('href', `${url.pathname}${url.search}`);
-      }
-    } catch {
-      // 相対 URL など parse 失敗は無視
-    }
+    $(el).attr('href', toRelativeIfSameOrigin(href));
+  });
+  $('img[src], video[src], audio[src]').each((_, el) => {
+    const src = $(el).attr('src') ?? '';
+    $(el).attr('src', toRelativeIfSameOrigin(src));
   });
   return $('body').html() ?? html;
 }
