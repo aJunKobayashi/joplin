@@ -293,6 +293,32 @@ async function convertMarkdownToHtml(
       return `<div class="katex-md-placeholder" data-katex-formula="${escaped}" data-katex-id="${baseId}">katex</div>`;
     }
 
+    // mermaid: プレースホルダーを生成し、mceInsertContent 完了後に DOM API で Mermaid 構造に置換する
+    if (lang === 'mermaid') {
+      const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
+      const diagramTxt = text.trim();
+      if (editor) {
+        setTimeout(() => {
+          const doc = editor.getDoc() as Document;
+          const placeholder = doc.querySelector(
+            `.mermaid-md-placeholder[data-mermaid-id="${baseId}"]`
+          );
+          if (!placeholder) return;
+          const root = doc.createElement('div');
+          root.id = `mermaidJoplinRoot_${baseId}`;
+          root.setAttribute('mermaidTxt', diagramTxt);
+          const dialog = doc.createElement('div');
+          dialog.id = `mermaidJoplinDialog_${baseId}`;
+          dialog.className = 'mermaid';
+          dialog.textContent = diagramTxt;
+          root.appendChild(dialog);
+          placeholder.parentNode?.replaceChild(root, placeholder);
+          doc.dispatchEvent(new Event('joplin-noteDidUpdate'));
+        }, 300);
+      }
+      return `<div class="mermaid-md-placeholder" data-mermaid-id="${baseId}">mermaid</div>`;
+    }
+
     // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
     if (lang && shikiHighlighter) {
       const loaded = shikiHighlighter.getLoadedLanguages();
