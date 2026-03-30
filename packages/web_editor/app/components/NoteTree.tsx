@@ -134,7 +134,12 @@ export default function NoteTree() {
     if (contextMenu) {
       const href = `/note?note_id=${contextMenu.node.id}`;
       const anchor = `<a href="${href}">${contextMenu.node.title}</a>`;
-      navigator.clipboard.writeText(anchor);
+      navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([anchor], { type: 'text/html' }),
+          'text/plain': new Blob([anchor], { type: 'text/plain' }),
+        }),
+      ]);
     }
     setContextMenu(null);
   }, [contextMenu]);
