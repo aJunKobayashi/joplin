@@ -262,6 +262,13 @@ async function convertMarkdownToHtml(
     const text: string = typeof token === 'string' ? token : (token.text ?? '');
     const lang: string = typeof token === 'string' ? '' : (token.lang ?? '');
 
+    // katex: KaTeX 数式ブロックとして HTML を生成
+    if (lang === 'katex') {
+      const baseId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
+      const escaped = escapeHtml(text.trim());
+      return `<div id="katexJoplinRoot_${baseId}" katexTxt="${escaped}" katexFontsize="1.2"><p id="katexDialog_${baseId}" class="JoplinKatex">\\[ ${escaped} \\]</p></div>`;
+    }
+
     // Shiki ハイライターが利用可能で、かつ対応言語がロード済みなら Shiki を使用
     if (lang && shikiHighlighter) {
       const loaded = shikiHighlighter.getLoadedLanguages();
@@ -379,6 +386,7 @@ function openMarkdownInsertDialog(editor: any) {
           : undefined;
         const html = await convertMarkdownToHtml(data.markdown, compressOptions);
         editor.execCommand('mceInsertContent', false, html);
+        triggerKatexRender(editor, 300);
       }
       api.close();
     },
