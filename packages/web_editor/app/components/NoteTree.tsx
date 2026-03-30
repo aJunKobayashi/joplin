@@ -63,13 +63,19 @@ function renderTree(nodes: TreeNode[], onNoteClick?: () => void, currentNoteId?:
         key={node.id}
         itemId={node.id}
         label={
-          isCurrentNote ? (
-            box
-          ) : (
-            <Link href={`/note?note_id=${node.id}`} prefetch={false}>
-              {box}
-            </Link>
-          )
+          <Link
+            href={`/note?note_id=${node.id}`}
+            prefetch={false}
+            onClick={
+              isCurrentNote
+                ? (e: React.MouseEvent) => {
+                    e.preventDefault();
+                  }
+                : undefined
+            }
+          >
+            {box}
+          </Link>
         }
         onClick={onNoteClick}
       />
