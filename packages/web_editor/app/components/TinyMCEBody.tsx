@@ -1416,6 +1416,9 @@ export default function TinyMCEBody({
           joplinSub: { inline: 'sub', remove: 'all' },
         },
         setup: (editor: any) => {
+          // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示するためのフラグ
+          let lastContextMenuMetaKey = false;
+
           editor.on('init', () => {
             if (!destroyed) {
               editorRef.current = editor;
@@ -1446,6 +1449,19 @@ export default function TinyMCEBody({
               // audio 要素に設定ボタン (⚙) をオーバーレイ
               attachAudioSettingsButtons(editor);
 
+              // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示する
+              // capture フェーズで Meta キー状態を記録し、Meta なしなら TinyMCE のハンドラをスキップ
+              iframeDoc.addEventListener(
+                'contextmenu',
+                (e: MouseEvent) => {
+                  lastContextMenuMetaKey = e.metaKey;
+                  if (!e.metaKey) {
+                    e.stopImmediatePropagation();
+                  }
+                },
+                true
+              );
+
               // audio 設定ボタンのクリックを委譲ハンドラーで処理
               iframeDoc.addEventListener('click', (e: MouseEvent) => {
                 const target = e.target as HTMLElement;
@@ -1472,6 +1488,7 @@ export default function TinyMCEBody({
 
           editor.ui.registry.addContextMenu('joplinResource', {
             update: (element: Element) => {
+              if (!lastContextMenuMetaKey) return '';
               let el: Element | null = element;
               while (el) {
                 const tag = el.tagName?.toLowerCase();
