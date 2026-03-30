@@ -141,7 +141,7 @@ export async function POST(req: Request, { params }: Props) {
     let outputExt: string;
     let fileData: Buffer;
 
-    if (compress && targetWidth > 0) {
+    if (compress && targetWidth > 0 && (maxSizeKB <= 0 || srcStat.size > maxSizeKB * 1024)) {
       // sharp でリサイズ + WebP 変換（maxSizeKB を超えないよう quality を下げて再試行）
       outputExt = '.webp';
       outputMime = 'image/webp';
