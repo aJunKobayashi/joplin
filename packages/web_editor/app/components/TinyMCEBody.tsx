@@ -29,6 +29,7 @@ import 'tinymce/plugins/link';
 import 'tinymce/plugins/lists';
 import 'tinymce/plugins/table';
 import 'tinymce/plugins/codesample';
+import { basename } from 'path';
 
 /**
  * HTML テキストノードの連続スペースをノーブレークスペースに変換し、
@@ -238,12 +239,21 @@ const COMMAND_PRE_STYLE =
   'overflow-wrap:break-word;color:rgb(157,165,180);background:rgb(49,54,63);' +
   'border:none;border-radius:3px;box-shadow:none;';
 
+interface MarkdownImageCompressOptions {
+  compress: boolean;
+  width: number;
+  maxSizeKB: number;
+}
+
 /**
  * Markdown テキストを HTML に変換する。
  * コードブロック（``` で囲まれた領域）には insertCommandPre と同じスタイルを適用し、
  * 言語指定がある場合は Shiki で VS Code と同一のシンタックスハイライトを適用する。
  */
-function convertMarkdownToHtml(markdown: string): string {
+async function convertMarkdownToHtml(
+  markdown: string,
+  compressOptions?: MarkdownImageCompressOptions
+): Promise<string> {
   const renderer = new marked.Renderer();
   renderer.code = function (token: any) {
     // marked v9+ はオブジェクト、旧バージョンは文字列で渡される
@@ -270,12 +280,41 @@ function convertMarkdownToHtml(markdown: string): string {
         }
       }
     }
-
     // フォールバック: HTMLエスケープのみ
     // const escaped = htmlEntity.encode(text);
     return text;
   };
-  return marked.parse(markdown, { renderer }) as string;
+
+  const html = marked.parse(markdown, { renderer }) as string;
+
+  const $html = cheerioLoad(html, { decodeEntities: false });
+  for (const el of $html('img').toArray()) {
+    const src = $html(el).attr('src') ?? '';
+    const filename = src.split('/').pop() ?? src;
+    console.log('convertMarkdownToHtml img src:', src);
+    try {
+      const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          compressOptions?.compress
+            ? { compress: true, width: compressOptions.width, maxSizeKB: compressOptions.maxSizeKB }
+            : {}
+        ),
+      });
+      const json = await res.json();
+      if (json.success) {
+        $html(el).attr('src', `/api/resource/${encodeURIComponent(json.filename as string)}`);
+        $html(el).attr('alt', json.originalName as string);
+      } else {
+        console.warn('convertMarkdownToHtml: POST resource failed', json.error);
+      }
+    } catch (err) {
+      console.warn('convertMarkdownToHtml: POST resource error', err);
+    }
+  }
+
+  return $html('body').html() ?? html;
 }
 
 /**
@@ -291,6 +330,9 @@ function openMarkdownInsertDialog(editor: any) {
     size: 'large',
     initialData: {
       markdown: '',
+      compressImages: false,
+      width: String(Config.imageCompressDefaultWidth),
+      maxSizeKB: String(Config.imageCompressDefaultMaxSizeKB),
     },
     body: {
       type: 'panel',
@@ -300,18 +342,40 @@ function openMarkdownInsertDialog(editor: any) {
           name: 'markdown',
           label: 'Markdown',
         },
+        {
+          type: 'checkbox',
+          name: 'compressImages',
+          label: '画像を圧縮する (WebP 変換)',
+        },
+        {
+          type: 'input',
+          name: 'width',
+          label: '変換後の幅 (px)  ※アスペクト比を維持してリサイズ',
+        },
+        {
+          type: 'input',
+          name: 'maxSizeKB',
+          label: '圧縮後の最大サイズ (KB)',
+        },
       ],
     },
     buttons: [
       { type: 'cancel', text: 'Cancel' },
       { type: 'submit', text: 'OK', primary: true },
     ],
-    onSubmit: function (api: any) {
+    onSubmit: async function (api: any) {
       const data = api.getData();
       if (data.markdown && data.markdown.trim()) {
         // bookmark を復元してカーソル位置を確定する
         editor.selection.moveToBookmark(bookmark);
-        const html = convertMarkdownToHtml(data.markdown);
+        const compressOptions: MarkdownImageCompressOptions | undefined = data.compressImages
+          ? {
+              compress: true,
+              width: parseInt(data.width, 10) || Config.imageCompressDefaultWidth,
+              maxSizeKB: parseInt(data.maxSizeKB, 10) || Config.imageCompressDefaultMaxSizeKB,
+            }
+          : undefined;
+        const html = await convertMarkdownToHtml(data.markdown, compressOptions);
         editor.execCommand('mceInsertContent', false, html);
       }
       api.close();
