@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
+import { Config } from '@/config';
 
 type Props = {
   params: Promise<{
@@ -121,12 +122,12 @@ export async function POST(req: Request, { params }: Props) {
     // prevent path traversal
     const safeName = path.basename(filename);
     const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    const srcPath = path.join(homeDir, 'joplin_img', safeName);
+    const srcPath = path.join(homeDir, Config.importImgDir, safeName);
 
     const srcStat = await fs.stat(srcPath).catch(() => null);
     if (!srcStat || !srcStat.isFile()) {
       return NextResponse.json(
-        { success: false, error: `File not found in joplin_img: ${safeName}` },
+        { success: false, error: `File not found in ${Config.importImgDir}: ${safeName}` },
         { status: 404 }
       );
     }
