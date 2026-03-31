@@ -2011,7 +2011,6 @@ export default function TinyMCEBody({
               minRows={6}
               maxRows={20}
               variant="outlined"
-              InputProps={{ readOnly: true }}
               sx={{ fontFamily: 'monospace', mt: 1 }}
             />
           )}

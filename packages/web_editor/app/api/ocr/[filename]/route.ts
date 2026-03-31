@@ -5,8 +5,12 @@ import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
+
+// Extensions natively supported by ndlocr-lite
+const SUPPORTED_EXTS = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.jp2']);
 
 type Props = {
   params: Promise<{
@@ -35,12 +39,25 @@ export async function GET(_req: Request, { params }: Props) {
     // create an isolated temp directory for this request
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ndlocr-'));
 
+    // Convert to PNG if the format is not supported by ndlocr-lite
+    const ext = path.extname(safeName).toLowerCase();
+    let ocrInputPath: string;
+    let ocrBaseName: string;
+    if (SUPPORTED_EXTS.has(ext)) {
+      ocrInputPath = filePath;
+      ocrBaseName = path.basename(safeName, ext);
+    } else {
+      const convertedName = `${path.basename(safeName, ext)}.png`;
+      ocrInputPath = path.join(tmpDir, convertedName);
+      await sharp(filePath).png().toFile(ocrInputPath);
+      ocrBaseName = path.basename(convertedName, '.png');
+    }
+
     // run ndlocr-lite — execFile avoids shell injection; no shell metachar expansion
-    await execFileAsync('ndlocr-lite', ['--sourceimg', filePath, '--output', tmpDir]);
+    await execFileAsync('ndlocr-lite', ['--sourceimg', ocrInputPath, '--output', tmpDir]);
 
     // ndlocr-lite writes <basename>.txt to the output directory
-    const baseName = path.basename(safeName, path.extname(safeName));
-    let txtPath = path.join(tmpDir, `${baseName}.txt`);
+    let txtPath = path.join(tmpDir, `${ocrBaseName}.txt`);
 
     const txtStat = await fs.stat(txtPath).catch(() => null);
     if (!txtStat || !txtStat.isFile()) {
