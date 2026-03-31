@@ -1526,6 +1526,24 @@ export default function TinyMCEBody({
                   if (audio) openMediaDialog(editor, audio);
                 }
               });
+
+              // Cmd+P / Cmd+Shift+P: capture フェーズで登録することでブラウザの印刷ダイアログを
+              // 確実に抑制し、検索・チャットダイアログを開く
+              iframeDoc.addEventListener(
+                'keydown',
+                (e: KeyboardEvent) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.dispatchEvent(
+                      new CustomEvent('open-dialog', {
+                        detail: { type: e.shiftKey ? 'chat' : 'search' },
+                      })
+                    );
+                  }
+                },
+                true
+              );
             }
           });
 
@@ -1572,21 +1590,6 @@ export default function TinyMCEBody({
               pendingOcrElementRef.current = null;
               return '';
             },
-          });
-
-          // Cmd+P / Cmd+Shift+P: iframe 内のイベントを親ウィンドウへ転送して検索・チャットダイアログを開く
-          // カスタムイベントを使い、ブラウザの印刷ダイアログを回避する
-          editor.on('keydown', (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
-              e.preventDefault();
-              e.stopPropagation();
-              window.dispatchEvent(
-                new CustomEvent('open-dialog', {
-                  detail: { type: e.shiftKey ? 'chat' : 'search' },
-                })
-              );
-              return;
-            }
           });
 
           // Cmd/Ctrl+Shift+V: プレーンテキストとして貼り付け（HTML タグをエスケープ）
