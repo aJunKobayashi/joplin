@@ -13,7 +13,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import imageCompression from 'browser-image-compression';
@@ -31,6 +30,8 @@ import 'tinymce/plugins/lists';
 import 'tinymce/plugins/table';
 import 'tinymce/plugins/codesample';
 import { basename } from 'path';
+import { useOcr } from '@/lib/useOcr';
+import OcrDialog from './OcrDialog';
 
 /**
  * HTML テキストノードの連続スペースをノーブレークスペースに変換し、
@@ -1199,9 +1200,7 @@ export default function TinyMCEBody({
     severity: 'success' | 'error';
   } | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [showOcrDialog, setShowOcrDialog] = useState(false);
-  const [ocrText, setOcrText] = useState('');
-  const [ocrLoading, setOcrLoading] = useState(false);
+  const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
 
   // TinyMCE setup クロージャから React state を更新するための ref
   const openDeleteConfirmRef = useRef<() => void>(() => setShowDeleteConfirmDialog(true));
@@ -1225,24 +1224,9 @@ export default function TinyMCEBody({
       const href = el.getAttribute('href') ?? '';
       const resourceUrl = src.startsWith('/api/resource/') ? src : href;
       const filename = resourceUrl.replace('/api/resource/', '');
-      setOcrText('');
-      setOcrLoading(true);
-      setShowOcrDialog(true);
-      try {
-        const res = await fetch(`/api/ocr/${encodeURIComponent(filename)}`);
-        const json = await res.json();
-        if (json.success) {
-          setOcrText(json.text);
-        } else {
-          setOcrText(`エラー: ${json.error}`);
-        }
-      } catch (err) {
-        setOcrText(`エラー: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        setOcrLoading(false);
-      }
+      runOcr(filename);
     };
-  }, []);
+  }, [runOcr]);
 
   // attachAudioSettingsButtons 実行中はダーティ検知を抑制するための ref
   const suppressDirtyRef = useRef(false);
@@ -1998,36 +1982,13 @@ export default function TinyMCEBody({
       </Snackbar>
 
       {/* OCR 結果ダイアログ */}
-      <Dialog open={showOcrDialog} onClose={() => setShowOcrDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>OCR 結果</DialogTitle>
-        <DialogContent>
-          {ocrLoading ? (
-            <DialogContentText sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} />
-              OCR 処理中...
-            </DialogContentText>
-          ) : (
-            <TextField
-              value={ocrText}
-              multiline
-              fullWidth
-              minRows={6}
-              maxRows={20}
-              variant="outlined"
-              sx={{ fontFamily: 'monospace', mt: 1 }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => navigator.clipboard.writeText(ocrText)}
-            disabled={ocrLoading || !ocrText}
-          >
-            コピー
-          </Button>
-          <Button onClick={() => setShowOcrDialog(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+      <OcrDialog
+        open={showOcrDialog}
+        loading={ocrLoading}
+        text={ocrText}
+        onTextChange={setOcrText}
+        onClose={closeOcrDialog}
+      />
 
       {/* リソース削除確認ダイアログ */}
       <Dialog open={showDeleteConfirmDialog} onClose={() => setShowDeleteConfirmDialog(false)}>

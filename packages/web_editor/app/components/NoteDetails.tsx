@@ -8,16 +8,10 @@ import { NoteEntity } from '@/lib/database';
 import Mark from 'mark.js';
 import { Config } from '../../config';
 import { ClientUtil } from '@/lib/ClientUtil';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import CircularProgress from '@mui/material/CircularProgress';
+import { useOcr } from '@/lib/useOcr';
+import OcrDialog from './OcrDialog';
 
 export default function NoteDetails({ note }: { note: (NoteEntity & { body?: string }) | null }) {
   const searchParams = useSearchParams();
@@ -25,9 +19,7 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
   // 前回の search 値を保持（同じ値ならスクロールを抑制するため）
   const prevSearchRef = useRef<string | null>(null);
 
-  const [showOcrDialog, setShowOcrDialog] = useState(false);
-  const [ocrText, setOcrText] = useState('');
-  const [ocrLoading, setOcrLoading] = useState(false);
+  const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
   const [contextMenu, setContextMenu] = useState<{
     mouseX: number;
     mouseY: number;
@@ -166,18 +158,7 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
     if (!contextMenu) return;
     const { filename } = contextMenu;
     setContextMenu(null);
-    setOcrText('');
-    setOcrLoading(true);
-    setShowOcrDialog(true);
-    fetch(`/api/ocr/${encodeURIComponent(filename)}`)
-      .then((res) => res.json())
-      .then((json) => {
-        setOcrText(json.success ? json.text : `エラー: ${json.error}`);
-      })
-      .catch((err) => {
-        setOcrText(`エラー: ${err instanceof Error ? err.message : String(err)}`);
-      })
-      .finally(() => setOcrLoading(false));
+    runOcr(filename);
   };
 
   // searchパラメータが変化した時に、該当箇所をハイライトしてスクロール
@@ -354,37 +335,13 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
       </Menu>
 
       {/* OCR 結果ダイアログ */}
-      <Dialog open={showOcrDialog} onClose={() => setShowOcrDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>OCR 結果</DialogTitle>
-        <DialogContent>
-          {ocrLoading ? (
-            <DialogContentText sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} />
-              OCR 処理中...
-            </DialogContentText>
-          ) : (
-            <TextField
-              value={ocrText}
-              onChange={(e) => setOcrText(e.target.value)}
-              multiline
-              fullWidth
-              minRows={6}
-              maxRows={20}
-              variant="outlined"
-              sx={{ fontFamily: 'monospace', mt: 1 }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => navigator.clipboard.writeText(ocrText)}
-            disabled={ocrLoading || !ocrText}
-          >
-            コピー
-          </Button>
-          <Button onClick={() => setShowOcrDialog(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+      <OcrDialog
+        open={showOcrDialog}
+        loading={ocrLoading}
+        text={ocrText}
+        onTextChange={setOcrText}
+        onClose={closeOcrDialog}
+      />
     </div>
   );
 }
