@@ -1397,7 +1397,7 @@ export default function TinyMCEBody({
               'h1 h2 h3 hr blockquote table |',
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
-              'cmd mermaid katexMath toc markdownInsert htmlInsert',
+              'cmd mermaid katexMath toc markdownInsert htmlInsert searchreplace',
             ].join(' '),
         valid_elements: '*[*]',
         relative_urls: false,
@@ -1573,6 +1573,20 @@ export default function TinyMCEBody({
               pendingOcrElementRef.current = null;
               return '';
             },
+          });
+
+          // Cmd+F / Cmd+H: searchreplace プラグインのショートカットを無効化
+          // （ツールバーボタンからのみ起動させる）
+          editor.on('keydown', (e: KeyboardEvent) => {
+            if (
+              (e.metaKey || e.ctrlKey) &&
+              !e.shiftKey &&
+              (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')
+            ) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              return;
+            }
           });
 
           // Cmd+P / Cmd+Shift+P: iframe 内のイベントを親ウィンドウへ転送して検索・チャットダイアログを開く
