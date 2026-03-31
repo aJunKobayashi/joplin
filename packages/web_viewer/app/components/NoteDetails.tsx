@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import parse, { domToReact, HTMLReactParserOptions, Element, DOMNode } from 'html-react-parser';
@@ -8,12 +8,23 @@ import { NoteEntity } from '@/lib/database';
 import Mark from 'mark.js';
 import { Config } from '../../config';
 import { ClientUtil } from '@/lib/ClientUtil';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import { useOcr } from '@/lib/useOcr';
+import OcrDialog from './OcrDialog';
 
 export default function NoteDetails({ note }: { note: (NoteEntity & { body?: string }) | null }) {
   const searchParams = useSearchParams();
   const contentRef = useRef<HTMLDivElement>(null);
   // 前回の search 値を保持（同じ値ならスクロールを抑制するため）
   const prevSearchRef = useRef<string | null>(null);
+
+  const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    filename: string;
+  } | null>(null);
 
   // 指定要素のレンダリングが安定するのを待つユーティリティ
   const waitForStableRender = (
@@ -71,6 +82,36 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
       }
     })();
   }, [note?.body]);
+
+  // Meta キー + 右クリックで /api/resource/ 画像に OCR コンテキストメニューを表示
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      if (!e.metaKey) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() !== 'img') return;
+      const src = target.getAttribute('src') ?? '';
+      if (!src.startsWith('/api/resource/')) return;
+
+      e.preventDefault();
+      const filename = src.replace('/api/resource/', '').split('?')[0];
+      setContextMenu({ mouseX: e.clientX, mouseY: e.clientY, filename });
+    };
+
+    container.addEventListener('contextmenu', handleContextMenu);
+    return () => container.removeEventListener('contextmenu', handleContextMenu);
+  }, [note?.body]);
+
+  const handleOcrMenuClose = () => setContextMenu(null);
+
+  const handleOcrRun = () => {
+    if (!contextMenu) return;
+    const { filename } = contextMenu;
+    setContextMenu(null);
+    runOcr(filename);
+  };
 
   // searchパラメータが変化した時に、該当箇所をハイライトしてスクロール
   useEffect(() => {
@@ -208,6 +249,27 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
       ) : (
         <div className="text-sm text-gray-600">-</div>
       )}
+
+      {/* OCR コンテキストメニュー */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleOcrMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+      >
+        <MenuItem onClick={handleOcrRun}>OCR</MenuItem>
+      </Menu>
+
+      {/* OCR 結果ダイアログ */}
+      <OcrDialog
+        open={showOcrDialog}
+        loading={ocrLoading}
+        text={ocrText}
+        onTextChange={setOcrText}
+        onClose={closeOcrDialog}
+      />
     </div>
   );
 }
