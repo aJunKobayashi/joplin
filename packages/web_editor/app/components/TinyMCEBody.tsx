@@ -16,6 +16,7 @@ import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import imageCompression from 'browser-image-compression';
+import Mark from 'mark.js';
 import tinymce from 'tinymce';
 import { insertToc, setupTocAutoUpdate, updateToc } from './tocPlugin';
 import { marked } from 'marked';
@@ -868,6 +869,14 @@ function getEditorContent(editor: any): string {
   // data-mce-bogus="all" の要素（UI 装飾など）は丸ごと削除
   clone.querySelectorAll('[data-mce-bogus="all"]').forEach((el) => el.remove());
 
+  // 検索ハイライト用 <mark> タグを除去（保存時に混入しないよう unwrap する）
+  clone.querySelectorAll('mark.joplin-search-highlight').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  });
+
   // 残要素から data-mce-* 内部属性を除去
   // （data-mce-bogus="1" の <br> は属性除去後 <br> として保持される）
   clone.querySelectorAll('*').forEach((el) => {
@@ -1173,6 +1182,7 @@ interface TinyMCEBodyProps {
   noteId: string | null;
   readOnly?: boolean;
   updatedTime?: number;
+  searchQuery?: string;
 }
 
 export default function TinyMCEBody({
@@ -1180,6 +1190,7 @@ export default function TinyMCEBody({
   noteId,
   readOnly = true,
   updatedTime,
+  searchQuery,
 }: TinyMCEBodyProps) {
   const router = useRouter();
   const rootIdRef = useRef<string>(
@@ -1239,6 +1250,9 @@ export default function TinyMCEBody({
 
   // 現在エディタに表示中のノート ID を追跡する ref
   const currentNoteIdRef = useRef<string | null>(null);
+
+  // 前回の search 値を保持（同じ値ならスクロールを抑制するため）
+  const prevSearchRef = useRef<string | null>(null);
 
   // コンフリクト判定用の updatedTime を ref で管理する。
   // ・ノート切り替え時は props の値に同期する
@@ -1425,6 +1439,7 @@ export default function TinyMCEBody({
           pre.shiki code span { text-shadow: none; }
           img { max-width: 100%; }
           a { color: #1a73e8; }
+          mark.joplin-search-highlight { background: #ffff00; color: inherit; }
           table { border-collapse: collapse; width: 100%; }
           td, th { border: 1px solid #ccc; padding: 6px 10px; }
           .joplin-audio-wrapper {
@@ -1915,6 +1930,74 @@ export default function TinyMCEBody({
     // readOnly は初期化時にのみ参照するため依存配列に含めない
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // searchQuery が変化した時にTinyMCE内の該当箇所をハイライトしてスクロール
+  useEffect(() => {
+    if (!editorReady || !editorRef.current || !searchQuery) return;
+
+    const editor = editorRef.current;
+    const decodedSearch = decodeURIComponent(searchQuery);
+    const shouldScroll = decodedSearch !== prevSearchRef.current;
+    let cancelled = false;
+
+    // コンテンツが安定するのを待ってからハイライトを適用（KaTeX/Mermaidレンダリング待ち）
+    const timer = setTimeout(() => {
+      if (cancelled || !editorRef.current) return;
+      const body = editorRef.current.getBody() as HTMLElement;
+      if (!body) return;
+
+      const markInstance = new Mark(body);
+      markInstance.unmark({ className: 'joplin-search-highlight' });
+
+      const scrollToLongestMark = () => {
+        const marks = body.querySelectorAll('mark.joplin-search-highlight');
+        if (marks.length === 0) return;
+
+        let longestMark = marks[0] as HTMLElement;
+        let maxLength = marks[0].textContent?.length || 0;
+        marks.forEach((mark) => {
+          const len = mark.textContent?.length || 0;
+          if (len > maxLength) {
+            maxLength = len;
+            longestMark = mark as HTMLElement;
+          }
+        });
+
+        setTimeout(() => {
+          longestMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      };
+
+      markInstance.mark(decodedSearch, {
+        className: 'joplin-search-highlight',
+        separateWordSearch: false,
+        exclude: ['[data-mce-bogus]'],
+        done: (count: number) => {
+          if (cancelled) return;
+          if (count === 0) {
+            markInstance.mark(decodedSearch, {
+              className: 'joplin-search-highlight',
+              separateWordSearch: true,
+              exclude: ['[data-mce-bogus]'],
+              done: () => {
+                if (cancelled) return;
+                if (shouldScroll) scrollToLongestMark();
+                prevSearchRef.current = decodedSearch;
+              },
+            });
+          } else {
+            if (shouldScroll) scrollToLongestMark();
+            prevSearchRef.current = decodedSearch;
+          }
+        },
+      });
+    }, 800);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [editorReady, html, searchQuery]);
 
   // ノートコンテンツのセット（noteId または html が変わったとき）
   useEffect(() => {
