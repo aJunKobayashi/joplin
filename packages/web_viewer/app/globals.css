@@ -125,6 +125,11 @@ body {
   padding: 0;
 }
 
+.note-content pre.shiki {
+  margin-top: 13px !important;
+  margin-bottom: 13px !important;
+}
+
 /* Code blocks in div tags */
 .note-content div[style*='monospace'] {
   font-size: 16px !important;
