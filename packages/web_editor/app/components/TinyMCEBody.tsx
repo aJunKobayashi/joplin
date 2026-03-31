@@ -2002,7 +2002,10 @@ export default function TinyMCEBody({
         <DialogTitle>OCR 結果</DialogTitle>
         <DialogContent>
           {ocrLoading ? (
-            <DialogContentText>OCR 処理中...</DialogContentText>
+            <DialogContentText sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} />
+              OCR 処理中...
+            </DialogContentText>
           ) : (
             <TextField
               value={ocrText}

@@ -17,6 +17,7 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import CircularProgress from '@mui/material/CircularProgress';
 
 export default function NoteDetails({ note }: { note: (NoteEntity & { body?: string }) | null }) {
   const searchParams = useSearchParams();
@@ -357,7 +358,10 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
         <DialogTitle>OCR 結果</DialogTitle>
         <DialogContent>
           {ocrLoading ? (
-            <DialogContentText>OCR 処理中...</DialogContentText>
+            <DialogContentText sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} />
+              OCR 処理中...
+            </DialogContentText>
           ) : (
             <TextField
               value={ocrText}
