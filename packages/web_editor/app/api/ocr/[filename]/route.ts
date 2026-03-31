@@ -22,8 +22,8 @@ export async function GET(_req: Request, { params }: Props) {
       return NextResponse.json({ success: false, error: 'filename is required' }, { status: 400 });
     }
 
-    // prevent path traversal
-    const safeName = path.basename(filename);
+    // strip query parameters and prevent path traversal
+    const safeName = path.basename(filename.split('?')[0]);
     const resourceDir = ViewerUtil.getResourceFolderPath();
     const filePath = path.join(resourceDir, safeName);
 
