@@ -29,7 +29,6 @@ import 'tinymce/plugins/link';
 import 'tinymce/plugins/lists';
 import 'tinymce/plugins/table';
 import 'tinymce/plugins/codesample';
-import 'tinymce/plugins/searchreplace';
 import { basename } from 'path';
 import { useOcr } from '@/lib/useOcr';
 import OcrDialog from './OcrDialog';
@@ -1385,7 +1384,7 @@ export default function TinyMCEBody({
         statusbar: false,
         branding: false,
         readonly: readOnly,
-        plugins: 'link lists table codesample searchreplace',
+        plugins: 'link lists table codesample',
         contextmenu: 'joplinResource',
         contextmenu_never_use_native: false,
         toolbar: readOnly
