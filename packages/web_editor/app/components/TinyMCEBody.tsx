@@ -1574,6 +1574,25 @@ export default function TinyMCEBody({
             },
           });
 
+          // Cmd+P / Cmd+Shift+P: iframe 内のイベントを親ウィンドウへ転送して検索・チャットダイアログを開く
+          editor.on('keydown', (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(
+                new KeyboardEvent('keydown', {
+                  key: 'p',
+                  code: 'KeyP',
+                  metaKey: e.metaKey,
+                  ctrlKey: e.ctrlKey,
+                  shiftKey: e.shiftKey,
+                  bubbles: true,
+                })
+              );
+              return;
+            }
+          });
+
           // Cmd/Ctrl+Shift+V: プレーンテキストとして貼り付け（HTML タグをエスケープ）
           editor.on('keydown', (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyV') {
@@ -1858,7 +1877,7 @@ export default function TinyMCEBody({
           editor.addShortcut('ctrl+w', 'White', 'text_color_command_w');
           editor.addShortcut('meta+shift+r', 'Red', 'text_color_command_r');
           editor.addShortcut('meta+shift+g', 'Green', 'text_color_command_g');
-          editor.addShortcut('meta+shift+p', 'Blue', 'text_color_command_b');
+          editor.addShortcut('meta+shift+l', 'Blue', 'text_color_command_b');
           editor.addShortcut('meta+shift+h', 'Dark', 'text_color_command_h');
           editor.addShortcut('meta+shift+e', 'Size 8pt', 'text_size_command_8');
           editor.addShortcut('meta+shift+j', 'Size 10pt', 'text_size_command_10');
