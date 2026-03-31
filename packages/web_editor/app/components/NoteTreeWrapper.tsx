@@ -36,8 +36,22 @@ export default function NoteTreeWrapper() {
         }
       }
     };
+    // Editor モード(TinyMCE iframe)からのカスタムイベントを受け取る
+    const dialogHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.type === 'chat') {
+        setOpenChatDialog(true);
+      } else {
+        setOpenSearchDialog(true);
+        setSearchInput(query);
+      }
+    };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('open-dialog', dialogHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('open-dialog', dialogHandler);
+    };
   }, [query]);
 
   const onClose = React.useCallback(() => {
@@ -97,10 +111,7 @@ export default function NoteTreeWrapper() {
         setQuery={setQuery}
       />
 
-      <ChatDialog
-        open={openChatDialog}
-        onClose={onCloseChatDialog}
-      />
+      <ChatDialog open={openChatDialog} onClose={onCloseChatDialog} />
 
       <div style={{ flex: 1, minHeight: 0, display: !hideTree ? 'none' : undefined }}>
         <SearchResult query={query} />

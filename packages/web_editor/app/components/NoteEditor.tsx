@@ -88,6 +88,7 @@ export default function NoteEditor() {
           noteId={noteId}
           readOnly={false}
           updatedTime={note?.updated_time}
+          searchQuery={searchParams.get('search') ?? undefined}
         />
       </div>
     </div>
