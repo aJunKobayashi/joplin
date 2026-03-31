@@ -1575,6 +1575,20 @@ export default function TinyMCEBody({
             },
           });
 
+          // Cmd+F / Cmd+H: searchreplace プラグインのショートカットを無効化
+          // （ツールバーボタンからのみ起動させる）
+          editor.on('keydown', (e: KeyboardEvent) => {
+            if (
+              (e.metaKey || e.ctrlKey) &&
+              !e.shiftKey &&
+              (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')
+            ) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              return;
+            }
+          });
+
           // Cmd+P / Cmd+Shift+P: iframe 内のイベントを親ウィンドウへ転送して検索・チャットダイアログを開く
           // カスタムイベントを使い、ブラウザの印刷ダイアログを回避する
           editor.on('keydown', (e: KeyboardEvent) => {
@@ -1885,10 +1899,6 @@ export default function TinyMCEBody({
           editor.addShortcut('meta+shift+o', '番号付き箇条書き', 'change_to_ol');
           editor.addShortcut('meta+s', '保存', () => handleSaveRef.current(editor));
           // editor.addShortcut('ctrl+s', '保存', () => handleSaveRef.current(editor));
-
-          // searchreplace プラグインの Cmd+F / Cmd+H ショートカットを無効化（空の関数で上書き）
-          editor.addShortcut('meta+f', 'noop', () => {});
-          editor.addShortcut('meta+h', 'noop', () => {});
 
           // ---------- 変更時に目次を自動更新するコールバック (execOnChangeEvent に相当) ----------
           setupTocAutoUpdate(editor);
