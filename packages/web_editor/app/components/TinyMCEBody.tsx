@@ -870,7 +870,8 @@ function getEditorContent(editor: any): string {
   clone.querySelectorAll('[data-mce-bogus="all"]').forEach((el) => el.remove());
 
   // 検索ハイライト用 <mark> タグを除去（保存時に混入しないよう unwrap する）
-  clone.querySelectorAll('mark.joplin-search-highlight').forEach((el) => {
+  // mark.js は data-markjs="true" を付与するので、クラスの有無にかかわらず除去する
+  clone.querySelectorAll('mark[data-markjs], mark.joplin-search-highlight').forEach((el) => {
     const parent = el.parentNode;
     if (!parent) return;
     while (el.firstChild) parent.insertBefore(el.firstChild, el);
