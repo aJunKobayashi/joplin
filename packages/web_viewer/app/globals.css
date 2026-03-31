@@ -149,3 +149,7 @@ body {
 .note-content .katex-display > .katex {
   text-align: left !important;
 }
+
+div.mce-toc ul > li {
+  list-style-type: none !important;
+}
