@@ -1575,18 +1575,14 @@ export default function TinyMCEBody({
           });
 
           // Cmd+P / Cmd+Shift+P: iframe 内のイベントを親ウィンドウへ転送して検索・チャットダイアログを開く
+          // カスタムイベントを使い、ブラウザの印刷ダイアログを回避する
           editor.on('keydown', (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
               e.preventDefault();
               e.stopPropagation();
               window.dispatchEvent(
-                new KeyboardEvent('keydown', {
-                  key: 'p',
-                  code: 'KeyP',
-                  metaKey: e.metaKey,
-                  ctrlKey: e.ctrlKey,
-                  shiftKey: e.shiftKey,
-                  bubbles: true,
+                new CustomEvent('open-dialog', {
+                  detail: { type: e.shiftKey ? 'chat' : 'search' },
                 })
               );
               return;
