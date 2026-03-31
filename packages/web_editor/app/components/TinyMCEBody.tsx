@@ -30,6 +30,8 @@ import 'tinymce/plugins/lists';
 import 'tinymce/plugins/table';
 import 'tinymce/plugins/codesample';
 import { basename } from 'path';
+import { useOcr } from '@/lib/useOcr';
+import OcrDialog from './OcrDialog';
 
 /**
  * HTML テキストノードの連続スペースをノーブレークスペースに変換し、
@@ -1198,6 +1200,7 @@ export default function TinyMCEBody({
     severity: 'success' | 'error';
   } | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
 
   // TinyMCE setup クロージャから React state を更新するための ref
   const openDeleteConfirmRef = useRef<() => void>(() => setShowDeleteConfirmDialog(true));
@@ -1207,6 +1210,23 @@ export default function TinyMCEBody({
 
   // 削除対象のリソース要素を保持する ref
   const pendingDeleteElementRef = useRef<Element | null>(null);
+
+  // OCR 対象の img 要素を保持する ref
+  const pendingOcrElementRef = useRef<Element | null>(null);
+
+  // TinyMCE クロージャから OCR を起動するための ref
+  const openOcrDialogRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    openOcrDialogRef.current = async () => {
+      const el = pendingOcrElementRef.current;
+      if (!el) return;
+      const src = el.getAttribute('src') ?? '';
+      const href = el.getAttribute('href') ?? '';
+      const resourceUrl = src.startsWith('/api/resource/') ? src : href;
+      const filename = resourceUrl.replace('/api/resource/', '');
+      runOcr(filename);
+    };
+  }, [runOcr]);
 
   // attachAudioSettingsButtons 実行中はダーティ検知を抑制するための ref
   const suppressDirtyRef = useRef(false);
@@ -1519,6 +1539,14 @@ export default function TinyMCEBody({
             },
           });
 
+          editor.ui.registry.addMenuItem('joplinResourceOcr', {
+            text: 'OCR',
+            icon: 'sourcecode',
+            onAction: () => {
+              openOcrDialogRef.current();
+            },
+          });
+
           editor.ui.registry.addContextMenu('joplinResource', {
             update: (element: Element) => {
               if (!lastContextMenuMetaKey) return '';
@@ -1530,12 +1558,18 @@ export default function TinyMCEBody({
                   const href = el.getAttribute('href') ?? '';
                   if (src.startsWith('/api/resource/') || href.startsWith('/api/resource/')) {
                     pendingDeleteElementRef.current = el;
+                    if (tag === 'img') {
+                      pendingOcrElementRef.current = el;
+                      return 'joplinResourceDelete joplinResourceOcr';
+                    }
+                    pendingOcrElementRef.current = null;
                     return 'joplinResourceDelete';
                   }
                 }
                 el = el.parentElement;
               }
               pendingDeleteElementRef.current = null;
+              pendingOcrElementRef.current = null;
               return '';
             },
           });
@@ -1946,6 +1980,15 @@ export default function TinyMCEBody({
           {snackbar?.message}
         </Alert>
       </Snackbar>
+
+      {/* OCR 結果ダイアログ */}
+      <OcrDialog
+        open={showOcrDialog}
+        loading={ocrLoading}
+        text={ocrText}
+        onTextChange={setOcrText}
+        onClose={closeOcrDialog}
+      />
 
       {/* リソース削除確認ダイアログ */}
       <Dialog open={showDeleteConfirmDialog} onClose={() => setShowDeleteConfirmDialog(false)}>
