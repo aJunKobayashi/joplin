@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import parse, { domToReact, HTMLReactParserOptions, Element, DOMNode } from 'html-react-parser';
@@ -8,12 +8,30 @@ import { NoteEntity } from '@/lib/database';
 import Mark from 'mark.js';
 import { Config } from '../../config';
 import { ClientUtil } from '@/lib/ClientUtil';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 export default function NoteDetails({ note }: { note: (NoteEntity & { body?: string }) | null }) {
   const searchParams = useSearchParams();
   const contentRef = useRef<HTMLDivElement>(null);
   // 前回の search 値を保持（同じ値ならスクロールを抑制するため）
   const prevSearchRef = useRef<string | null>(null);
+
+  const [showOcrDialog, setShowOcrDialog] = useState(false);
+  const [ocrText, setOcrText] = useState('');
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    filename: string;
+  } | null>(null);
 
   // 指定要素のレンダリングが安定するのを待つユーティリティ
   const waitForStableRender = (
@@ -119,6 +137,47 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
 
     return () => cleanups.forEach((fn) => fn());
   }, [note?.body]);
+
+  // Meta キー + 右クリックで /api/resource/ 画像に OCR コンテキストメニューを表示
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      if (!e.metaKey) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() !== 'img') return;
+      const src = target.getAttribute('src') ?? '';
+      if (!src.startsWith('/api/resource/')) return;
+
+      e.preventDefault();
+      const filename = src.replace('/api/resource/', '').split('?')[0];
+      setContextMenu({ mouseX: e.clientX, mouseY: e.clientY, filename });
+    };
+
+    container.addEventListener('contextmenu', handleContextMenu);
+    return () => container.removeEventListener('contextmenu', handleContextMenu);
+  }, [note?.body]);
+
+  const handleOcrMenuClose = () => setContextMenu(null);
+
+  const handleOcrRun = () => {
+    if (!contextMenu) return;
+    const { filename } = contextMenu;
+    setContextMenu(null);
+    setOcrText('');
+    setOcrLoading(true);
+    setShowOcrDialog(true);
+    fetch(`/api/ocr/${encodeURIComponent(filename)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        setOcrText(json.success ? json.text : `エラー: ${json.error}`);
+      })
+      .catch((err) => {
+        setOcrText(`エラー: ${err instanceof Error ? err.message : String(err)}`);
+      })
+      .finally(() => setOcrLoading(false));
+  };
 
   // searchパラメータが変化した時に、該当箇所をハイライトしてスクロール
   useEffect(() => {
@@ -280,6 +339,48 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
       ) : (
         <div className="text-sm text-gray-600">-</div>
       )}
+
+      {/* OCR コンテキストメニュー */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleOcrMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+      >
+        <MenuItem onClick={handleOcrRun}>OCR</MenuItem>
+      </Menu>
+
+      {/* OCR 結果ダイアログ */}
+      <Dialog open={showOcrDialog} onClose={() => setShowOcrDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>OCR 結果</DialogTitle>
+        <DialogContent>
+          {ocrLoading ? (
+            <DialogContentText>OCR 処理中...</DialogContentText>
+          ) : (
+            <TextField
+              value={ocrText}
+              onChange={(e) => setOcrText(e.target.value)}
+              multiline
+              fullWidth
+              minRows={6}
+              maxRows={20}
+              variant="outlined"
+              sx={{ fontFamily: 'monospace', mt: 1 }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => navigator.clipboard.writeText(ocrText)}
+            disabled={ocrLoading || !ocrText}
+          >
+            コピー
+          </Button>
+          <Button onClick={() => setShowOcrDialog(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
