@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useImperativeHandle, useMemo } from 'react';
 import Link from 'next/link';
 import {} from /* useQuery replaced by useFolderQuery */ '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
@@ -102,13 +102,36 @@ function collectIds(nodes: TreeNode[]): string[] {
   return ids;
 }
 
-export default function NoteTree() {
+export interface NoteTreeHandle {
+  expandAll: () => void;
+  collapseAll: () => void;
+}
+
+const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
   const { folders, isLoading, error } = useFolderQuery();
 
   const searchParams = useSearchParams();
   const noteIdFromUrl = searchParams.get('note_id');
   const allIds = React.useMemo(() => collectIds(folders || []), [folders]);
+  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
   const [isClicked, setIsClicked] = React.useState(false);
+
+  // フォルダ読み込み完了時に全展開を初期状態とする
+  React.useEffect(() => {
+    if (allIds.length > 0 && expandedItems.length === 0) {
+      setExpandedItems(allIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allIds]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      expandAll: () => setExpandedItems(allIds),
+      collapseAll: () => setExpandedItems([]),
+    }),
+    [allIds]
+  );
 
   const [contextMenu, setContextMenu] = React.useState<{
     mouseX: number;
@@ -199,7 +222,7 @@ export default function NoteTree() {
   }
 
   return (
-    <Box sx={{ height: '100%' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Menu
         open={contextMenu !== null}
         onClose={handleContextMenuClose}
@@ -216,11 +239,14 @@ export default function NoteTree() {
           collapseIcon: ExpandMoreIcon,
           expandIcon: ChevronRightIcon,
         }}
-        sx={{ height: '100%', overflowY: 'auto' }}
-        defaultExpandedItems={allIds}
+        sx={{ flex: 1, overflowY: 'auto' }}
+        expandedItems={expandedItems}
+        onExpandedItemsChange={(_e, ids) => setExpandedItems(ids)}
       >
         {treeCompoent}
       </SimpleTreeView>
     </Box>
   );
-}
+});
+
+export default NoteTree;
