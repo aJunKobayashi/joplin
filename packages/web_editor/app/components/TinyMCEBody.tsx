@@ -1560,6 +1560,48 @@ export default function TinyMCEBody({
                 },
                 true
               );
+
+              // Tab キーでリストの先頭/唯一の <li> をインデントする
+              // TinyMCE の lists プラグインは前の <li> 兄弟要素が存在する場合のみ
+              // インデントするため、先頭 <li> の場合は手動でネスト構造を作成する
+              iframeDoc.addEventListener(
+                'keydown',
+                (e: KeyboardEvent) => {
+                  if (e.key !== 'Tab' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+
+                  const li = editor.dom.getParent(
+                    editor.selection.getNode(),
+                    'li'
+                  ) as HTMLLIElement | null;
+                  if (!li) return;
+
+                  const parentList = li.parentElement;
+                  if (!parentList || (parentList.tagName !== 'UL' && parentList.tagName !== 'OL'))
+                    return;
+
+                  // 前の <li> 兄弟がある場合は TinyMCE 標準のインデント処理に任せる
+                  if (li.previousElementSibling) return;
+
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // ラッパー <li> とサブリストを作成し、現在の <li> をネストする
+                  const wrapperLi = editor.dom.create('li', { style: 'list-style-type: none;' });
+                  const newList = editor.dom.create(parentList.tagName.toLowerCase());
+
+                  newList.appendChild(li);
+                  wrapperLi.appendChild(newList);
+
+                  if (parentList.firstChild) {
+                    parentList.insertBefore(wrapperLi, parentList.firstChild);
+                  } else {
+                    parentList.appendChild(wrapperLi);
+                  }
+
+                  editor.selection.setCursorLocation(li, 0);
+                },
+                true
+              );
             }
           });
 
