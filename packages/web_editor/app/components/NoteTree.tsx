@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useImperativeHandle, useMemo } from 'react';
+import React, { useCallback, useImperativeHandle, useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import {} from /* useQuery replaced by useFolderQuery */ '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
@@ -91,12 +91,14 @@ function renderTree(
   });
 }
 
-function collectIds(nodes: TreeNode[]): string[] {
+function collectFolderIds(nodes: TreeNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
-    ids.push(node.id);
-    if (node.type === 'Folder' && node.children && node.children.length > 0) {
-      ids.push(...collectIds(node.children));
+    if (node.type === 'Folder') {
+      ids.push(node.id);
+      if (node.children && node.children.length > 0) {
+        ids.push(...collectFolderIds(node.children));
+      }
     }
   }
   return ids;
@@ -112,25 +114,26 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
 
   const searchParams = useSearchParams();
   const noteIdFromUrl = searchParams.get('note_id');
-  const allIds = React.useMemo(() => collectIds(folders || []), [folders]);
+  const allFolderIds = React.useMemo(() => collectFolderIds(folders || []), [folders]);
   const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
   const [isClicked, setIsClicked] = React.useState(false);
+  const [, startTransition] = useTransition();
 
   // フォルダ読み込み完了時に全展開を初期状態とする
   React.useEffect(() => {
-    if (allIds.length > 0 && expandedItems.length === 0) {
-      setExpandedItems(allIds);
+    if (allFolderIds.length > 0 && expandedItems.length === 0) {
+      setExpandedItems(allFolderIds);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allIds]);
+  }, [allFolderIds]);
 
   useImperativeHandle(
     ref,
     () => ({
-      expandAll: () => setExpandedItems(allIds),
-      collapseAll: () => setExpandedItems([]),
+      expandAll: () => startTransition(() => setExpandedItems(allFolderIds)),
+      collapseAll: () => startTransition(() => setExpandedItems([])),
     }),
-    [allIds]
+    [allFolderIds, startTransition]
   );
 
   const [contextMenu, setContextMenu] = React.useState<{
