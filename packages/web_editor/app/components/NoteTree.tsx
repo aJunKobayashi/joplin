@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useImperativeHandle, useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import {} from /* useQuery replaced by useFolderQuery */ '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
@@ -91,24 +91,50 @@ function renderTree(
   });
 }
 
-function collectIds(nodes: TreeNode[]): string[] {
+function collectFolderIds(nodes: TreeNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
-    ids.push(node.id);
-    if (node.type === 'Folder' && node.children && node.children.length > 0) {
-      ids.push(...collectIds(node.children));
+    if (node.type === 'Folder') {
+      ids.push(node.id);
+      if (node.children && node.children.length > 0) {
+        ids.push(...collectFolderIds(node.children));
+      }
     }
   }
   return ids;
 }
 
-export default function NoteTree() {
+export interface NoteTreeHandle {
+  expandAll: () => void;
+  collapseAll: () => void;
+}
+
+const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
   const { folders, isLoading, error } = useFolderQuery();
 
   const searchParams = useSearchParams();
   const noteIdFromUrl = searchParams.get('note_id');
-  const allIds = React.useMemo(() => collectIds(folders || []), [folders]);
+  const allFolderIds = React.useMemo(() => collectFolderIds(folders || []), [folders]);
+  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
   const [isClicked, setIsClicked] = React.useState(false);
+  const [, startTransition] = useTransition();
+
+  // フォルダ読み込み完了時に全展開を初期状態とする
+  React.useEffect(() => {
+    if (allFolderIds.length > 0 && expandedItems.length === 0) {
+      setExpandedItems(allFolderIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFolderIds]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      expandAll: () => startTransition(() => setExpandedItems(allFolderIds)),
+      collapseAll: () => startTransition(() => setExpandedItems([])),
+    }),
+    [allFolderIds, startTransition]
+  );
 
   const [contextMenu, setContextMenu] = React.useState<{
     mouseX: number;
@@ -199,7 +225,7 @@ export default function NoteTree() {
   }
 
   return (
-    <Box sx={{ height: '100%' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Menu
         open={contextMenu !== null}
         onClose={handleContextMenuClose}
@@ -216,11 +242,14 @@ export default function NoteTree() {
           collapseIcon: ExpandMoreIcon,
           expandIcon: ChevronRightIcon,
         }}
-        sx={{ height: '100%', overflowY: 'auto' }}
-        defaultExpandedItems={allIds}
+        sx={{ flex: 1, overflowY: 'auto' }}
+        expandedItems={expandedItems}
+        onExpandedItemsChange={(_e, ids) => setExpandedItems(ids)}
       >
         {treeCompoent}
       </SimpleTreeView>
     </Box>
   );
-}
+});
+
+export default NoteTree;
