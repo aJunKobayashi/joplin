@@ -351,35 +351,12 @@ async function initJoplinEnv(profileDir: string): Promise<void> {
  * @param profileDir Joplin プロファイルの絶対パス（例: ~/.config/joplin-desktop）
  * @param options エクスポートオプション
  */
-async function preparePluginAssets(): Promise<void> {
-  const publicDir = path.resolve(__dirname, '../public');
-  const pluginAssetsDir = path.join(publicDir, 'pluginAssets');
-  let rendererAssetsDir = path.resolve(__dirname, '../../node_modules/@joplin/renderer/assets');
-  if (!fs.existsSync(rendererAssetsDir)) {
-    rendererAssetsDir = path.resolve(
-      __dirname,
-      '../../../lib/node_modules/@joplin/renderer/assets'
-    );
-  }
-  if (!fs.existsSync(rendererAssetsDir)) {
-    console.warn(`@joplin/renderer/assets not found, skipping pluginAssets preparation`);
-    return;
-  }
-  await fs.mkdirp(publicDir);
-  await fs.remove(pluginAssetsDir);
-  await fs.copy(rendererAssetsDir, pluginAssetsDir);
-  console.log(`pluginAssets prepared: ${pluginAssetsDir}`);
-}
-
 export async function runExportHtml(profileDir: string, options: ExportHtmlOptions): Promise<void> {
   await initJoplinEnv(profileDir);
 
   console.log(`Output dir     : ${options.outputDir}`);
   console.log(`Embed images   : ${options.embededImage}`);
   console.log(`Profile dir    : ${profileDir}`);
-
-  // public/pluginAssets を @joplin/renderer/assets から再構築する
-  await preparePluginAssets();
 
   const resourcePath = `${Setting.value('resourceDir')}`;
   const exportPath = options.outputDir;
