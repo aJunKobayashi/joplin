@@ -15,7 +15,8 @@
     "mcp:dev": "tsx ./mcp/server/index.ts",
     "mcp:client": "tsx ./mcp/client/index.ts",
     "mcp:server": "tsx ./mcp/server/index.ts",
-    "agent": "tsx mcp/client/LangChainClient.ts"
+    "agent": "tsx mcp/client/LangChainClient.ts",
+    "non_use_rsc": "tsx scripts/non_use_rsc.ts"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
