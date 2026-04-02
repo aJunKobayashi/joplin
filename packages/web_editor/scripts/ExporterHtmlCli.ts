@@ -456,13 +456,16 @@ export class ExporterHtmlCli {
       if (!url.hostname) continue;
       const targetId = url.hostname;
       const htmlPath = noteIdToPath[targetId];
+      // if (!htmlPath) continue;
       const srcDir = PATH.dirname(noteFilePath);
       try {
         let relativePath = PATH.relative(srcDir, htmlPath);
         if (url.hash) relativePath += url.hash;
         joplinAnchor.attribs.href = relativePath;
       } catch (e) {
-        console.log(`error cannot calc relativepath: srcDir: ${srcDir}, dstDir: ${htmlPath}`);
+        console.log(
+          `error cannot calc relativepath: srcDir: ${srcDir}, dstDir: ${htmlPath}, ${joplinAnchor.attribs.href}`
+        );
       }
     }
     return $;
