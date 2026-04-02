@@ -27,12 +27,37 @@ const markupLanguageUtils = require('@joplin/lib/markupLanguageUtils').default;
 const Folder = require('@joplin/lib/models/Folder').default;
 const Note = require('@joplin/lib/models/Note').default;
 const Resource = require('@joplin/lib/models/Resource').default;
-const { contentScriptsToRendererRules } = require('@joplin/lib/services/plugins/utils/loadContentScripts');
+const {
+  contentScriptsToRendererRules,
+} = require('@joplin/lib/services/plugins/utils/loadContentScripts');
 const { basename, friendlySafeFilename, rtrimSlashes } = require('@joplin/lib/path-utils');
 const { themeStyle } = require('@joplin/lib/theme');
 const { dirname } = require('@joplin/lib/path-utils');
 const { escapeHtml } = require('@joplin/lib/string-utils.js');
-const { assetsToHeaders } = require('@joplin/renderer');
+
+/**
+ * @joplin/renderer の assetsToHeaders と同等の関数。
+ * pluginAssets 配列を HTML の LINK/SCRIPT タグに変換する。
+ */
+function assetsToHeaders(
+  pluginAssets: any[],
+  options: { asHtml?: boolean } | null = null
+): Record<string, string> | string {
+  const opts = Object.assign({}, { asHtml: false }, options);
+  const headers: Record<string, string> = {};
+  for (const asset of pluginAssets) {
+    if (asset.mime === 'text/css') {
+      headers[asset.name] = `<link rel="stylesheet" href="pluginAssets/${asset.name}">`;
+    } else if (asset.mime === 'application/javascript') {
+      headers[asset.name] =
+        `<script type="application/javascript" src="pluginAssets/${asset.name}"></script>`;
+    }
+  }
+  if (opts.asHtml) {
+    return Object.values(headers).join('');
+  }
+  return headers;
+}
 
 // ---------------------------------------------------------------------------
 // app-desktop から移植したユーティリティ関数（Electron 非依存）
@@ -91,7 +116,10 @@ function extractToCAndPutHead(htmlBody: string, titles: string[]): string {
 
 async function copyPluginAssetsIfNotExit(): Promise<void> {
   // katex assets を renderer パッケージからコピーする
-  const rendererAssetsDir = PATH.resolve(__dirname, '../../node_modules/@joplin/renderer/assets/katex');
+  const rendererAssetsDir = PATH.resolve(
+    __dirname,
+    '../../node_modules/@joplin/renderer/assets/katex'
+  );
   // rendererAssetsDir が存在しない場合は lib 配下も探す
   let srcDir = rendererAssetsDir;
   if (!fs.existsSync(srcDir)) {
@@ -128,16 +156,22 @@ async function createEmbededFontCss(cssFilePath: string, outputPath: string): Pr
       root.walkAtRules('font-face', (rule: any) => {
         rule.walkDecls('src', (decl: any) => {
           const urlRegex = /url\((.*?)\)/g;
-          const urls = decl.value.match(urlRegex)?.map((match: string) => {
-            const urlMatch = /url\((['"]?)(.*?)\1\)/.exec(match);
-            return urlMatch ? urlMatch[2] : null;
-          }).filter((u: string | null) => u !== null) as string[];
+          const urls = decl.value
+            .match(urlRegex)
+            ?.map((match: string) => {
+              const urlMatch = /url\((['"]?)(.*?)\1\)/.exec(match);
+              return urlMatch ? urlMatch[2] : null;
+            })
+            .filter((u: string | null) => u !== null) as string[];
 
           const formatRegex = /format\((.*?)\)/g;
-          const formats = decl.value.match(formatRegex)?.map((match: string) => {
-            const formatMatch = /format\((['"]?)(.*?)\1\)/.exec(match);
-            return formatMatch ? formatMatch[2] : null;
-          }).filter((f: string | null) => f !== null) as string[];
+          const formats = decl.value
+            .match(formatRegex)
+            ?.map((match: string) => {
+              const formatMatch = /format\((['"]?)(.*?)\1\)/.exec(match);
+              return formatMatch ? formatMatch[2] : null;
+            })
+            .filter((f: string | null) => f !== null) as string[];
 
           const newValues = urls?.map((url: string, index: number) => {
             const fontPath = PATH.join(PATH.dirname(cssFilePath), url);
@@ -294,12 +328,17 @@ export class ExporterHtmlCli {
       });
 
       const noteContent: string[] = [];
-      if (item.title) noteContent.push(`<div class="exported-note-title">${escapeHtml(item.title)}</div>`);
+      if (item.title)
+        noteContent.push(`<div class="exported-note-title">${escapeHtml(item.title)}</div>`);
       if (result.html) noteContent.push(result.html);
 
-      const libRootPath = dirname(dirname(PATH.resolve(__dirname, '../../node_modules/@joplin/lib')));
+      const libRootPath = dirname(
+        dirname(PATH.resolve(__dirname, '../../node_modules/@joplin/lib'))
+      );
       for (const asset of result.pluginAssets) {
-        const filePath = asset.pathIsAbsolute ? asset.path : `${libRootPath}/node_modules/@joplin/renderer/assets/${asset.name}`;
+        const filePath = asset.pathIsAbsolute
+          ? asset.path
+          : `${libRootPath}/node_modules/@joplin/renderer/assets/${asset.name}`;
         const destPath = `${dirname(noteFilePath)}/pluginAssets/${asset.name}`;
         await shim.fsDriver().mkdir(dirname(destPath));
         if (fs.existsSync(filePath)) {
@@ -328,7 +367,14 @@ export class ExporterHtmlCli {
       if (noteFilePath.indexOf(profileDirPath) !== 0) {
         const noteIdToPath: { [key: string]: string } = item.noteIdToPath || {};
         const noteId = item.id;
-        modifiedHtml = await this.modifyExportHTMLSource(fullHtml, srcResourcePath, dstResourcePath, noteId, noteFilePath, noteIdToPath);
+        modifiedHtml = await this.modifyExportHTMLSource(
+          fullHtml,
+          srcResourcePath,
+          dstResourcePath,
+          noteId,
+          noteFilePath,
+          noteIdToPath
+        );
       } else {
         modifiedHtml = ExporterHtmlCli.modifyJoplinResource(fullHtml, Setting.value('resourceDir'));
       }
@@ -373,7 +419,7 @@ export class ExporterHtmlCli {
     dstResourcePath: string,
     _noteId: string,
     noteFilePath: string,
-    noteIdToPath: { [key: string]: string },
+    noteIdToPath: { [key: string]: string }
   ): Promise<string> {
     const resourceDir = Setting.value('resourceDir');
     let $ = cheerio.load(fullHtml);
@@ -393,7 +439,7 @@ export class ExporterHtmlCli {
   private modifyJoplinLinkAnchor(
     $: cheerio.Root,
     noteFilePath: string,
-    noteIdToPath: { [key: string]: string },
+    noteIdToPath: { [key: string]: string }
   ): cheerio.Root {
     const joplinAnchors = $('a[href^=joplin://]');
     for (let i = 0; i < joplinAnchors.length; i++) {
@@ -431,7 +477,7 @@ export class ExporterHtmlCli {
   private convertImgSrcToRelativePath(
     $: cheerio.Root,
     dstResourcePath: string,
-    noteFilePath: string,
+    noteFilePath: string
   ): cheerio.Root {
     const imgs = $('[src^="joplin_resource://"]');
     for (let i = 0; i < imgs.length; i++) {
@@ -452,7 +498,7 @@ export class ExporterHtmlCli {
   private convertJoplinSchemeAnchorToRelativePath(
     $: cheerio.Root,
     dstResourcePath: string,
-    noteFilePath: string,
+    noteFilePath: string
   ): cheerio.Root {
     const anchors = $('a[href^="joplin_resource://"]');
     for (let i = 0; i < anchors.length; i++) {
@@ -489,10 +535,17 @@ export class ExporterHtmlCli {
   private static getMimeTypeByExtension(filepath: string): string {
     const ext = PATH.basename(filepath).split('.').pop()?.toLowerCase() || '';
     const map: Record<string, string> = {
-      txt: 'text/plain', html: 'text/html', json: 'application/json',
-      csv: 'text/csv', pdf: 'application/pdf', zip: 'application/zip',
+      txt: 'text/plain',
+      html: 'text/html',
+      json: 'application/json',
+      csv: 'text/csv',
+      pdf: 'application/pdf',
+      zip: 'application/zip',
       '7z': 'application/x-7z-compressed',
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
     };
     return map[ext] || 'application/octet-stream';
   }
