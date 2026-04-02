@@ -204,6 +204,17 @@ async function initJoplinEnv(profileDir: string): Promise<void> {
   }
   shimInit(sharp, keytar, null, () => '0.0.1');
 
+  // tsx のモジュール分離対策: shimInit が初期化する shim と他モジュールが参照する
+  // shim が別インスタンスになる場合があるため、FsDriverNode を全 shim に伝播する
+  const fsDriverInstance = new FsDriverNode();
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || typeof cached !== 'object') continue;
+    if (!('fsDriver' in cached) || !('fetchMaxRetry_' in cached)) continue;
+    cached.fsDriver_ = fsDriverInstance;
+    cached.fsDriver = () => fsDriverInstance;
+  }
+
   // --- 8. データベースを開く ---
   const dbPath = path.join(profileDir, 'database.sqlite');
   console.log(`Opening database: ${dbPath}`);
@@ -340,10 +351,7 @@ async function initJoplinEnv(profileDir: string): Promise<void> {
  * @param profileDir Joplin プロファイルの絶対パス（例: ~/.config/joplin-desktop）
  * @param options エクスポートオプション
  */
-export async function runExportHtml(
-  profileDir: string,
-  options: ExportHtmlOptions,
-): Promise<void> {
+export async function runExportHtml(profileDir: string, options: ExportHtmlOptions): Promise<void> {
   await initJoplinEnv(profileDir);
 
   console.log(`Output dir     : ${options.outputDir}`);
