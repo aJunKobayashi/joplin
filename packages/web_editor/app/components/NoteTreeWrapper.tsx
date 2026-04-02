@@ -13,12 +13,15 @@ import ChatDialog from './ChatDialog';
 import Tooltip from '@mui/material/Tooltip';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
 
 export default function NoteTreeWrapper() {
   const [query, setQuery] = React.useState('');
   const [searchInput, setSearchInput] = React.useState('');
   const [openSearchDialog, setOpenSearchDialog] = React.useState(false);
   const [openChatDialog, setOpenChatDialog] = React.useState(false);
+  const [fts, setFts] = React.useState(false);
   const hideTree = query && query.trim() !== '';
   const noteTreeRef = React.useRef<NoteTreeHandle>(null);
 
@@ -71,6 +74,12 @@ export default function NoteTreeWrapper() {
       className="note-tree-wrapper"
       style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
+      <FormControlLabel
+        control={<Checkbox size="small" checked={fts} onChange={(e) => setFts(e.target.checked)} />}
+        label="全文検索"
+        sx={{ ml: 0, mb: -1 }}
+        slotProps={{ typography: { variant: 'body2' } }}
+      />
       <div style={{ paddingBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
         <TextField
           variant="outlined"
@@ -128,7 +137,7 @@ export default function NoteTreeWrapper() {
       <ChatDialog open={openChatDialog} onClose={onCloseChatDialog} />
 
       <div style={{ flex: 1, minHeight: 0, display: !hideTree ? 'none' : undefined }}>
-        <SearchResult query={query} />
+        <SearchResult query={query} fts={fts} />
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: hideTree ? 'none' : undefined }}>
