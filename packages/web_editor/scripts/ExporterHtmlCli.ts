@@ -116,15 +116,8 @@ function extractToCAndPutHead(htmlBody: string, titles: string[]): string {
 
 async function copyPluginAssetsIfNotExit(): Promise<void> {
   // katex assets を renderer パッケージからコピーする
-  const rendererAssetsDir = PATH.resolve(
-    __dirname,
-    '../../node_modules/@joplin/renderer/assets/katex'
-  );
-  // rendererAssetsDir が存在しない場合は lib 配下も探す
-  let srcDir = rendererAssetsDir;
-  if (!fs.existsSync(srcDir)) {
-    srcDir = PATH.resolve(__dirname, '../../../lib/node_modules/@joplin/renderer/assets/katex');
-  }
+  // package.json の "cp -R ../renderer/assets public/pluginAssets" と同じソースを使用
+  const srcDir = PATH.resolve(__dirname, '../../renderer/assets/katex');
   const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
   if (!fs.existsSync(pluginDir)) {
     fs.mkdirSync(pluginDir, { recursive: true });
@@ -332,13 +325,12 @@ export class ExporterHtmlCli {
         noteContent.push(`<div class="exported-note-title">${escapeHtml(item.title)}</div>`);
       if (result.html) noteContent.push(result.html);
 
-      const libRootPath = dirname(
-        dirname(PATH.resolve(__dirname, '../../node_modules/@joplin/lib'))
-      );
+      // package.json の "cp -R ../renderer/assets public/pluginAssets" と同じソースを使用
+      const rendererAssetsDir = PATH.resolve(__dirname, '../../renderer/assets');
       for (const asset of result.pluginAssets) {
         const filePath = asset.pathIsAbsolute
           ? asset.path
-          : `${libRootPath}/node_modules/@joplin/renderer/assets/${asset.name}`;
+          : `${rendererAssetsDir}/${asset.name}`;
         const destPath = `${dirname(noteFilePath)}/pluginAssets/${asset.name}`;
         await shim.fsDriver().mkdir(dirname(destPath));
         if (fs.existsSync(filePath)) {
