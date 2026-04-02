@@ -8,7 +8,7 @@
  * エントリポイント (export_html_cli.ts) から呼び出される。
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 
 import * as path from 'path';
 
@@ -51,8 +51,10 @@ const KeychainServiceDriver =
 const KvStore = require('@joplin/lib/services/KvStore').default;
 const uuid = require('@joplin/lib/uuid').default;
 const fs = require('fs-extra');
+const ArrayUtils = require('@joplin/lib/ArrayUtils');
+const fsExtra = require('fs-extra');
 
-const InteropService = require('@joplin/lib/services/interop/InteropService').default;
+import { ExporterHtmlCli } from './ExporterHtmlCli';
 
 // ---------------------------------------------------------------------------
 // エクスポートオプション
@@ -344,24 +346,114 @@ export async function runExportHtml(
 ): Promise<void> {
   await initJoplinEnv(profileDir);
 
-  const format = options.embededImage ? 'html_emb' : 'html';
-
-  console.log(`Export format  : ${format}`);
   console.log(`Output dir     : ${options.outputDir}`);
   console.log(`Embed images   : ${options.embededImage}`);
   console.log(`Profile dir    : ${profileDir}`);
 
-  const interopService = InteropService.instance();
-  const result = await interopService.export({
-    format: format,
-    path: options.outputDir,
-    target: 'directory',
+  const resourcePath = `${Setting.value('resourceDir')}`;
+  const exportPath = options.outputDir;
+  const warnings: string[] = [];
+
+  // --- 1. エクスポーターの初期化 ---
+  const exporter = new ExporterHtmlCli();
+  await exporter.init(exportPath, {
     embededImage: options.embededImage,
   });
 
-  if (result.warnings.length > 0) {
+  // --- 2. エクスポート対象の収集 ---
+  const folderIds: string[] = await Folder.childrenIds('');
+  const itemsToExport: any[] = [];
+  const exportedNoteIds: string[] = [];
+  let resourceIds: string[] = [];
+
+  for (const folderId of folderIds) {
+    itemsToExport.push({ type: BaseModel.TYPE_FOLDER, itemOrId: folderId });
+    const noteIds: string[] = await Folder.noteIds(folderId);
+    for (const noteId of noteIds) {
+      const note = await Note.load(noteId);
+      if (!note) continue;
+      itemsToExport.push({ type: BaseModel.TYPE_NOTE, itemOrId: note });
+      exportedNoteIds.push(noteId);
+      const rids = await Note.linkedResourceIds(note.body);
+      resourceIds = resourceIds.concat(rids);
+    }
+  }
+  resourceIds = ArrayUtils.unique(resourceIds);
+  for (const rid of resourceIds) {
+    itemsToExport.push({ type: BaseModel.TYPE_RESOURCE, itemOrId: rid });
+  }
+
+  // --- 3. リソースフォルダのコピー ---
+  const resourceFolder = path.basename(resourcePath);
+  const exportResourcePath = path.join(exportPath, resourceFolder);
+  const profileDirPath = `${Setting.value('profileDir')}`;
+  if (exportResourcePath.indexOf(profileDirPath) !== 0) {
+    fsExtra.copySync(resourcePath, exportResourcePath, { overwrite: true });
+  }
+
+  // --- 4. アイテムの処理（リソース → フォルダ → ノートの順） ---
+  const typeOrder = [BaseModel.TYPE_FOLDER, BaseModel.TYPE_RESOURCE, BaseModel.TYPE_NOTE];
+  const context: any = { resourcePaths: {} };
+  const targetItems: any[] = [];
+
+  for (const typeVal of typeOrder) {
+    for (const entry of itemsToExport) {
+      if (entry.type !== typeVal) continue;
+      const itemOrId = entry.itemOrId;
+      let item: any;
+      if (typeof itemOrId === 'object') {
+        item = itemOrId;
+      } else {
+        const ItemClass = BaseItem.getClassByItemType(entry.type);
+        item = await ItemClass.load(itemOrId);
+      }
+      if (!item) {
+        warnings.push(`Cannot find item: ${JSON.stringify(itemOrId)}`);
+        continue;
+      }
+      if (item.encryption_applied || item.encryption_blob_encrypted) {
+        warnings.push(`Encrypted item skipped: ${item.title || item.id}`);
+        continue;
+      }
+      targetItems.push(item);
+    }
+  }
+
+  // --- 5. noteId → HTML パスのマッピングを作成 ---
+  const noteIdToPath: { [key: string]: string } = {};
+  for (const item of targetItems) {
+    if (item.type_ === BaseModel.TYPE_NOTE) {
+      const htmlPath = await exporter.createHtmlPath(item);
+      noteIdToPath[item.id] = htmlPath;
+    }
+  }
+  for (const item of targetItems) {
+    if (item.type_ === BaseModel.TYPE_NOTE) {
+      item.noteIdToPath = noteIdToPath;
+    }
+  }
+
+  // --- 6. 各アイテムをエクスポート ---
+  for (const item of targetItems) {
+    try {
+      if (item.type_ === BaseModel.TYPE_RESOURCE) {
+        const resPath = Resource.fullPath(item);
+        context.resourcePaths[item.id] = resPath;
+        exporter.updateContext(context);
+        await exporter.processResource(item, resPath);
+      }
+      await exporter.processItem(item);
+    } catch (error: any) {
+      console.error(error);
+      warnings.push(error.message);
+    }
+  }
+
+  await exporter.close();
+
+  if (warnings.length > 0) {
     console.warn('Export warnings:');
-    for (const w of result.warnings) {
+    for (const w of warnings) {
       console.warn(`  - ${w}`);
     }
   }
