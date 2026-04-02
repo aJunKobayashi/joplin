@@ -47,27 +47,27 @@ console.log(`Resources: ${resourceDir}`);
 console.log('');
 
 // ---------------------------------------------------------------------------
-// DB からすべてのノートの body と markup_language を取得
+// DB からすべてのノートの id と title を取得
 // ---------------------------------------------------------------------------
 interface NoteRow {
   id: string;
   title: string;
+}
+
+interface NoteBody {
   body: string;
-  markup_language: number; // 1=Markdown, 2=HTML
 }
 
 const db = new Database(dbPath, { readonly: true });
 
-const notes = db.prepare('SELECT id, title, body, markup_language FROM notes').all() as NoteRow[];
-
-db.close();
+const notes = db.prepare('SELECT id, title FROM notes').all() as NoteRow[];
+const getBody = db.prepare('SELECT body FROM notes WHERE id = ?');
 
 console.log(`Total notes: ${notes.length}`);
 
 // ---------------------------------------------------------------------------
 // 各ノートから参照されているリソース ID を収集
 // joplin_resource://filename.ext → filename (= resource id + ext) の先頭部分が ID
-// Markdown ノートは :/resource_id パターンを使用
 // ---------------------------------------------------------------------------
 const referencedIds = new Set<string>();
 
@@ -83,49 +83,28 @@ function extractIdFromJoplinResource(value: string): string | null {
 }
 
 for (const note of notes) {
-  const { body, markup_language } = note;
+  const row = getBody.get(note.id) as NoteBody | undefined;
+  const body = row?.body;
   if (!body) continue;
 
-  if (markup_language === 2) {
-    // --- HTML ノート: cheerio でパース ---
-    const $ = cheerio.load(body);
+  const $ = cheerio.load(body);
 
-    // img.src, video.src, audio.src
-    $('img[src], video[src], audio[src]').each((_, el) => {
-      const src = (el as cheerio.TagElement).attribs.src || '';
-      const id = extractIdFromJoplinResource(src);
-      if (id) referencedIds.add(id);
-    });
+  // img.src, video.src, audio.src
+  $('img[src], video[src], audio[src]').each((_, el) => {
+    const src = (el as cheerio.TagElement).attribs.src || '';
+    const id = extractIdFromJoplinResource(src);
+    if (id) referencedIds.add(id);
+  });
 
-    // a.href
-    $('a[href]').each((_, el) => {
-      const href = (el as cheerio.TagElement).attribs.href || '';
-      const id = extractIdFromJoplinResource(href);
-      if (id) referencedIds.add(id);
-    });
-  } else {
-    // --- Markdown ノート: :/resource_id パターンを regex で抽出 ---
-    // Joplin Markdown では :/[a-f0-9]{32,64} がリソース参照（長さはバージョンにより異なる）
-    const markdownResourceRe = /:\/([\da-f]{32,64})/gi;
-    let match: RegExpExecArray | null;
-    while ((match = markdownResourceRe.exec(body)) !== null) {
-      referencedIds.add(match[1]);
-    }
-
-    // HTML が混在している場合 (TinyMCE 編集後の混在ノートなど) も対応
-    const $ = cheerio.load(body);
-    $('img[src], video[src], audio[src]').each((_, el) => {
-      const src = (el as cheerio.TagElement).attribs.src || '';
-      const id = extractIdFromJoplinResource(src);
-      if (id) referencedIds.add(id);
-    });
-    $('a[href]').each((_, el) => {
-      const href = (el as cheerio.TagElement).attribs.href || '';
-      const id = extractIdFromJoplinResource(href);
-      if (id) referencedIds.add(id);
-    });
-  }
+  // a.href
+  $('a[href]').each((_, el) => {
+    const href = (el as cheerio.TagElement).attribs.href || '';
+    const id = extractIdFromJoplinResource(href);
+    if (id) referencedIds.add(id);
+  });
 }
+
+db.close();
 
 console.log(`Referenced resource IDs: ${referencedIds.size}`);
 console.log('');
