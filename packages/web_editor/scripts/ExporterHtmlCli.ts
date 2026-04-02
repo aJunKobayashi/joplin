@@ -116,8 +116,15 @@ function extractToCAndPutHead(htmlBody: string, titles: string[]): string {
 
 async function copyPluginAssetsIfNotExit(): Promise<void> {
   // katex assets を renderer パッケージからコピーする
-  // package.json の "cp -R ../renderer/assets public/pluginAssets" と同じソースを使用
-  const srcDir = PATH.resolve(__dirname, '../../renderer/assets/katex');
+  const rendererAssetsDir = PATH.resolve(
+    __dirname,
+    '../../node_modules/@joplin/renderer/assets/katex'
+  );
+  // rendererAssetsDir が存在しない場合は lib 配下も探す
+  let srcDir = rendererAssetsDir;
+  if (!fs.existsSync(srcDir)) {
+    srcDir = PATH.resolve(__dirname, '../../../lib/node_modules/@joplin/renderer/assets/katex');
+  }
   const pluginDir = `${Setting.value('tempDir')}/pluginAssets`;
   if (!fs.existsSync(pluginDir)) {
     fs.mkdirSync(pluginDir, { recursive: true });
@@ -325,16 +332,25 @@ export class ExporterHtmlCli {
         noteContent.push(`<div class="exported-note-title">${escapeHtml(item.title)}</div>`);
       if (result.html) noteContent.push(result.html);
 
-      // package.json の "cp -R ../renderer/assets public/pluginAssets" と同じソースを使用
-      const rendererAssetsDir = PATH.resolve(__dirname, '../../renderer/assets');
+      const publicPluginAssetsDir = PATH.resolve(__dirname, '../public/pluginAssets');
       for (const asset of result.pluginAssets) {
         const filePath = asset.pathIsAbsolute
           ? asset.path
-          : `${rendererAssetsDir}/${asset.name}`;
+          : PATH.join(publicPluginAssetsDir, asset.name);
         const destPath = `${dirname(noteFilePath)}/pluginAssets/${asset.name}`;
         await shim.fsDriver().mkdir(dirname(destPath));
         if (fs.existsSync(filePath)) {
           await shim.fsDriver().copy(filePath, destPath);
+        }
+      }
+      // katex/fonts はアセット一覧に個別には含まれないため、ディレクトリごとコピーする
+      const hasKatex = result.pluginAssets.some((a: any) => a.name?.startsWith('katex/'));
+      if (hasKatex) {
+        const katexFontsSrc = PATH.join(publicPluginAssetsDir, 'katex/fonts');
+        const katexFontsDst = PATH.join(dirname(noteFilePath), 'pluginAssets/katex/fonts');
+        if (fs.existsSync(katexFontsSrc)) {
+          const fsExtra = require('fs-extra');
+          await fsExtra.copy(katexFontsSrc, katexFontsDst);
         }
       }
 
