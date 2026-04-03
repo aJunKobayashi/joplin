@@ -8,6 +8,7 @@
     "next_start": "node scripts/start.js",
     "start": "mkdir -p public && rm -rf public/pluginAssets && cp -R ../renderer/assets public/pluginAssets && cp -R node_modules/tinymce public/tinymce && node scripts/start.js",
     "sync_cli": "tsx scripts/sync_cli.ts",
+    "export_html": "mkdir -p public && rm -rf public/pluginAssets && cp -R ../renderer/assets public/pluginAssets && tsx scripts/export_html_cli.ts",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --ignore-pattern public/**",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix --ignore-pattern public/**",
     "format": "prettier --write .",
