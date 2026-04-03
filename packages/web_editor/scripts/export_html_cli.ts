@@ -66,6 +66,10 @@ if (!profileName || !outputDir) {
 const safeProfile = path.basename(profileName);
 const profileDir = path.join(homedir(), '.config', safeProfile);
 
+// lib/database.ts の getDatabase() が ViewerUtil.getProfileFolderPath() 経由で
+// PROFILE_NAME 環境変数を参照するため、エクスポート時にも設定しておく
+process.env.PROFILE_NAME = safeProfile;
+
 // outputDir を絶対パスに変換
 const absoluteOutputDir = path.resolve(outputDir);
 
