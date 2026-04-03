@@ -1414,6 +1414,7 @@ export default function TinyMCEBody({
               'cmd mermaid katexMath toc markdownInsert htmlInsert',
             ].join(' '),
         valid_elements: '*[*]',
+        xss_sanitization: false,
         relative_urls: false,
         content_style: `
           body {
