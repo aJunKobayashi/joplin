@@ -220,7 +220,7 @@ function triggerKatexRender(editor: any, delay = 500) {
  */
 function updateMermaidDiv(editor: any, txt: string, mermaidRootElement: HTMLElement) {
   const root = mermaidRootElement;
-  root.setAttribute('data-mermaid-txt', txt);
+  root.setAttribute('mermaidTxt', txt);
   const baseId = root.id.split('_')[1];
   root.innerHTML = '';
 
@@ -309,7 +309,7 @@ async function convertMarkdownToHtml(
           if (!placeholder) return;
           const root = doc.createElement('div');
           root.id = `mermaidJoplinRoot_${baseId}`;
-          root.setAttribute('data-mermaid-txt', diagramTxt);
+          root.setAttribute('mermaidTxt', diagramTxt);
           const dialog = doc.createElement('div');
           dialog.id = `mermaidJoplinDialog_${baseId}`;
           dialog.className = 'mermaid';
@@ -550,7 +550,7 @@ function insertMermaidDiv(editor: any) {
   dialog.setAttribute('class', 'mermaid');
   dialog.textContent = txt;
   root.id = `mermaidJoplinRoot_${baseId}`;
-  root.setAttribute('data-mermaid-txt', txt);
+  root.setAttribute('mermaidTxt', txt);
   root.appendChild(dialog);
   editor.selection.setNode(root);
   const el = editor.dom.select(`div#${dialog.id}`)[0];
@@ -1749,7 +1749,7 @@ export default function TinyMCEBody({
             let target = e.target as HTMLElement | null;
             while (target) {
               if (target.id && target.id.split('_')[0] === 'mermaidJoplinRoot') {
-                const dialogTxt = target.getAttribute('data-mermaid-txt') ?? '';
+                const dialogTxt = target.getAttribute('mermaidTxt') ?? '';
                 openMermaidDialog(editor, dialogTxt, target);
                 return;
               }
