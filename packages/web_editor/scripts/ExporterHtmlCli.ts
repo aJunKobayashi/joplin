@@ -187,18 +187,7 @@ async function createEmbededFontCss(cssFilePath: string, outputPath: string): Pr
   return result.css;
 }
 
-/**
- * NoteListUtils.updateSubpageLists の簡易版
- * CLI エクスポートでは subpage list の動的更新は不要なため、
- * #joplin_subpagelist があれば中身をクリアするだけにする。
- */
-function updateSubpageLists($: cheerio.Root): cheerio.Root {
-  const root = $('#joplin_subpagelist');
-  if (root.length > 0) {
-    root.find('*').remove();
-  }
-  return $;
-}
+import { updateSubpageLists } from '../lib/subpageList';
 
 // ---------------------------------------------------------------------------
 // エクスポーター本体
@@ -425,13 +414,13 @@ export class ExporterHtmlCli {
     fullHtml: string,
     _srcResourcePath: string,
     dstResourcePath: string,
-    _noteId: string,
+    noteId: string,
     noteFilePath: string,
     noteIdToPath: { [key: string]: string }
   ): Promise<string> {
     const resourceDir = Setting.value('resourceDir');
     let $ = cheerio.load(fullHtml);
-    $ = updateSubpageLists($);
+    $ = updateSubpageLists($, noteId);
     $ = revertResourceDirToJoplinScheme($.html(), resourceDir);
     $ = this.convertImgSrcToRelativePath($, dstResourcePath, noteFilePath);
     $ = this.deleteNeedlessAttribute($);
