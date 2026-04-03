@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Note } from '@/lib/note';
 import { ViewerUtil } from '@/lib/viewerUtil';
+import { updateSubpageLists } from '@/lib/subpageList';
 import * as cheerio from 'cheerio';
 
 export async function GET(req: Request) {
@@ -16,7 +17,10 @@ export async function GET(req: Request) {
 
     const note = Note.getNoteById(id);
     const resourceDir = `/api/resource/`;
-    const $ = cheerio.load(note?.body || '');
+    let $ = cheerio.load(note?.body || '');
+    if (note) {
+      $ = updateSubpageLists($, id);
+    }
     const resourceModifiedHtml = ViewerUtil.modifyJoplinResource($, resourceDir);
     const linkModifiedHtml = ViewerUtil.modifyJoplinLinkAnchor(resourceModifiedHtml);
     const finalModifiedHtml = ViewerUtil.addKatexCssIfNotExists(linkModifiedHtml);
