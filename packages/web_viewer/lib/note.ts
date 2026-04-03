@@ -59,6 +59,17 @@ export class Note {
     const note = stmt.get(id) as NoteEntity | undefined;
     return note || null;
   }
+
+  public static getNotesByParentId(parentId: string): NoteEntity[] {
+    const db = getDatabase();
+    const rows = db
+      .prepare(
+        'SELECT id, parent_id, title, updated_time FROM notes WHERE parent_id = ? ORDER BY title ASC'
+      )
+      .all(parentId) as NoteEntity[];
+    return rows;
+  }
+
   public static selectAll(matchQuery: string): SearchResult[] {
     const db = getDatabase();
     const sql = `
@@ -97,7 +108,7 @@ export class Note {
 
     // Split by half-width or full-width spaces and OR-join for FTS MATCH
     const terms = matchQuery.split(/[\s\u3000]+/).filter(Boolean);
-    const ftsQuery = terms.length > 1 ? terms.join(' OR ') : (terms[0] || matchQuery);
+    const ftsQuery = terms.length > 1 ? terms.join(' OR ') : terms[0] || matchQuery;
 
     const sql = `
             SELECT
