@@ -2216,6 +2216,12 @@ export default function TinyMCEBody({
             console.error('TldrawInsert: snapshot encode failed', err);
           }
           try {
+            // 再編集の場合、古いリソースの URL を保存しておく（新規アップロード成功後に削除）
+            const oldSrc = targetElement?.getAttribute('src') ?? '';
+            const oldFilename = oldSrc.startsWith('/api/resource/')
+              ? decodeURIComponent(oldSrc.replace('/api/resource/', ''))
+              : '';
+
             const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'image/svg+xml' },
@@ -2231,6 +2237,12 @@ export default function TinyMCEBody({
                 editor.dom.setAttrib(targetElement, 'alt', filename);
                 editor.dom.setAttrib(targetElement, 'data-tldraw-snapshot', snapshotAttr);
                 editor.nodeChanged();
+                // 古い SVG リソースを削除
+                if (oldFilename) {
+                  fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
+                    method: 'DELETE',
+                  }).catch((err) => console.warn('TldrawInsert: old resource delete failed', err));
+                }
               } else if (editor) {
                 // 新規挿入
                 editor.insertContent(
