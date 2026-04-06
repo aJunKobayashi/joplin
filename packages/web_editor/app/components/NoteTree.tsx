@@ -170,6 +170,28 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
     setContextMenu(null);
   }, [contextMenu]);
 
+  const handleCopySubpageList = useCallback(async () => {
+    if (contextMenu?.node.type === 'Note') {
+      try {
+        const res = await fetch(
+          `/api/subpage-list?note_id=${encodeURIComponent(contextMenu.node.id)}`
+        );
+        const json = await res.json();
+        if (json.success) {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': new Blob([json.html], { type: 'text/html' }),
+              'text/plain': new Blob([json.html], { type: 'text/plain' }),
+            }),
+          ]);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
     if (noteIdFromUrl && folders) {
@@ -235,6 +257,9 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
         }
       >
         <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
+        {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleCopySubpageList}>サブページリスト</MenuItem>
+        )}
       </Menu>
       <SimpleTreeView
         aria-label="folder tree"

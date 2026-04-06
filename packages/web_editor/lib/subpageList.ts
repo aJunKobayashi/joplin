@@ -112,3 +112,13 @@ export function updateSubpageLists($: cheerio.Root, noteId: string): cheerio.Roo
   convertSubpageListToHTML(subpageList, root);
   return $;
 }
+
+export function getSubpageListHTML(noteId: string): string {
+  const subpageList = createSubPageList(noteId);
+  const $ = cheerio.load('<ul></ul>');
+  const ul = $('ul');
+  for (const child of subpageList.children) {
+    convertSubpageListToHTML(child, ul);
+  }
+  return $('body').html() ?? '';
+}
