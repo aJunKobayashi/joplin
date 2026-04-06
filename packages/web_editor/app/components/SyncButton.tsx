@@ -35,6 +35,10 @@ export default function SyncButton() {
     try {
       const res = await fetch('/api/sync', { method: 'POST' });
       const json = await res.json();
+      if (res.status === 409) {
+        setSyncResult({ success: false, error: json.error });
+        return;
+      }
       setSyncResult(json);
       if (json.success) {
         await Promise.all([
