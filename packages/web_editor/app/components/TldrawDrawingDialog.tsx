@@ -10,6 +10,29 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 
+/**
+ * エクスポートした SVG 文字列から @font-face ルール（data: URI で埋め込まれたフォント）を
+ * 除去してサイズを削減する。
+ * SVG を <img> として表示する場合、外部フォント URL は CORS 制約で読み込めないため
+ * 埋め込みフォントを削除してもシステムフォントへのフォールバックのみの差異になる。
+ */
+function stripEmbeddedFontFaces(svgString: string): string {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    doc.querySelectorAll('style').forEach((style) => {
+      if (style.textContent) {
+        // @font-face { ... } ブロックを除去（s フラグ非対応の場合 [\s\S] で代替）
+        style.textContent = style.textContent.replace(/@font-face\s*\{[\s\S]*?\}/g, '');
+      }
+    });
+    return new XMLSerializer().serializeToString(doc);
+  } catch {
+    // パース失敗時はオリジナルをそのまま返す
+    return svgString;
+  }
+}
+
 interface TldrawDrawingDialogProps {
   open: boolean;
   onClose: () => void;
@@ -62,7 +85,7 @@ export default function TldrawDrawingDialog({
         Promise.resolve(getSnapshot(editor.store)),
       ]);
       if (svgResult?.svg) {
-        onSave(svgResult.svg, snapshot);
+        onSave(stripEmbeddedFontFaces(svgResult.svg), snapshot);
       }
     } catch (err) {
       console.error('TldrawDrawingDialog: export failed', err);
