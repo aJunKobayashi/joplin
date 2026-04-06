@@ -115,7 +115,7 @@ export function updateSubpageLists($: cheerio.Root, noteId: string): cheerio.Roo
 
 export function getSubpageListHTML(noteId: string): string {
   const subpageList = createSubPageList(noteId);
-  const $ = cheerio.load('<ul></ul>');
+  const $ = cheerio.load('<ul id="joplin_subpagelist"></ul>');
   const ul = $('ul');
   for (const child of subpageList.children) {
     convertSubpageListToHTMLWithWebUrl(child, ul);
