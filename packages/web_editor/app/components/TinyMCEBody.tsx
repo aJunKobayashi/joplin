@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import type { TLEditorSnapshot } from 'tldraw';
 
 const TldrawDrawingDialog = dynamic(() => import('./TldrawDrawingDialog'), { ssr: false });
 import Fab from '@mui/material/Fab';
@@ -1217,11 +1218,22 @@ export default function TinyMCEBody({
   } | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
-  const [showTldrawDialog, setShowTldrawDialog] = useState(false);
+  const [tldrawDialogState, setTldrawDialogState] = useState<{
+    open: boolean;
+    snapshot: TLEditorSnapshot | null;
+    targetElement: HTMLImageElement | null;
+  }>({ open: false, snapshot: null, targetElement: null });
 
   // TinyMCE setup クロージャから React state を更新するための ref
   const openDeleteConfirmRef = useRef<() => void>(() => setShowDeleteConfirmDialog(true));
+  // 新規描画を開く ref（ツールバーボタン用）
   const openTldrawRef = useRef<() => void>(() => {});
+  // 既存 tldraw 画像を再編集する ref（DblClick 用）
+  const openTldrawForEditRef = useRef<(
+    el: HTMLImageElement,
+    snapshot: TLEditorSnapshot
+  ) => void>(() => {});
+
   useEffect(() => {
     openDeleteConfirmRef.current = () => setShowDeleteConfirmDialog(true);
   }, []);
@@ -1233,7 +1245,10 @@ export default function TinyMCEBody({
   const pendingOcrElementRef = useRef<Element | null>(null);
 
   useEffect(() => {
-    openTldrawRef.current = () => setShowTldrawDialog(true);
+    openTldrawRef.current = () =>
+      setTldrawDialogState({ open: true, snapshot: null, targetElement: null });
+    openTldrawForEditRef.current = (el, snapshot) =>
+      setTldrawDialogState({ open: true, snapshot, targetElement: el });
   }, []);
 
   // TinyMCE クロージャから OCR を起動するための ref
@@ -1775,6 +1790,20 @@ export default function TinyMCEBody({
                 openMediaDialog(editor, target);
                 return;
               }
+              // tldraw で挿入した SVG 画像：data-tldraw-snapshot 属性を持つ <img> を検知
+              if (tagName === 'img' && target.hasAttribute('data-tldraw-snapshot')) {
+                e.preventDefault();
+                try {
+                  const b64 = target.getAttribute('data-tldraw-snapshot') ?? '';
+                  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+                  const json = new TextDecoder().decode(bytes);
+                  const snapshot = JSON.parse(json) as TLEditorSnapshot;
+                  openTldrawForEditRef.current(target as HTMLImageElement, snapshot);
+                } catch (err) {
+                  console.error('TldrawEdit: failed to parse snapshot', err);
+                }
+                return;
+              }
               target = target.parentElement;
             }
           });
@@ -2168,12 +2197,25 @@ export default function TinyMCEBody({
 
       {/* tldraw 描画ダイアログ */}
       <TldrawDrawingDialog
-        open={showTldrawDialog}
-        onClose={() => setShowTldrawDialog(false)}
-        onSave={async (svgString) => {
-          setShowTldrawDialog(false);
+        open={tldrawDialogState.open}
+        initialSnapshot={tldrawDialogState.snapshot ?? undefined}
+        onClose={() => setTldrawDialogState({ open: false, snapshot: null, targetElement: null })}
+        onSave={async (svgString, snapshot) => {
+          const targetElement = tldrawDialogState.targetElement;
+          setTldrawDialogState({ open: false, snapshot: null, targetElement: null });
           const blob = new Blob([svgString], { type: 'image/svg+xml' });
           const filename = `drawing-${Date.now()}.svg`;
+          // スナップショットを base64 に変換して <img> 属性として保持する
+          let snapshotAttr = '';
+          try {
+            const json = JSON.stringify(snapshot);
+            const bytes = new TextEncoder().encode(json);
+            let binary = '';
+            bytes.forEach((b) => (binary += String.fromCharCode(b)));
+            snapshotAttr = btoa(binary);
+          } catch (err) {
+            console.error('TldrawInsert: snapshot encode failed', err);
+          }
           try {
             const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
               method: 'PUT',
@@ -2183,7 +2225,19 @@ export default function TinyMCEBody({
             const json = await res.json();
             if (json.success) {
               const url = `/api/resource/${encodeURIComponent(json.filename as string)}`;
-              editorRef.current?.insertContent(`<img src="${url}" alt="${filename}" />`);
+              const editor = editorRef.current;
+              if (targetElement && editor) {
+                // 既存画像を差し替え（再編集）
+                editor.dom.setAttrib(targetElement, 'src', url);
+                editor.dom.setAttrib(targetElement, 'alt', filename);
+                editor.dom.setAttrib(targetElement, 'data-tldraw-snapshot', snapshotAttr);
+                editor.nodeChanged();
+              } else if (editor) {
+                // 新規挿入
+                editor.insertContent(
+                  `<img src="${url}" alt="${escapeHtml(filename)}" data-tldraw-snapshot="${snapshotAttr}" />`
+                );
+              }
             } else {
               console.error('TldrawInsert: upload failed', json.error);
             }

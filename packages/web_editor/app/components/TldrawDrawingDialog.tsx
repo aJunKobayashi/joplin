@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useCallback, useState } from 'react';
-import { Tldraw, type Editor } from 'tldraw';
+import { Tldraw, type Editor, getSnapshot, loadSnapshot, type TLEditorSnapshot } from 'tldraw';
 import 'tldraw/tldraw.css';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -13,13 +13,37 @@ import CircularProgress from '@mui/material/CircularProgress';
 interface TldrawDrawingDialogProps {
   open: boolean;
   onClose: () => void;
-  /** SVG 文字列を受け取るコールバック */
-  onSave: (svgString: string) => void;
+  /** 再編集時に復元するスナップショット（新規作成時は undefined） */
+  initialSnapshot?: TLEditorSnapshot;
+  /** SVG 文字列とスナップショットを受け取るコールバック */
+  onSave: (svgString: string, snapshot: TLEditorSnapshot) => void;
 }
 
-export default function TldrawDrawingDialog({ open, onClose, onSave }: TldrawDrawingDialogProps) {
+export default function TldrawDrawingDialog({
+  open,
+  onClose,
+  initialSnapshot,
+  onSave,
+}: TldrawDrawingDialogProps) {
   const editorRef = useRef<Editor | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const handleMount = useCallback(
+    (editor: Editor) => {
+      editorRef.current = editor;
+      if (initialSnapshot) {
+        // 既存スナップショットを復元（再編集）
+        try {
+          loadSnapshot(editor.store, initialSnapshot);
+        } catch (err) {
+          console.error('TldrawDrawingDialog: loadSnapshot failed', err);
+        }
+      }
+    },
+    // initialSnapshot はダイアログ open 時に固定される値なので deps に含める
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open]
+  );
 
   const handleSave = useCallback(async () => {
     const editor = editorRef.current;
@@ -33,12 +57,15 @@ export default function TldrawDrawingDialog({ open, onClose, onSave }: TldrawDra
 
     setExporting(true);
     try {
-      const result = await editor.getSvgString(shapeIds, { background: true });
-      if (result?.svg) {
-        onSave(result.svg);
+      const [svgResult, snapshot] = await Promise.all([
+        editor.getSvgString(shapeIds, { background: true }),
+        Promise.resolve(getSnapshot(editor.store)),
+      ]);
+      if (svgResult?.svg) {
+        onSave(svgResult.svg, snapshot);
       }
     } catch (err) {
-      console.error('TldrawDrawingDialog: SVG export failed', err);
+      console.error('TldrawDrawingDialog: export failed', err);
     } finally {
       setExporting(false);
     }
@@ -56,11 +83,7 @@ export default function TldrawDrawingDialog({ open, onClose, onSave }: TldrawDra
       <DialogContent sx={{ p: 0, overflow: 'hidden', position: 'relative', flex: 1 }}>
         {open && (
           <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
-            <Tldraw
-              onMount={(editor) => {
-                editorRef.current = editor;
-              }}
-            />
+            <Tldraw onMount={handleMount} />
           </div>
         )}
       </DialogContent>
