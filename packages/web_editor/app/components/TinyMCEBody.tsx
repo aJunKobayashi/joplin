@@ -352,10 +352,11 @@ async function convertMarkdownToHtml(
   const $html = cheerioLoad(html, { decodeEntities: false });
   for (const el of $html('img').toArray()) {
     const src = $html(el).attr('src') ?? '';
-    const filename = src.split('/').pop() ?? src;
     console.log('convertMarkdownToHtml img src:', src);
+    console.log(`url decoded: ${decodeURIComponent(src)}`);
+    const filename = src.split('/').pop() ?? src;
     try {
-      const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
+      const res = await fetch(`/api/resource/${encodeURIComponent(decodeURIComponent(filename))}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
