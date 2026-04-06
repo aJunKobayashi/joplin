@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import type { TLEditorSnapshot } from 'tldraw';
 
 const TldrawDrawingDialog = dynamic(() => import('./TldrawDrawingDialog'), { ssr: false });
+const DrawioDialog = dynamic(() => import('./DrawioDialog'), { ssr: false });
 import Fab from '@mui/material/Fab';
 import CircularProgress from '@mui/material/CircularProgress';
 import Tooltip from '@mui/material/Tooltip';
@@ -1288,6 +1289,11 @@ export default function TinyMCEBody({
     snapshot: TLEditorSnapshot | null;
     targetElement: HTMLImageElement | null;
   }>({ open: false, snapshot: null, targetElement: null });
+  const [drawioDialogState, setDrawioDialogState] = useState<{
+    open: boolean;
+    xml: string | null;
+    targetElement: HTMLImageElement | null;
+  }>({ open: false, xml: null, targetElement: null });
 
   // TinyMCE setup クロージャから React state を更新するための ref
   const openDeleteConfirmRef = useRef<() => void>(() => setShowDeleteConfirmDialog(true));
@@ -1297,6 +1303,10 @@ export default function TinyMCEBody({
   const openTldrawForEditRef = useRef<(el: HTMLImageElement, snapshot: TLEditorSnapshot) => void>(
     () => {}
   );
+  // draw.io 新規描画を開く ref（ツールバーボタン用）
+  const openDrawioRef = useRef<() => void>(() => {});
+  // 既存 draw.io 画像を再編集する ref（DblClick 用）
+  const openDrawioForEditRef = useRef<(el: HTMLImageElement, xml: string) => void>(() => {});
 
   useEffect(() => {
     openDeleteConfirmRef.current = () => setShowDeleteConfirmDialog(true);
@@ -1313,6 +1323,10 @@ export default function TinyMCEBody({
       setTldrawDialogState({ open: true, snapshot: null, targetElement: null });
     openTldrawForEditRef.current = (el, snapshot) =>
       setTldrawDialogState({ open: true, snapshot, targetElement: el });
+    openDrawioRef.current = () =>
+      setDrawioDialogState({ open: true, xml: null, targetElement: null });
+    openDrawioForEditRef.current = (el, xml) =>
+      setDrawioDialogState({ open: true, xml, targetElement: el });
   }, []);
 
   // TinyMCE クロージャから OCR を起動するための ref
@@ -1500,7 +1514,7 @@ export default function TinyMCEBody({
               'h1 h2 h3 hr blockquote table |',
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
-              'cmd mermaid katexMath toc markdownInsert htmlInsert tldrawInsert',
+              'cmd mermaid katexMath toc markdownInsert htmlInsert tldrawInsert drawioInsert',
             ].join(' '),
         valid_elements: '*[*]',
         xss_sanitization: false,
@@ -1868,6 +1882,20 @@ export default function TinyMCEBody({
                   });
                 return;
               }
+              // draw.io で挿入した SVG 画像：data-drawio-xml 属性を持つ <img> を検知
+              if (tagName === 'img' && target.hasAttribute('data-drawio-xml')) {
+                e.preventDefault();
+                const capturedTarget = target as HTMLImageElement;
+                const b64 = capturedTarget.getAttribute('data-drawio-xml') ?? '';
+                decodeSnapshot(b64)
+                  .then((xml) => {
+                    openDrawioForEditRef.current(capturedTarget, xml as string);
+                  })
+                  .catch((err) => {
+                    console.error('DrawioEdit: failed to parse xml', err);
+                  });
+                return;
+              }
               target = target.parentElement;
             }
           });
@@ -1970,6 +1998,13 @@ export default function TinyMCEBody({
             tooltip: 'tldraw で描画',
             text: '✏️ Draw',
             onAction: () => openTldrawRef.current(),
+          });
+
+          // drawioInsert: draw.io 描画ダイアログを開く
+          editor.ui.registry.addButton('drawioInsert', {
+            tooltip: 'draw.io で描画',
+            text: '📊 Diagram',
+            onAction: () => openDrawioRef.current(),
           });
 
           // ---------- カスタムコマンド ----------
@@ -2315,6 +2350,66 @@ export default function TinyMCEBody({
             }
           } catch (err) {
             console.error('TldrawInsert: upload error', err);
+          }
+        }}
+      />
+
+      {/* draw.io 描画ダイアログ */}
+      <DrawioDialog
+        open={drawioDialogState.open}
+        initialXml={drawioDialogState.xml ?? undefined}
+        onClose={() => setDrawioDialogState({ open: false, xml: null, targetElement: null })}
+        onSave={async (svgString, xml) => {
+          const targetElement = drawioDialogState.targetElement;
+          setDrawioDialogState({ open: false, xml: null, targetElement: null });
+          const blob = new Blob([svgString], { type: 'image/svg+xml' });
+          const filename = `drawio-${Date.now()}.svg`;
+          // draw.io XML を圧縮 (deflate-raw) して base64 に変換し <img> 属性として保持する
+          let xmlAttr = '';
+          try {
+            xmlAttr = await encodeSnapshot(xml);
+          } catch (err) {
+            console.error('DrawioInsert: xml encode failed', err);
+          }
+          try {
+            // 再編集の場合、古いリソースの URL を保存しておく（新規アップロード成功後に削除）
+            const oldSrc = targetElement?.getAttribute('src') ?? '';
+            const oldFilename = oldSrc.startsWith('/api/resource/')
+              ? decodeURIComponent(oldSrc.replace('/api/resource/', ''))
+              : '';
+
+            const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'image/svg+xml' },
+              body: blob,
+            });
+            const json = await res.json();
+            if (json.success) {
+              const url = `/api/resource/${encodeURIComponent(json.filename as string)}`;
+              const editor = editorRef.current;
+              if (targetElement && editor) {
+                // 既存画像を差し替え（再編集）
+                editor.dom.setAttrib(targetElement, 'src', url);
+                editor.dom.setAttrib(targetElement, 'alt', filename);
+                editor.dom.setAttrib(targetElement, 'data-drawio-xml', xmlAttr);
+                editor.nodeChanged();
+                // 古い SVG リソースを削除
+                if (oldFilename) {
+                  fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
+                    method: 'DELETE',
+                  }).catch((err) => console.warn('DrawioInsert: old resource delete failed', err));
+                }
+              } else if (editor) {
+                // 新規挿入
+                editor.insertContent(
+                  `<img src="${url}" alt="${escapeHtml(filename)}" data-drawio-xml="${xmlAttr}" />`
+                );
+              }
+            } else {
+              console.error('DrawioInsert: upload failed', json.error);
+            }
+          } catch (err) {
+            console.error('DrawioInsert: upload error', err);
           }
         }}
       />
