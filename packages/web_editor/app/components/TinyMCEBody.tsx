@@ -662,6 +662,71 @@ function insertKatexDiv(editor: any) {
   );
 }
 
+// ---------- ヘルパー: tldraw スナップショット圧縮 ----------
+
+/**
+ * tldraw スナップショットを DeflateRaw で圧縮し base64 文字列に変換する。
+ * CompressionStream (deflate-raw) はモダンブラウザで広くサポートされている。
+ */
+async function encodeSnapshot(snapshot: unknown): Promise<string> {
+  const json = JSON.stringify(snapshot);
+  const input = new TextEncoder().encode(json);
+  const cs = new CompressionStream('deflate-raw');
+  const writer = cs.writable.getWriter();
+  writer.write(input);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  const reader = cs.readable.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const totalLen = chunks.reduce((n, c) => n + c.length, 0);
+  const buf = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buf.set(chunk, offset);
+    offset += chunk.length;
+  }
+  let binary = '';
+  buf.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary);
+}
+
+/**
+ * encodeSnapshot でエンコードされた base64 文字列を DeflateRaw で展開してパースする。
+ * 古い（非圧縮）形式にもフォールバックする。
+ */
+async function decodeSnapshot(b64: string): Promise<unknown> {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  try {
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    const chunks: Uint8Array[] = [];
+    const reader = ds.readable.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const totalLen = chunks.reduce((n, c) => n + c.length, 0);
+    const buf = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const chunk of chunks) {
+      buf.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return JSON.parse(new TextDecoder().decode(buf));
+  } catch {
+    // 非圧縮（旧形式）フォールバック
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+}
+
 // ---------- ヘルパー: Drag & Drop ファイルアップロード ----------
 
 /** ファイル名の拡張子が動画形式かどうかを判定する。 */
@@ -1792,15 +1857,15 @@ export default function TinyMCEBody({
               // tldraw で挿入した SVG 画像：data-tldraw-snapshot 属性を持つ <img> を検知
               if (tagName === 'img' && target.hasAttribute('data-tldraw-snapshot')) {
                 e.preventDefault();
-                try {
-                  const b64 = target.getAttribute('data-tldraw-snapshot') ?? '';
-                  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-                  const json = new TextDecoder().decode(bytes);
-                  const snapshot = JSON.parse(json) as TLEditorSnapshot;
-                  openTldrawForEditRef.current(target as HTMLImageElement, snapshot);
-                } catch (err) {
-                  console.error('TldrawEdit: failed to parse snapshot', err);
-                }
+                const capturedTarget = target as HTMLImageElement;
+                const b64 = capturedTarget.getAttribute('data-tldraw-snapshot') ?? '';
+                decodeSnapshot(b64)
+                  .then((snapshot) => {
+                    openTldrawForEditRef.current(capturedTarget, snapshot as TLEditorSnapshot);
+                  })
+                  .catch((err) => {
+                    console.error('TldrawEdit: failed to parse snapshot', err);
+                  });
                 return;
               }
               target = target.parentElement;
@@ -2204,14 +2269,10 @@ export default function TinyMCEBody({
           setTldrawDialogState({ open: false, snapshot: null, targetElement: null });
           const blob = new Blob([svgString], { type: 'image/svg+xml' });
           const filename = `drawing-${Date.now()}.svg`;
-          // スナップショットを base64 に変換して <img> 属性として保持する
+          // スナップショットを圧縮 (deflate-raw) して base64 に変換し <img> 属性として保持する
           let snapshotAttr = '';
           try {
-            const json = JSON.stringify(snapshot);
-            const bytes = new TextEncoder().encode(json);
-            let binary = '';
-            bytes.forEach((b) => (binary += String.fromCharCode(b)));
-            snapshotAttr = btoa(binary);
+            snapshotAttr = await encodeSnapshot(snapshot);
           } catch (err) {
             console.error('TldrawInsert: snapshot encode failed', err);
           }
