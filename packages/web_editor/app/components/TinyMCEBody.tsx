@@ -2,6 +2,9 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const TldrawDrawingDialog = dynamic(() => import('./TldrawDrawingDialog'), { ssr: false });
 import Fab from '@mui/material/Fab';
 import CircularProgress from '@mui/material/CircularProgress';
 import Tooltip from '@mui/material/Tooltip';
@@ -1214,9 +1217,11 @@ export default function TinyMCEBody({
   } | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const { showOcrDialog, ocrText, ocrLoading, setOcrText, closeOcrDialog, runOcr } = useOcr();
+  const [showTldrawDialog, setShowTldrawDialog] = useState(false);
 
   // TinyMCE setup クロージャから React state を更新するための ref
   const openDeleteConfirmRef = useRef<() => void>(() => setShowDeleteConfirmDialog(true));
+  const openTldrawRef = useRef<() => void>(() => {});
   useEffect(() => {
     openDeleteConfirmRef.current = () => setShowDeleteConfirmDialog(true);
   }, []);
@@ -1226,6 +1231,10 @@ export default function TinyMCEBody({
 
   // OCR 対象の img 要素を保持する ref
   const pendingOcrElementRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    openTldrawRef.current = () => setShowTldrawDialog(true);
+  }, []);
 
   // TinyMCE クロージャから OCR を起動するための ref
   const openOcrDialogRef = useRef<() => void>(() => {});
@@ -1412,7 +1421,7 @@ export default function TinyMCEBody({
               'h1 h2 h3 hr blockquote table |',
               'fontfamily fontsize blocks |',
               'forecolor backcolor removeformat |',
-              'cmd mermaid katexMath toc markdownInsert htmlInsert',
+              'cmd mermaid katexMath toc markdownInsert htmlInsert tldrawInsert',
             ].join(' '),
         valid_elements: '*[*]',
         xss_sanitization: false,
@@ -1863,6 +1872,13 @@ export default function TinyMCEBody({
             onAction: () => openHtmlInsertDialog(editor),
           });
 
+          // tldrawInsert: tldraw 描画ダイアログを開く
+          editor.ui.registry.addButton('tldrawInsert', {
+            tooltip: 'tldraw で描画',
+            text: '✏️ Draw',
+            onAction: () => openTldrawRef.current(),
+          });
+
           // ---------- カスタムコマンド ----------
 
           // 文字色コマンド
@@ -2149,6 +2165,33 @@ export default function TinyMCEBody({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* tldraw 描画ダイアログ */}
+      <TldrawDrawingDialog
+        open={showTldrawDialog}
+        onClose={() => setShowTldrawDialog(false)}
+        onSave={async (svgString) => {
+          setShowTldrawDialog(false);
+          const blob = new Blob([svgString], { type: 'image/svg+xml' });
+          const filename = `drawing-${Date.now()}.svg`;
+          try {
+            const res = await fetch(`/api/resource/${encodeURIComponent(filename)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'image/svg+xml' },
+              body: blob,
+            });
+            const json = await res.json();
+            if (json.success) {
+              const url = `/api/resource/${encodeURIComponent(json.filename as string)}`;
+              editorRef.current?.insertContent(`<img src="${url}" alt="${filename}" />`);
+            } else {
+              console.error('TldrawInsert: upload failed', json.error);
+            }
+          } catch (err) {
+            console.error('TldrawInsert: upload error', err);
+          }
+        }}
+      />
 
       {/* 未保存変更があるときのノート切り替え確認ダイアログ */}
       <Dialog open={showDirtyDialog} onClose={handleDirtyDialogCancel}>
