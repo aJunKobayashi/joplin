@@ -118,7 +118,36 @@ export function getSubpageListHTML(noteId: string): string {
   const $ = cheerio.load('<ul></ul>');
   const ul = $('ul');
   for (const child of subpageList.children) {
-    convertSubpageListToHTML(child, ul);
+    convertSubpageListToHTMLWithWebUrl(child, ul);
   }
   return $('body').html() ?? '';
+}
+
+function convertSubpageListToHTMLWithWebUrl(
+  subpageList: SubpageList,
+  parent: cheerio.Cheerio
+): void {
+  if (subpageList.type === PageType.Note) {
+    const li = cheerio.load(
+      `<li><a href="/note?note_id=${subpageList.id}">${subpageList.title}</a></li>`
+    );
+    li('li').appendTo(parent);
+    return;
+  }
+
+  if (subpageList.type !== PageType.Folder) {
+    return;
+  }
+
+  const litemp = cheerio.load(`<li>${subpageList.title}</li>`);
+  const li = litemp('li');
+  const ultemp = cheerio.load('<ul></ul>');
+  const ul = ultemp('ul');
+
+  for (const child of subpageList.children) {
+    convertSubpageListToHTMLWithWebUrl(child, ul);
+  }
+
+  ul.appendTo(li);
+  li.appendTo(parent);
 }
