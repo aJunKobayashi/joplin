@@ -44,7 +44,10 @@ export default function DrawioDialog({ open, onClose, initialXml, onSave }: Draw
   const pendingXmlRef = useRef<string>('');
 
   const sendMessage = (msg: object) => {
-    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(msg), '*');
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify(msg),
+      'https://embed.diagrams.net'
+    );
   };
 
   useEffect(() => {
@@ -58,8 +61,8 @@ export default function DrawioDialog({ open, onClose, initialXml, onSave }: Draw
     }
 
     const handleMessage = (evt: MessageEvent) => {
-      // 自分の iframe からのメッセージのみ処理する
-      if (evt.source !== iframeRef.current?.contentWindow) return;
+      // embed.diagrams.net からのメッセージのみ処理する
+      if (evt.origin !== 'https://embed.diagrams.net') return;
       if (typeof evt.data !== 'string' || evt.data.length === 0) return;
 
       let msg: Record<string, unknown>;
@@ -71,11 +74,9 @@ export default function DrawioDialog({ open, onClose, initialXml, onSave }: Draw
 
       switch (msg.event) {
         case 'init':
-          // draw.io の初期化完了：既存 XML があれば読み込む
+          // draw.io の初期化完了：新規・再編集問わず必ず load を送る（未送信だと draw.io が初期化待ちのまま止まる）
           setLoading(false);
-          if (initialXml) {
-            sendMessage({ action: 'load', xml: initialXml, autosave: 0 });
-          }
+          sendMessage({ action: 'load', xml: initialXml ?? '', autosave: 0 });
           break;
 
         case 'save': {
