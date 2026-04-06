@@ -99,7 +99,11 @@ export default function DrawioDialog({ open, onClose, initialXml, onSave }: Draw
           // SVG エクスポート完了：data URI をデコードして onSave に渡す
           const dataUri = (msg.data as string) ?? '';
           const base64 = dataUri.replace(/^data:image\/svg\+xml;base64,/, '');
-          const svgString = atob(base64);
+          // atob() はバイナリ文字列(Latin-1)として復号するため、UTF-8の日本語が文字化けする。
+          // TextDecoder で UTF-8 として正しく復号する。
+          const binaryStr = atob(base64);
+          const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
+          const svgString = new TextDecoder('utf-8').decode(bytes);
           const xml = pendingXmlRef.current;
           pendingSaveRef.current = false;
           pendingXmlRef.current = '';
