@@ -1229,10 +1229,9 @@ export default function TinyMCEBody({
   // 新規描画を開く ref（ツールバーボタン用）
   const openTldrawRef = useRef<() => void>(() => {});
   // 既存 tldraw 画像を再編集する ref（DblClick 用）
-  const openTldrawForEditRef = useRef<(
-    el: HTMLImageElement,
-    snapshot: TLEditorSnapshot
-  ) => void>(() => {});
+  const openTldrawForEditRef = useRef<(el: HTMLImageElement, snapshot: TLEditorSnapshot) => void>(
+    () => {}
+  );
 
   useEffect(() => {
     openDeleteConfirmRef.current = () => setShowDeleteConfirmDialog(true);
