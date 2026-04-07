@@ -120,9 +120,10 @@ export interface NoteTreeHandle {
 
 interface NoteTreeProps {
   isEditor?: boolean;
+  ref?: React.Ref<NoteTreeHandle>;
 }
 
-const NoteTree = React.forwardRef<NoteTreeHandle, NoteTreeProps>(function NoteTree({ isEditor }, ref) {
+function NoteTree({ isEditor, ref }: NoteTreeProps) {
   const { folders, isLoading, error } = useFolderQuery();
   const queryClient = useQueryClient();
 
@@ -326,7 +327,9 @@ const NoteTree = React.forwardRef<NoteTreeHandle, NoteTreeProps>(function NoteTr
             variant="outlined"
             value={newNoteTitle}
             onChange={(e) => setNewNoteTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddNoteSubmit(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddNoteSubmit();
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -350,6 +353,6 @@ const NoteTree = React.forwardRef<NoteTreeHandle, NoteTreeProps>(function NoteTr
       </SimpleTreeView>
     </Box>
   );
-});
+}
 
 export default NoteTree;
