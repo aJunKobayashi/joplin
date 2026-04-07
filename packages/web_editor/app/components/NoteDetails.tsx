@@ -28,7 +28,16 @@ class NoteContentErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <div dangerouslySetInnerHTML={{ __html: this.props.fallbackHtml }} />;
+      return (
+        <>
+          <div
+            style={{ color: 'red', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem' }}
+          >
+            ⚠️ レンダリングエラーが発生したため、フォールバック表示しています。
+          </div>
+          <div dangerouslySetInnerHTML={{ __html: this.props.fallbackHtml }} />
+        </>
+      );
     }
     return this.props.children;
   }
