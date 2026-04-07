@@ -13,6 +13,36 @@ import MenuItem from '@mui/material/MenuItem';
 import { useOcr } from '@/lib/useOcr';
 import OcrDialog from './OcrDialog';
 
+class NoteContentErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallbackHtml: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallbackHtml: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <>
+          <div
+            style={{ color: 'red', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem' }}
+          >
+            ⚠️ レンダリングエラーが発生したため、フォールバック表示しています。
+          </div>
+          <div dangerouslySetInnerHTML={{ __html: this.props.fallbackHtml }} />
+        </>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function NoteDetails({ note }: { note: (NoteEntity & { body?: string }) | null }) {
   const searchParams = useSearchParams();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -311,12 +341,31 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
     },
   };
 
+  // 大きい HTML だとスタックオーバーフローになるため、失敗時は dangerouslySetInnerHTML にフォールバック
+  let parsedBody: React.ReactNode = null;
+  if (note.body) {
+    try {
+      // DOMParser で正規化してから parse に渡す。
+      // html-react-parser が使う htmlparser2 はブラウザの HTML5 パーサーと異なり、
+      // <p> 内に <ul>/<ol>/<div> 等のブロック要素が現れても自動クローズしない。
+      // その結果、無効な DOM ネストが生成されて React がエラーを投げる。
+      // DOMParser はブラウザと同じ HTML5 規則を適用して無効なネストを修正する。
+      const doc = new DOMParser().parseFromString(note.body, 'text/html');
+      const normalizedHtml = doc.body.innerHTML;
+      parsedBody = parse(normalizedHtml, parseOptions);
+    } catch {
+      parsedBody = <div dangerouslySetInnerHTML={{ __html: note.body }} />;
+    }
+  }
+
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">{note.title || 'Untitled'}</h2>
       {note.body ? (
         <div className="note-content" ref={contentRef}>
-          {parse(note.body, parseOptions)}
+          <NoteContentErrorBoundary key={note.id} fallbackHtml={note.body}>
+            {parsedBody}
+          </NoteContentErrorBoundary>
         </div>
       ) : (
         <div className="text-sm text-gray-600">-</div>
