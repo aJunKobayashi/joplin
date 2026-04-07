@@ -242,6 +242,44 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setNewNoteTitle('');
   }, [addNoteDialog, newNoteTitle, queryClient]);
 
+  const [renameDialog, setRenameDialog] = React.useState<{
+    noteId: string;
+    currentTitle: string;
+  } | null>(null);
+  const [renameTitle, setRenameTitle] = React.useState('');
+
+  const handleRenameOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Note') {
+      setRenameDialog({ noteId: contextMenu.node.id, currentTitle: contextMenu.node.title });
+      setRenameTitle(contextMenu.node.title);
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleRenameClose = useCallback(() => {
+    setRenameDialog(null);
+    setRenameTitle('');
+  }, []);
+
+  const handleRenameSubmit = useCallback(async () => {
+    if (!renameDialog || !renameTitle.trim()) return;
+    try {
+      const res = await fetch('/api/note', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: renameDialog.noteId, title: renameTitle.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setRenameDialog(null);
+    setRenameTitle('');
+  }, [renameDialog, renameTitle, queryClient]);
+
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
     if (noteIdFromUrl && folders) {
@@ -312,10 +350,36 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleCopySubpageList}>サブページリスト</MenuItem>
         )}
+        {contextMenu?.node.type === 'Note' && isEditor && (
+          <MenuItem onClick={handleRenameOpen}>名前を変更</MenuItem>
+        )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
         )}
       </Menu>
+      <Dialog open={renameDialog !== null} onClose={handleRenameClose}>
+        <DialogTitle>名前を変更</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="ノートのタイトル"
+            fullWidth
+            variant="outlined"
+            value={renameTitle}
+            onChange={(e) => setRenameTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameSubmit();
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRenameClose}>キャンセル</Button>
+          <Button onClick={handleRenameSubmit} disabled={!renameTitle.trim()} variant="contained">
+            変更
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={addNoteDialog !== null} onClose={handleAddNoteClose}>
         <DialogTitle>ノートを追加</DialogTitle>
         <DialogContent>

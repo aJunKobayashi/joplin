@@ -23,6 +23,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, title } = await req.json();
+    if (!id || !title) {
+      return NextResponse.json(
+        { success: false, error: 'id and title are required' },
+        { status: 400 }
+      );
+    }
+    const existing = Note.getNoteById(id);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
+    }
+    Note.save({ ...existing, title });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const { id, body, updatedTime } = await req.json();
