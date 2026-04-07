@@ -230,4 +230,26 @@ export class Note {
     if (!note) throw new Error(`Note not found: ${id}`);
     this.save({ ...note, body });
   }
+
+  public static create(title: string, parentId: string): NoteEntity {
+    const db = getDatabase();
+    const now = Date.now();
+    const id = require('crypto').randomUUID().replace(/-/g, '');
+
+    db.prepare(`
+      INSERT INTO notes (id, parent_id, title, body, created_time, updated_time,
+        is_conflict, latitude, longitude, altitude, author, source_url,
+        is_todo, todo_due, todo_completed, source, source_application, application_data, \`order\`)
+      VALUES (?, ?, ?, '', ?, ?, 0, 0, 0, 0, '', '', 0, 0, 0, '', '', '', 0)
+    `).run(id, parentId, title, now, now);
+
+    db.transaction(() => {
+      const normTitle = this.normalizeText(title);
+      db.prepare('DELETE FROM notes_normalized WHERE id = ?').run(id);
+      db.prepare('INSERT INTO notes_normalized (id, title, body) VALUES (?, ?, ?)').run(id, normTitle, '');
+    })();
+
+    const note = this.getNoteById(id);
+    return note!;
+  }
 }
