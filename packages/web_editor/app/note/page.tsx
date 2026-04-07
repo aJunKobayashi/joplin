@@ -22,7 +22,7 @@ export default function NotePage() {
             <Panel defaultSize={400} minSize={20} className="bg-gray-100 p-4 flex flex-col">
               <h2 className="text-lg font-bold mb-4">Folders</h2>
               <div className="flex-1 min-h-0 overflow-auto">
-                <NoteTreeWrapper />
+                <NoteTreeWrapper mode={mode} />
               </div>
               {mode === 'editor' && <SyncButton />}
             </Panel>

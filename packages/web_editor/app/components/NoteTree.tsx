@@ -118,7 +118,11 @@ export interface NoteTreeHandle {
   collapseAll: () => void;
 }
 
-const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
+interface NoteTreeProps {
+  isEditor?: boolean;
+}
+
+const NoteTree = React.forwardRef<NoteTreeHandle, NoteTreeProps>(function NoteTree({ isEditor }, ref) {
   const { folders, isLoading, error } = useFolderQuery();
   const queryClient = useQueryClient();
 
@@ -307,7 +311,7 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
         {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleCopySubpageList}>サブページリスト</MenuItem>
         )}
-        {contextMenu?.node.type === 'Folder' && (
+        {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
         )}
       </Menu>
