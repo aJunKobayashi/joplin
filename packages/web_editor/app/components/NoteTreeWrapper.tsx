@@ -16,7 +16,11 @@ import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 
-export default function NoteTreeWrapper() {
+interface NoteTreeWrapperProps {
+  mode?: 'viewer' | 'editor';
+}
+
+export default function NoteTreeWrapper({ mode }: NoteTreeWrapperProps) {
   const [query, setQuery] = React.useState('');
   const [searchInput, setSearchInput] = React.useState('');
   const [openSearchDialog, setOpenSearchDialog] = React.useState(false);
@@ -141,7 +145,7 @@ export default function NoteTreeWrapper() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: hideTree ? 'none' : undefined }}>
-        <NoteTree ref={noteTreeRef} />
+        <NoteTree ref={noteTreeRef} isEditor={mode === 'editor'} />
       </div>
     </div>
   );

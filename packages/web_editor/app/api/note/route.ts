@@ -4,6 +4,25 @@ import { ViewerUtil } from '@/lib/viewerUtil';
 import { updateSubpageLists } from '@/lib/subpageList';
 import * as cheerio from 'cheerio';
 
+export async function POST(req: NextRequest) {
+  try {
+    const { title, parent_id } = await req.json();
+    if (!title || !parent_id) {
+      return NextResponse.json(
+        { success: false, error: 'title and parent_id are required' },
+        { status: 400 }
+      );
+    }
+    const note = Note.create(title, parent_id);
+    return NextResponse.json({ success: true, data: note });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const { id, body, updatedTime } = await req.json();

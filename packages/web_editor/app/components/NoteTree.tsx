@@ -2,7 +2,7 @@
 
 import React, { useCallback, useImperativeHandle, useMemo, useTransition } from 'react';
 import Link from 'next/link';
-import {} from /* useQuery replaced by useFolderQuery */ '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
@@ -16,6 +16,12 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
 import { TreeNode, useFolderQuery } from '@/lib/hooks';
 
 // fetch logic moved to `useFolderQuery` in `lib/hooks`
@@ -32,7 +38,10 @@ function renderTree(
           key={node.id}
           itemId={node.id}
           label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              onContextMenu={(e: React.MouseEvent) => onContextMenu?.(e, node)}
+            >
               <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
               <span style={node.id === '__conflict__' ? { color: 'red' } : undefined}>
                 {node.title}
@@ -109,8 +118,13 @@ export interface NoteTreeHandle {
   collapseAll: () => void;
 }
 
-const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
+interface NoteTreeProps {
+  isEditor?: boolean;
+}
+
+const NoteTree = React.forwardRef<NoteTreeHandle, NoteTreeProps>(function NoteTree({ isEditor }, ref) {
   const { folders, isLoading, error } = useFolderQuery();
+  const queryClient = useQueryClient();
 
   const searchParams = useSearchParams();
   const noteIdFromUrl = searchParams.get('note_id');
@@ -192,6 +206,41 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
     setContextMenu(null);
   }, [contextMenu]);
 
+  const [addNoteDialog, setAddNoteDialog] = React.useState<{ folderId: string } | null>(null);
+  const [newNoteTitle, setNewNoteTitle] = React.useState('');
+
+  const handleAddNoteOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      setAddNoteDialog({ folderId: contextMenu.node.id });
+      setNewNoteTitle('');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleAddNoteClose = useCallback(() => {
+    setAddNoteDialog(null);
+    setNewNoteTitle('');
+  }, []);
+
+  const handleAddNoteSubmit = useCallback(async () => {
+    if (!addNoteDialog || !newNoteTitle.trim()) return;
+    try {
+      const res = await fetch('/api/note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newNoteTitle.trim(), parent_id: addNoteDialog.folderId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setAddNoteDialog(null);
+    setNewNoteTitle('');
+  }, [addNoteDialog, newNoteTitle, queryClient]);
+
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
     if (noteIdFromUrl && folders) {
@@ -256,11 +305,37 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
           contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
         }
       >
-        <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
+        {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
+        )}
         {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleCopySubpageList}>サブページリスト</MenuItem>
         )}
+        {contextMenu?.node.type === 'Folder' && isEditor && (
+          <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
+        )}
       </Menu>
+      <Dialog open={addNoteDialog !== null} onClose={handleAddNoteClose}>
+        <DialogTitle>ノートを追加</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="ノートのタイトル"
+            fullWidth
+            variant="outlined"
+            value={newNoteTitle}
+            onChange={(e) => setNewNoteTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddNoteSubmit(); }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddNoteClose}>キャンセル</Button>
+          <Button onClick={handleAddNoteSubmit} disabled={!newNoteTitle.trim()} variant="contained">
+            追加
+          </Button>
+        </DialogActions>
+      </Dialog>
       <SimpleTreeView
         aria-label="folder tree"
         slots={{
