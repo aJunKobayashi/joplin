@@ -429,6 +429,9 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
 
   try {
     await reg.scheduleSync(0);
+    // Setting.autoSaveEnabled が false のため、setValue() による変更（delta カーソル等）が
+    // DBに保存されない。明示的に saveAll() を呼んで永続化する。
+    await Setting.saveAll();
   } catch (syncError: unknown) {
     const msg = syncError instanceof Error ? syncError.message : String(syncError);
     console.error(`[Sync Error] ${msg}`);
