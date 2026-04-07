@@ -345,8 +345,14 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
   let parsedBody: React.ReactNode = null;
   if (note.body) {
     try {
-      parsedBody = parse(note.body, parseOptions);
-      // parsedBody = <div dangerouslySetInnerHTML={{ __html: note.body }} />;
+      // DOMParser で正規化してから parse に渡す。
+      // html-react-parser が使う htmlparser2 はブラウザの HTML5 パーサーと異なり、
+      // <p> 内に <ul>/<ol>/<div> 等のブロック要素が現れても自動クローズしない。
+      // その結果、無効な DOM ネストが生成されて React がエラーを投げる。
+      // DOMParser はブラウザと同じ HTML5 規則を適用して無効なネストを修正する。
+      const doc = new DOMParser().parseFromString(note.body, 'text/html');
+      const normalizedHtml = doc.body.innerHTML;
+      parsedBody = parse(normalizedHtml, parseOptions);
     } catch {
       parsedBody = <div dangerouslySetInnerHTML={{ __html: note.body }} />;
     }
