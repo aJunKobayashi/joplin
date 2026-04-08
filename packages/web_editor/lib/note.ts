@@ -252,4 +252,15 @@ export class Note {
     const note = this.getNoteById(id);
     return note!;
   }
+
+  public static delete(id: string): void {
+    const db = getDatabase();
+    db.transaction(() => {
+      db.prepare('DELETE FROM note_tags WHERE note_id = ?').run(id);
+      db.prepare('DELETE FROM notes_normalized WHERE id = ?').run(id);
+      db.prepare('DELETE FROM markdown_notes_normalized WHERE id = ?').run(id);
+      db.prepare('DELETE FROM markdown_notes WHERE id = ?').run(id);
+      db.prepare('DELETE FROM notes WHERE id = ?').run(id);
+    })();
+  }
 }
