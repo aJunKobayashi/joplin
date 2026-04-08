@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Folder } from '@/lib/folder';
 
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, title } = await req.json();
+    if (!id || !title) {
+      return NextResponse.json(
+        { success: false, error: 'id and title are required' },
+        { status: 400 }
+      );
+    }
+    const existing = Folder.getFolderById(id);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Folder not found' }, { status: 404 });
+    }
+    Folder.rename(id, title);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { title, parent_id } = await req.json();

@@ -18,6 +18,12 @@ export class Folder {
     return folder!;
   }
 
+  public static rename(id: string, title: string): void {
+    const db = getDatabase();
+    const now = Date.now();
+    db.prepare('UPDATE folders SET title = ?, updated_time = ? WHERE id = ?').run(title, now, id);
+  }
+
   public static getAllFolders(): FolderEntity[] {
     const db = getDatabase();
     const folders = db

@@ -343,6 +343,47 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   const [addFolderDialog, setAddFolderDialog] = React.useState<{ parentId: string } | null>(null);
   const [newFolderTitle, setNewFolderTitle] = React.useState('');
 
+  const [renameFolderDialog, setRenameFolderDialog] = React.useState<{
+    folderId: string;
+    currentTitle: string;
+  } | null>(null);
+  const [renameFolderTitle, setRenameFolderTitle] = React.useState('');
+
+  const handleRenameFolderOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      setRenameFolderDialog({
+        folderId: contextMenu.node.id,
+        currentTitle: contextMenu.node.title,
+      });
+      setRenameFolderTitle(contextMenu.node.title);
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleRenameFolderClose = useCallback(() => {
+    setRenameFolderDialog(null);
+    setRenameFolderTitle('');
+  }, []);
+
+  const handleRenameFolderSubmit = useCallback(async () => {
+    if (!renameFolderDialog || !renameFolderTitle.trim()) return;
+    try {
+      const res = await fetch('/api/folder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: renameFolderDialog.folderId, title: renameFolderTitle.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setRenameFolderDialog(null);
+    setRenameFolderTitle('');
+  }, [renameFolderDialog, renameFolderTitle, queryClient]);
+
   const handleAddFolderOpen = useCallback(() => {
     if (contextMenu?.node.type === 'Folder') {
       setAddFolderDialog({ parentId: contextMenu.node.id });
@@ -500,6 +541,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddFolderOpen}>フォルダを追加</MenuItem>
         )}
+        {contextMenu?.node.type === 'Folder' && isEditor && (
+          <MenuItem onClick={handleRenameFolderOpen}>名前を変更</MenuItem>
+        )}
       </Menu>
       <Dialog open={renameDialog !== null} onClose={handleRenameClose}>
         <DialogTitle>名前を変更</DialogTitle>
@@ -583,6 +627,33 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
             variant="contained"
           >
             追加
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={renameFolderDialog !== null} onClose={handleRenameFolderClose}>
+        <DialogTitle>フォルダ名を変更</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="フォルダ名"
+            fullWidth
+            variant="outlined"
+            value={renameFolderTitle}
+            onChange={(e) => setRenameFolderTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameFolderSubmit();
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRenameFolderClose}>キャンセル</Button>
+          <Button
+            onClick={handleRenameFolderSubmit}
+            disabled={!renameFolderTitle.trim()}
+            variant="contained"
+          >
+            変更
           </Button>
         </DialogActions>
       </Dialog>
