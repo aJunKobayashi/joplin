@@ -100,6 +100,27 @@ function renderTree(
   });
 }
 
+function renderFolderOnly(nodes: TreeNode[]): React.ReactNode[] {
+  return nodes
+    .filter((node) => node.type === 'Folder')
+    .map((node) => (
+      <TreeItem
+        key={node.id}
+        itemId={node.id}
+        label={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
+            <span>{node.title}</span>
+          </Box>
+        }
+      >
+        {node.children &&
+          node.children.some((c) => c.type === 'Folder') &&
+          renderFolderOnly(node.children)}
+      </TreeItem>
+    ));
+}
+
 function collectFolderIds(nodes: TreeNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
@@ -319,7 +340,47 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setDeleteDialog(null);
   }, [deleteDialog, queryClient, searchParams2]);
 
-  // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
+  const [moveDialog, setMoveDialog] = React.useState<{
+    noteId: string;
+    noteTitle: string;
+  } | null>(null);
+  const [moveTargetFolderId, setMoveTargetFolderId] = React.useState<string | null>(null);
+  const [moveDialogExpanded, setMoveDialogExpanded] = React.useState<string[]>([]);
+
+  const handleMoveOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Note') {
+      setMoveDialog({ noteId: contextMenu.node.id, noteTitle: contextMenu.node.title });
+      setMoveTargetFolderId(null);
+      setMoveDialogExpanded(allFolderIds);
+    }
+    setContextMenu(null);
+  }, [contextMenu, allFolderIds]);
+
+  const handleMoveClose = useCallback(() => {
+    setMoveDialog(null);
+    setMoveTargetFolderId(null);
+  }, []);
+
+  const handleMoveConfirm = useCallback(async () => {
+    if (!moveDialog || !moveTargetFolderId) return;
+    try {
+      const res = await fetch('/api/note', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: moveDialog.noteId, parent_id: moveTargetFolderId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setMoveDialog(null);
+    setMoveTargetFolderId(null);
+  }, [moveDialog, moveTargetFolderId, queryClient]);
+
+  // URLクエリパラメータのnote_idに対応するノードへスクロール＆フォーカス
   React.useEffect(() => {
     if (noteIdFromUrl && folders) {
       // TreeItemが描画されるまで少し待つ
@@ -395,6 +456,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Note' && isEditor && (
           <MenuItem onClick={handleDeleteOpen}>ノートを削除</MenuItem>
         )}
+        {contextMenu?.node.type === 'Note' && isEditor && (
+          <MenuItem onClick={handleMoveOpen}>ノートを移動</MenuItem>
+        )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
         )}
@@ -454,6 +518,29 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           <Button onClick={handleDeleteClose}>キャンセル</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={moveDialog !== null} onClose={handleMoveClose} maxWidth="xs" fullWidth>
+        <DialogTitle>ノートを移動</DialogTitle>
+        <DialogContent>
+          <SimpleTreeView
+            expandedItems={moveDialogExpanded}
+            onExpandedItemsChange={(_e, ids) => setMoveDialogExpanded(ids)}
+            selectedItems={moveTargetFolderId ?? ''}
+            onSelectedItemsChange={(_e, id) =>
+              setMoveTargetFolderId(typeof id === 'string' && id ? id : null)
+            }
+            slots={{ collapseIcon: ExpandMoreIcon, expandIcon: ChevronRightIcon }}
+            sx={{ minHeight: 200, maxHeight: 400, overflowY: 'auto' }}
+          >
+            {renderFolderOnly(folders || [])}
+          </SimpleTreeView>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleMoveClose}>キャンセル</Button>
+          <Button onClick={handleMoveConfirm} disabled={!moveTargetFolderId} variant="contained">
+            OK
           </Button>
         </DialogActions>
       </Dialog>
