@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id, title } = await req.json();
-    if (!id || !title) {
+    const { id, title, parent_id } = await req.json();
+    if (!id || (!title && !parent_id)) {
       return NextResponse.json(
-        { success: false, error: 'id and title are required' },
+        { success: false, error: 'id and at least one of title or parent_id are required' },
         { status: 400 }
       );
     }
@@ -36,7 +36,10 @@ export async function PATCH(req: NextRequest) {
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
-    Note.save({ ...existing, title });
+    const updates: Record<string, string> = {};
+    if (title !== undefined) updates.title = title;
+    if (parent_id !== undefined) updates.parent_id = parent_id;
+    Note.save({ ...existing, ...updates });
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(
@@ -86,10 +89,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'id is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 });
     }
     const existing = Note.getNoteById(id);
     if (!existing) {
