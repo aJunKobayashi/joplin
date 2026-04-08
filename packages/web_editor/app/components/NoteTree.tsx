@@ -22,7 +22,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import { TreeNode, useFolderQuery } from '@/lib/hooks';
+import { FolderNode, TreeNode, useFolderQuery } from '@/lib/hooks';
 
 // fetch logic moved to `useFolderQuery` in `lib/hooks`
 function renderTree(
@@ -132,6 +132,51 @@ function collectFolderIds(nodes: TreeNode[]): string[] {
     }
   }
   return ids;
+}
+
+function collectSubtreeIds(nodes: TreeNode[], targetId: string): Set<string> {
+  const ids = new Set<string>();
+  function gatherAll(node: TreeNode) {
+    if (node.type === 'Folder') {
+      ids.add(node.id);
+      node.children?.forEach(gatherAll);
+    }
+  }
+  function search(ns: TreeNode[]): boolean {
+    for (const n of ns) {
+      if (n.id === targetId) {
+        gatherAll(n);
+        return true;
+      }
+      if (n.type === 'Folder' && n.children && search(n.children)) return true;
+    }
+    return false;
+  }
+  search(nodes);
+  return ids;
+}
+
+function renderFolderExcluding(nodes: TreeNode[], excludeIds: Set<string>): React.ReactNode[] {
+  return nodes
+    .filter((node): node is FolderNode => node.type === 'Folder' && !excludeIds.has(node.id))
+    .map((node) => (
+      <TreeItem
+        key={node.id}
+        itemId={node.id}
+        label={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
+            <span>{node.title}</span>
+          </Box>
+        }
+      >
+        {node.children &&
+          node.children.some(
+            (c): c is FolderNode => c.type === 'Folder' && !excludeIds.has(c.id)
+          ) &&
+          renderFolderExcluding(node.children, excludeIds)}
+      </TreeItem>
+    ));
 }
 
 export interface NoteTreeHandle {
@@ -456,6 +501,50 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setMoveTargetFolderId(null);
   }, [moveDialog, moveTargetFolderId, queryClient]);
 
+  const [moveFolderDialog, setMoveFolderDialog] = React.useState<{
+    folderId: string;
+    folderTitle: string;
+  } | null>(null);
+  const [moveFolderTargetId, setMoveFolderTargetId] = React.useState<string | null>(null);
+  const [moveFolderDialogExpanded, setMoveFolderDialogExpanded] = React.useState<string[]>([]);
+  const [moveFolderExcludeIds, setMoveFolderExcludeIds] = React.useState<Set<string>>(new Set());
+
+  const handleMoveFolderOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      const excludeIds = collectSubtreeIds(folders || [], contextMenu.node.id);
+      setMoveFolderDialog({ folderId: contextMenu.node.id, folderTitle: contextMenu.node.title });
+      setMoveFolderTargetId(null);
+      setMoveFolderExcludeIds(excludeIds);
+      const allIds = allFolderIds.filter((id) => !excludeIds.has(id));
+      setMoveFolderDialogExpanded(allIds);
+    }
+    setContextMenu(null);
+  }, [contextMenu, folders, allFolderIds]);
+
+  const handleMoveFolderClose = useCallback(() => {
+    setMoveFolderDialog(null);
+    setMoveFolderTargetId(null);
+  }, []);
+
+  const handleMoveFolderConfirm = useCallback(async () => {
+    if (!moveFolderDialog || !moveFolderTargetId) return;
+    try {
+      const res = await fetch('/api/folder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: moveFolderDialog.folderId, parent_id: moveFolderTargetId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setMoveFolderDialog(null);
+    setMoveFolderTargetId(null);
+  }, [moveFolderDialog, moveFolderTargetId, queryClient]);
+
   // URLクエリパラメータのnote_idに対応するノードへスクロール＆フォーカス
   React.useEffect(() => {
     if (noteIdFromUrl && folders) {
@@ -543,6 +632,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleRenameFolderOpen}>名前を変更</MenuItem>
+        )}
+        {contextMenu?.node.type === 'Folder' && isEditor && (
+          <MenuItem onClick={handleMoveFolderOpen}>フォルダを移動</MenuItem>
         )}
       </Menu>
       <Dialog open={renameDialog !== null} onClose={handleRenameClose}>
@@ -676,6 +768,38 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         <DialogActions>
           <Button onClick={handleMoveClose}>キャンセル</Button>
           <Button onClick={handleMoveConfirm} disabled={!moveTargetFolderId} variant="contained">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={moveFolderDialog !== null}
+        onClose={handleMoveFolderClose}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>フォルダを移動</DialogTitle>
+        <DialogContent>
+          <SimpleTreeView
+            expandedItems={moveFolderDialogExpanded}
+            onExpandedItemsChange={(_e, ids) => setMoveFolderDialogExpanded(ids)}
+            selectedItems={moveFolderTargetId ?? ''}
+            onSelectedItemsChange={(_e, id) =>
+              setMoveFolderTargetId(typeof id === 'string' && id ? id : null)
+            }
+            slots={{ collapseIcon: ExpandMoreIcon, expandIcon: ChevronRightIcon }}
+            sx={{ minHeight: 200, maxHeight: 400, overflowY: 'auto' }}
+          >
+            {renderFolderExcluding(folders || [], moveFolderExcludeIds)}
+          </SimpleTreeView>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleMoveFolderClose}>キャンセル</Button>
+          <Button
+            onClick={handleMoveFolderConfirm}
+            disabled={!moveFolderTargetId}
+            variant="contained"
+          >
             OK
           </Button>
         </DialogActions>

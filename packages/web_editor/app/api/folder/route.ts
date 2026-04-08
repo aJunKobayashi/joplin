@@ -3,10 +3,10 @@ import { Folder } from '@/lib/folder';
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id, title } = await req.json();
-    if (!id || !title) {
+    const { id, title, parent_id } = await req.json();
+    if (!id || (!title && !parent_id)) {
       return NextResponse.json(
-        { success: false, error: 'id and title are required' },
+        { success: false, error: 'id and at least one of title or parent_id are required' },
         { status: 400 }
       );
     }
@@ -14,7 +14,8 @@ export async function PATCH(req: NextRequest) {
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Folder not found' }, { status: 404 });
     }
-    Folder.rename(id, title);
+    if (title !== undefined) Folder.rename(id, title);
+    if (parent_id !== undefined) Folder.move(id, parent_id);
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(

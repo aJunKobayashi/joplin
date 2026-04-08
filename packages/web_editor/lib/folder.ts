@@ -24,6 +24,16 @@ export class Folder {
     db.prepare('UPDATE folders SET title = ?, updated_time = ? WHERE id = ?').run(title, now, id);
   }
 
+  public static move(id: string, newParentId: string): void {
+    const db = getDatabase();
+    const now = Date.now();
+    db.prepare('UPDATE folders SET parent_id = ?, updated_time = ? WHERE id = ?').run(
+      newParentId,
+      now,
+      id
+    );
+  }
+
   public static getAllFolders(): FolderEntity[] {
     const db = getDatabase();
     const folders = db
