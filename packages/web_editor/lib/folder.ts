@@ -1,6 +1,23 @@
 import { FolderEntity, getDatabase } from './database';
+import crypto from 'crypto';
 
 export class Folder {
+  public static create(title: string, parentId: string): FolderEntity {
+    const db = getDatabase();
+    const now = Date.now();
+    const id = crypto.randomUUID().replace(/-/g, '');
+
+    db.prepare(
+      `
+      INSERT INTO folders (id, title, parent_id, created_time, updated_time)
+      VALUES (?, ?, ?, ?, ?)
+    `
+    ).run(id, title, parentId, now, now);
+
+    const folder = this.getFolderById(id);
+    return folder!;
+  }
+
   public static getAllFolders(): FolderEntity[] {
     const db = getDatabase();
     const folders = db

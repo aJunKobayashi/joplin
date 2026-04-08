@@ -340,6 +340,41 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setDeleteDialog(null);
   }, [deleteDialog, queryClient, searchParams2]);
 
+  const [addFolderDialog, setAddFolderDialog] = React.useState<{ parentId: string } | null>(null);
+  const [newFolderTitle, setNewFolderTitle] = React.useState('');
+
+  const handleAddFolderOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      setAddFolderDialog({ parentId: contextMenu.node.id });
+      setNewFolderTitle('');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleAddFolderClose = useCallback(() => {
+    setAddFolderDialog(null);
+    setNewFolderTitle('');
+  }, []);
+
+  const handleAddFolderSubmit = useCallback(async () => {
+    if (!addFolderDialog || !newFolderTitle.trim()) return;
+    try {
+      const res = await fetch('/api/folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newFolderTitle.trim(), parent_id: addFolderDialog.parentId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setAddFolderDialog(null);
+    setNewFolderTitle('');
+  }, [addFolderDialog, newFolderTitle, queryClient]);
+
   const [moveDialog, setMoveDialog] = React.useState<{
     noteId: string;
     noteTitle: string;
@@ -462,6 +497,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
         )}
+        {contextMenu?.node.type === 'Folder' && isEditor && (
+          <MenuItem onClick={handleAddFolderOpen}>フォルダを追加</MenuItem>
+        )}
       </Menu>
       <Dialog open={renameDialog !== null} onClose={handleRenameClose}>
         <DialogTitle>名前を変更</DialogTitle>
@@ -518,6 +556,33 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           <Button onClick={handleDeleteClose}>キャンセル</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={addFolderDialog !== null} onClose={handleAddFolderClose}>
+        <DialogTitle>フォルダを追加</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="フォルダ名"
+            fullWidth
+            variant="outlined"
+            value={newFolderTitle}
+            onChange={(e) => setNewFolderTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddFolderSubmit();
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddFolderClose}>キャンセル</Button>
+          <Button
+            onClick={handleAddFolderSubmit}
+            disabled={!newFolderTitle.trim()}
+            variant="contained"
+          >
+            追加
           </Button>
         </DialogActions>
       </Dialog>
