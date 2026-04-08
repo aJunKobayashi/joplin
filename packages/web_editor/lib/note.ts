@@ -1,5 +1,6 @@
 import { NoteEntity, getDatabase } from './database';
 import TurndownService from 'turndown';
+import { ModelType } from './resource';
 
 export type { NoteEntity };
 
@@ -251,5 +252,40 @@ export class Note {
 
     const note = this.getNoteById(id);
     return note!;
+  }
+
+  public static delete(id: string): void {
+    const db = getDatabase();
+    const now = Date.now();
+
+    db.transaction(() => {
+      // 同期済みの各 sync_target に対して deleted_items へエントリを挿入する
+      // (BaseItem.batchDelete の trackDeleted 処理に相当)
+      const syncTargetRows = db
+        .prepare('SELECT DISTINCT sync_target FROM sync_items WHERE item_id = ?')
+        .all(id) as { sync_target: number }[];
+
+      const insertDeleted = db.prepare(
+        'INSERT INTO deleted_items (item_type, item_id, deleted_time, sync_target) VALUES (?, ?, ?, ?)'
+      );
+      for (const t of syncTargetRows) {
+        insertDeleted.run(ModelType.Note, id, now, t.sync_target);
+      }
+
+      // note_tags を先に削除
+      db.prepare('DELETE FROM note_tags WHERE note_id = ?').run(id);
+
+      // notes_normalized を削除するとトリガー notes_fts_before_delete が発火し
+      // notes_fts も自動的にクリーンアップされる
+      db.prepare('DELETE FROM notes_normalized WHERE id = ?').run(id);
+
+      // markdown_notes_normalized を削除するとトリガーが発火し
+      // markdown_notes_fts も自動的にクリーンアップされる
+      db.prepare('DELETE FROM markdown_notes_normalized WHERE id = ?').run(id);
+      db.prepare('DELETE FROM markdown_notes WHERE id = ?').run(id);
+
+      // 最後に notes 本体を削除
+      db.prepare('DELETE FROM notes WHERE id = ?').run(id);
+    })();
   }
 }

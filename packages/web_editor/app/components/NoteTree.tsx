@@ -248,6 +248,11 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   } | null>(null);
   const [renameTitle, setRenameTitle] = React.useState('');
 
+  const [deleteDialog, setDeleteDialog] = React.useState<{
+    noteId: string;
+    noteTitle: string;
+  } | null>(null);
+
   const handleRenameOpen = useCallback(() => {
     if (contextMenu?.node.type === 'Note') {
       setRenameDialog({ noteId: contextMenu.node.id, currentTitle: contextMenu.node.title });
@@ -279,6 +284,40 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setRenameDialog(null);
     setRenameTitle('');
   }, [renameDialog, renameTitle, queryClient]);
+
+  const handleDeleteOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Note') {
+      setDeleteDialog({ noteId: contextMenu.node.id, noteTitle: contextMenu.node.title });
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleDeleteClose = useCallback(() => {
+    setDeleteDialog(null);
+  }, []);
+
+  const searchParams2 = useSearchParams();
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteDialog) return;
+    try {
+      const res = await fetch('/api/note', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteDialog.noteId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+        // 削除したノートが現在表示中なら別ページへ遷移
+        if (searchParams2.get('note_id') === deleteDialog.noteId) {
+          window.location.href = '/';
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setDeleteDialog(null);
+  }, [deleteDialog, queryClient, searchParams2]);
 
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
@@ -353,6 +392,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Note' && isEditor && (
           <MenuItem onClick={handleRenameOpen}>名前を変更</MenuItem>
         )}
+        {contextMenu?.node.type === 'Note' && isEditor && (
+          <MenuItem onClick={handleDeleteOpen}>ノートを削除</MenuItem>
+        )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
         )}
@@ -400,6 +442,18 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           <Button onClick={handleAddNoteClose}>キャンセル</Button>
           <Button onClick={handleAddNoteSubmit} disabled={!newNoteTitle.trim()} variant="contained">
             追加
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={deleteDialog !== null} onClose={handleDeleteClose}>
+        <DialogTitle>ノートを削除</DialogTitle>
+        <DialogContent>
+          <span>「{deleteDialog?.noteTitle}」を削除しますか？この操作は元に戻せません。</span>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteClose}>キャンセル</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            削除
           </Button>
         </DialogActions>
       </Dialog>
