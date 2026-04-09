@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { title, parent_id } = await req.json();
-    if (!title || !parent_id) {
+    if (!title || parent_id === undefined || parent_id === null) {
       return NextResponse.json(
         { success: false, error: 'title and parent_id are required' },
         { status: 400 }
