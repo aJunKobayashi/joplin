@@ -404,6 +404,40 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   const [addRootFolderDialog, setAddRootFolderDialog] = React.useState<boolean>(false);
   const [newRootFolderTitle, setNewRootFolderTitle] = React.useState('');
 
+  const [deleteFolderDialog, setDeleteFolderDialog] = React.useState<{
+    folderId: string;
+    folderTitle: string;
+  } | null>(null);
+
+  const handleDeleteFolderOpen = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      setDeleteFolderDialog({ folderId: contextMenu.node.id, folderTitle: contextMenu.node.title });
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleDeleteFolderClose = useCallback(() => {
+    setDeleteFolderDialog(null);
+  }, []);
+
+  const handleDeleteFolderConfirm = useCallback(async () => {
+    if (!deleteFolderDialog) return;
+    try {
+      const res = await fetch('/api/folder', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteFolderDialog.folderId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      }
+    } catch {
+      // ignore
+    }
+    setDeleteFolderDialog(null);
+  }, [deleteFolderDialog, queryClient]);
+
   const handleAddRootFolderOpen = useCallback(() => {
     setAddRootFolderDialog(true);
     setNewRootFolderTitle('');
@@ -685,6 +719,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleMoveFolderOpen}>フォルダを移動</MenuItem>
         )}
+        {contextMenu?.node.type === 'Folder' && isEditor && (
+          <MenuItem onClick={handleDeleteFolderOpen}>フォルダを削除</MenuItem>
+        )}
       </Menu>
       <Menu
         open={rootContextMenu !== null}
@@ -807,6 +844,21 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
             variant="contained"
           >
             変更
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={deleteFolderDialog !== null} onClose={handleDeleteFolderClose}>
+        <DialogTitle>フォルダを削除</DialogTitle>
+        <DialogContent>
+          <span>
+            「{deleteFolderDialog?.folderTitle}
+            」とその配下のフォルダ・ノートを削除しますか？この操作は元に戻せません。
+          </span>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteFolderClose}>キャンセル</Button>
+          <Button onClick={handleDeleteFolderConfirm} color="error" variant="contained">
+            削除
           </Button>
         </DialogActions>
       </Dialog>

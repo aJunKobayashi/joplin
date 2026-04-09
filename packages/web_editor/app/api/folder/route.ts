@@ -43,3 +43,23 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { id } = await req.json();
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 });
+    }
+    const existing = Folder.getFolderById(id);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Folder not found' }, { status: 404 });
+    }
+    Folder.delete(id);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+}
