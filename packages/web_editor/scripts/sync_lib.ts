@@ -390,12 +390,12 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   console.log(`Profile  : ${profileDir}`);
   console.log(`Sync target ID: ${syncTarget}`);
 
-  if (syncTarget !== SyncTargetOneDrive.id()) {
-    throw new Error(
-      `Error: このプロファイルの sync.target (${syncTarget}) は OneDrive (${SyncTargetOneDrive.id()}) ではありません。` +
-        '\nOneDrive 以外のターゲットはサポートしていません。'
-    );
-  }
+  // if (syncTarget !== SyncTargetOneDrive.id()) {
+  //   throw new Error(
+  //     `Error: このプロファイルの sync.target (${syncTarget}) は OneDrive (${SyncTargetOneDrive.id()}) ではありません。` +
+  //       '\nOneDrive 以外のターゲットはサポートしていません。'
+  //   );
+  // }
 
   // --- 9.6. 診断情報のログ出力 ---
   {
