@@ -31,12 +31,12 @@
     "nodemon": "^2.0.6",
     "pg": "^8.5.1",
     "query-string": "^6.8.3",
-    "sqlite3": "^5.0.2",
+    "sqlite3": "^6.0.1",
     "yargs": "^14.0.0"
   },
   "devDependencies": {
     "@joplin/tools": "^1.0.9",
-    "@rmp135/sql-ts": "^1.7.0",
+    "@rmp135/sql-ts": "^1.14.0",
     "@types/fs-extra": "^8.0.0",
     "@types/jest": "^26.0.15",
     "@types/jsdom": "^16.2.6",
