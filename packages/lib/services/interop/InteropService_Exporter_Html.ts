@@ -487,11 +487,12 @@ export default class InteropService_Exporter_Html extends InteropService_Exporte
 			const ext = PATH.extname(pathWithoutQuery).toLocaleLowerCase();
 			const format = ext.split('.')[1];
 			const base64Img = fs.readFileSync(pathWithoutQuery, { encoding: 'base64' });
-			let result = `data:image/${format};base64, ${base64Img}`;
+			const imageMime = format === 'svg' ? 'image/svg+xml' : `image/${format}`;
+			let result = `data:${imageMime};base64,${base64Img}`;
 			if (isAudio(ext)) {
-				result = `data:audio/${format};base64, ${base64Img}`;
+				result = `data:audio/${format};base64,${base64Img}`;
 			} else if (isVideoAudio(ext)) {
-				result = `data:video/${format};base64, ${base64Img}`;
+				result = `data:video/${format};base64,${base64Img}`;
 			}
 			return result;
 		} catch (e) {
