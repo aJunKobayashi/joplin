@@ -1828,11 +1828,35 @@ export default function TinyMCEBody({
                 .forEach((attr) => el.removeAttribute(attr.name));
             });
 
+            // ペーストされた HTML 内に mermaidTxt 属性を持つ要素があれば ID を収集する
+            const mermaidIds: string[] = [];
+            pasteDoc.querySelectorAll('[mermaidTxt]').forEach((el) => {
+              const id = el.id;
+              if (id) mermaidIds.push(id);
+            });
+
             editor.execCommand(
               'mceInsertContent',
               false,
               preserveHtmlIndent(pasteDoc.body.innerHTML)
             );
+
+            // mermaidTxt 属性を持つ要素がペーストされた場合は再レンダリングする
+            // （コピペ時に ID 重複等で表示が崩れるのを防ぐため）
+            if (mermaidIds.length > 0) {
+              setTimeout(async () => {
+                for (const id of mermaidIds) {
+                  const mermaidElems = editor.getDoc().querySelectorAll(`[id="${id}"]`);
+                  for (let j = 0; j < mermaidElems.length; j++) {
+                    const mermaidElem = mermaidElems[j] as HTMLElement;
+                    const txt = mermaidElem.getAttribute('mermaidTxt');
+                    if (!txt) continue;
+                    updateMermaidDiv(editor, txt, mermaidElem);
+                    await new Promise((resolve) => setTimeout(resolve, 10));
+                  }
+                }
+              }, 1000);
+            }
           });
 
           // Drag & Drop によるファイルアップロード
