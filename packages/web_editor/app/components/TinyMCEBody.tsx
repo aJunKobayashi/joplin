@@ -1768,7 +1768,7 @@ export default function TinyMCEBody({
           });
 
           // クリップボードの生 HTML をそのまま挿入してシンタックスハイライトを保持する
-          editor.on('paste', (e: ClipboardEvent) => {
+          editor.on('paste', async (e: ClipboardEvent) => {
             const clipboardData = e.clipboardData;
             if (!clipboardData) return;
             const pastedHtml = clipboardData.getData('text/html');
@@ -1834,6 +1834,37 @@ export default function TinyMCEBody({
               const id = el.id;
               if (id) mermaidIds.push(id);
             });
+
+            // data-drawio-xml を持つ <img> の src が /api/resource/*.svg であれば複製する
+            // （コピペ時に同一リソースを共有しないよう独立したコピーを作成する）
+            const drawioImgs = Array.from(
+              pasteDoc.querySelectorAll('img[data-drawio-xml]')
+            ) as HTMLImageElement[];
+            await Promise.all(
+              drawioImgs.map(async (img) => {
+                const src = img.getAttribute('src') ?? '';
+                const match = src.match(/^\/api\/resource\/(.+\.svg)$/i);
+                if (!match) return;
+                const oldFilename = decodeURIComponent(match[1]);
+                try {
+                  const res = await fetch(
+                    `/api/resource/${encodeURIComponent(oldFilename)}/duplicate`,
+                    { method: 'POST' }
+                  );
+                  const json = await res.json();
+                  if (json.success) {
+                    img.setAttribute(
+                      'src',
+                      `/api/resource/${encodeURIComponent(json.filename as string)}`
+                    );
+                  } else {
+                    console.warn('DrawioPaste: duplicate failed', json.error);
+                  }
+                } catch (err) {
+                  console.warn('DrawioPaste: duplicate error', err);
+                }
+              })
+            );
 
             editor.execCommand(
               'mceInsertContent',
