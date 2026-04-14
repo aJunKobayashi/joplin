@@ -7,10 +7,10 @@
   },
   "license": "MIT",
   "scripts": {
-    "bootstrap": "lerna bootstrap --no-ci",
-    "bootstrapIgnoreScripts": "lerna bootstrap --ignore-scripts --no-ci",
+    "bootstrap": "lerna bootstrap --no-ci --ignore web_viewer --ignore web_editor",
+    "bootstrapIgnoreScripts": "lerna bootstrap --ignore-scripts --no-ci --ignore web_viewer --ignore web_editor",
     "bootstrapServerOnly": "lerna bootstrap --no-ci --include-dependents --include-dependencies --scope @joplin/server",
-    "build": "lerna run build && npm run tsc",
+    "build": "lerna run build --ignore web_viewer --ignore web_editor && npm run tsc",
     "buildApiDoc": "npm start --prefix=packages/app-cli -- apidoc ../../readme/api/references/rest_api.md",
     "buildDoc": "./packages/tools/build-all.sh",
     "buildPluginDoc": "typedoc --name 'Joplin Plugin API Documentation' --mode file -theme './Assets/PluginDocTheme/' --readme './Assets/PluginDocTheme/index.md' --excludeNotExported --excludeExternals --excludePrivate --excludeProtected --out docs/api/references/plugin_api packages/lib/services/plugins/api/",
@@ -39,10 +39,10 @@
     "setupNewRelease": "node ./packages/tools/setupNewRelease",
     "test-ci": "lerna run test-ci --stream",
     "test": "lerna run test --stream",
-    "tsc": "lerna run tsc --stream",
+    "tsc": "lerna run tsc --stream --ignore web_viewer --ignore web_editor",
     "updateIgnored": "gulp updateIgnoredTypeScriptBuild",
     "updatePluginTypes": "./packages/generator-joplin/updateTypes.sh",
-    "watch": "lerna run watch --stream --parallel",
+    "watch": "lerna run watch --stream --parallel --ignore web_viewer --ignore web_editor",
     "i": "lerna add --no-bootstrap --scope"
   },
   "devDependencies": {
