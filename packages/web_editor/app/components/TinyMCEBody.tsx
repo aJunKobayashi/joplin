@@ -2417,11 +2417,20 @@ export default function TinyMCEBody({
                 editor.dom.setAttrib(targetElement, 'alt', filename);
                 editor.dom.setAttrib(targetElement, 'data-drawio-xml', xmlAttr);
                 editor.nodeChanged();
-                // 古い SVG リソースを削除
+                // 古い SVG リソースを削除（他の img タグから参照されていない場合のみ）
                 if (oldFilename) {
-                  fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
-                    method: 'DELETE',
-                  }).catch((err) => console.warn('DrawioInsert: old resource delete failed', err));
+                  const oldUrl = `/api/resource/${encodeURIComponent(oldFilename)}`;
+                  const allImgs = editor.dom.select('img') as HTMLElement[];
+                  const isStillReferenced = allImgs.some(
+                    (img) => img !== targetElement && img.getAttribute('src') === oldUrl
+                  );
+                  if (!isStillReferenced) {
+                    fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
+                      method: 'DELETE',
+                    }).catch((err) =>
+                      console.warn('DrawioInsert: old resource delete failed', err)
+                    );
+                  }
                 }
               } else if (editor) {
                 // 新規挿入
