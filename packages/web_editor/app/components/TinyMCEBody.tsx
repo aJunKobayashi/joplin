@@ -1866,6 +1866,37 @@ export default function TinyMCEBody({
               })
             );
 
+            // data-tldraw-snapshot を持つ <img> の src が /api/resource/*.svg であれば複製する
+            // （コピペ時に同一リソースを共有しないよう独立したコピーを作成する）
+            const tldrawImgs = Array.from(
+              pasteDoc.querySelectorAll('img[data-tldraw-snapshot]')
+            ) as HTMLImageElement[];
+            await Promise.all(
+              tldrawImgs.map(async (img) => {
+                const src = img.getAttribute('src') ?? '';
+                const match = src.match(/^\/api\/resource\/(.+\.svg)$/i);
+                if (!match) return;
+                const oldFilename = decodeURIComponent(match[1]);
+                try {
+                  const res = await fetch(
+                    `/api/resource/${encodeURIComponent(oldFilename)}/duplicate`,
+                    { method: 'POST' }
+                  );
+                  const json = await res.json();
+                  if (json.success) {
+                    img.setAttribute(
+                      'src',
+                      `/api/resource/${encodeURIComponent(json.filename as string)}`
+                    );
+                  } else {
+                    console.warn('TldrawPaste: duplicate failed', json.error);
+                  }
+                } catch (err) {
+                  console.warn('TldrawPaste: duplicate error', err);
+                }
+              })
+            );
+
             editor.execCommand(
               'mceInsertContent',
               false,
@@ -2388,11 +2419,20 @@ export default function TinyMCEBody({
                 editor.dom.setAttrib(targetElement, 'alt', filename);
                 editor.dom.setAttrib(targetElement, 'data-tldraw-snapshot', snapshotAttr);
                 editor.nodeChanged();
-                // 古い SVG リソースを削除
+                // 古い SVG リソースを削除（他の img タグから参照されていない場合のみ）
                 if (oldFilename) {
-                  fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
-                    method: 'DELETE',
-                  }).catch((err) => console.warn('TldrawInsert: old resource delete failed', err));
+                  const oldUrl = `/api/resource/${encodeURIComponent(oldFilename)}`;
+                  const allImgs = editor.dom.select('img') as HTMLElement[];
+                  const isStillReferenced = allImgs.some(
+                    (img) => img !== targetElement && img.getAttribute('src') === oldUrl
+                  );
+                  if (!isStillReferenced) {
+                    fetch(`/api/resource/${encodeURIComponent(oldFilename)}`, {
+                      method: 'DELETE',
+                    }).catch((err) =>
+                      console.warn('TldrawInsert: old resource delete failed', err)
+                    );
+                  }
                 }
               } else if (editor) {
                 // 新規挿入
