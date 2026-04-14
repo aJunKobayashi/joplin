@@ -23,13 +23,13 @@ describe('api_shares', function() {
 
 		const context = await postShareContext(session.id, 'root:/photo.jpg:');
 		expect(context.response.status).toBe(200);
-		const shareId = context.response.body.id;
+		const shareId = (context.response.body as any).id;
 
 		{
 			const context = await getShareContext(shareId);
-			expect(context.response.body.id).toBe(shareId);
-			expect(context.response.body.file_id).toBe(file.id);
-			expect(context.response.body.type).toBe(ShareType.Link);
+			expect((context.response.body as any).id).toBe(shareId);
+			expect((context.response.body as any).file_id).toBe(file.id);
+			expect((context.response.body as any).type).toBe(ShareType.Link);
 		}
 	});
 

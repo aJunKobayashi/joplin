@@ -59,7 +59,7 @@ export function headerSessionId(headers: any): string {
 }
 
 export function contextSessionId(ctx: AppContext, throwIfNotFound = true): string {
-	if (ctx.headers['x-api-auth']) return ctx.headers['x-api-auth'];
+	if (ctx.headers['x-api-auth']) return ctx.headers['x-api-auth'] as string;
 
 	const id = ctx.cookies.get('sessionId');
 	if (!id && throwIfNotFound) throw new ErrorForbidden('Invalid or missing session');

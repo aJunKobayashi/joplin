@@ -19,7 +19,7 @@ export async function postUser(sessionId: string, email: string, password: strin
 
 	await routeHandler(context);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as User;
 }
 
 export async function patchUser(sessionId: string, user: any): Promise<User> {
@@ -37,7 +37,7 @@ export async function patchUser(sessionId: string, user: any): Promise<User> {
 
 	await routeHandler(context);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as User;
 }
 
 export async function getUserHtml(sessionId: string, userId: string): Promise<string> {
@@ -51,7 +51,7 @@ export async function getUserHtml(sessionId: string, userId: string): Promise<st
 
 	await routeHandler(context);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as string;
 }
 
 describe('index_users', function() {

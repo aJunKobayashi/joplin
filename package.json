@@ -7,10 +7,10 @@
   },
   "license": "MIT",
   "scripts": {
-    "bootstrap": "lerna bootstrap --no-ci",
-    "bootstrapIgnoreScripts": "lerna bootstrap --ignore-scripts --no-ci",
+    "bootstrap": "lerna bootstrap --no-ci --ignore web_viewer --ignore web_editor",
+    "bootstrapIgnoreScripts": "lerna bootstrap --ignore-scripts --no-ci --ignore web_viewer --ignore web_editor",
     "bootstrapServerOnly": "lerna bootstrap --no-ci --include-dependents --include-dependencies --scope @joplin/server",
-    "build": "lerna run build && npm run tsc",
+    "build": "lerna run build --ignore web_viewer --ignore web_editor && npm run tsc",
     "buildApiDoc": "npm start --prefix=packages/app-cli -- apidoc ../../readme/api/references/rest_api.md",
     "buildDoc": "./packages/tools/build-all.sh",
     "buildPluginDoc": "typedoc --name 'Joplin Plugin API Documentation' --mode file -theme './Assets/PluginDocTheme/' --readme './Assets/PluginDocTheme/index.md' --excludeNotExported --excludeExternals --excludePrivate --excludeProtected --out docs/api/references/plugin_api packages/lib/services/plugins/api/",
@@ -39,13 +39,12 @@
     "setupNewRelease": "node ./packages/tools/setupNewRelease",
     "test-ci": "lerna run test-ci --stream",
     "test": "lerna run test --stream",
-    "tsc": "lerna run tsc --stream",
+    "tsc": "lerna run tsc --stream --ignore web_viewer --ignore web_editor",
     "updateIgnored": "gulp updateIgnoredTypeScriptBuild",
     "updatePluginTypes": "./packages/generator-joplin/updateTypes.sh",
-    "watch": "lerna run watch --stream --parallel",
+    "watch": "lerna run watch --stream --parallel --ignore web_viewer --ignore web_editor",
     "i": "lerna add --no-bootstrap --scope"
   },
-
   "devDependencies": {
     "@types/cheerio": "^0.22.30",
     "@types/fs-extra": "^9.0.12",
@@ -54,12 +53,12 @@
     "eslint": "^7.6.0",
     "eslint-plugin-import": "^2.20.2",
     "eslint-plugin-react": "^7.18.0",
-    "eslint-plugin-react-hooks": "^2.4.0",
+    "eslint-plugin-react-hooks": "^4.2.0",
     "fs-extra": "^8.1.0",
     "glob": "^7.1.6",
     "gulp": "^4.0.2",
-    "husky": "^3.0.2",
-    "lerna": "^3.22.1",
+    "husky": "^9.0.0",
+    "lerna": "^4.0.0",
     "lint-staged": "^9.2.1",
     "madge": "^4.0.0",
     "typedoc": "^0.17.8",
@@ -68,5 +67,8 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.10",
     "postcss": "^8.4.32"
+  },
+  "overrides": {
+    "node-gyp": "^10.0.0"
   }
 }

@@ -35,7 +35,7 @@ export async function getFileMetadataContext(sessionId: string, path: string): P
 export async function getFileMetadata(sessionId: string, path: string): Promise<File> {
 	const context = await getFileMetadataContext(sessionId, path);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as File;
 }
 
 export async function deleteFileContentContext(sessionId: string, path: string): Promise<AppContext> {
@@ -94,7 +94,7 @@ export async function postDirectoryContext(sessionId: string, parentPath: string
 export async function postDirectory(sessionId: string, parentPath: string, name: string): Promise<File> {
 	const context = await postDirectoryContext(sessionId, parentPath, name);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as File;
 }
 
 export async function getDirectoryChildrenContext(sessionId: string, path: string, pagination: Pagination = null): Promise<AppContext> {
@@ -114,7 +114,7 @@ export async function getDirectoryChildrenContext(sessionId: string, path: strin
 export async function getDirectoryChildren(sessionId: string, path: string, pagination: Pagination = null): Promise<PaginatedResults> {
 	const context = await getDirectoryChildrenContext(sessionId, path, pagination);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as PaginatedResults;
 }
 
 export async function putFileContentContext(sessionId: string, path: string, filePath: string): Promise<AppContext> {
@@ -134,7 +134,7 @@ export async function putFileContentContext(sessionId: string, path: string, fil
 export async function putFileContent(sessionId: string, path: string, filePath: string): Promise<File> {
 	const context = await putFileContentContext(sessionId, path, filePath);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as File;
 }
 
 export async function getFileContentContext(sessionId: string, path: string): Promise<AppContext> {
@@ -153,7 +153,7 @@ export async function getFileContentContext(sessionId: string, path: string): Pr
 export async function getFileContent(sessionId: string, path: string): Promise<Buffer> {
 	const context = await getFileContentContext(sessionId, path);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as Buffer;
 }
 
 export async function patchFileContext(sessionId: string, path: string, file: File): Promise<AppContext> {
@@ -172,7 +172,7 @@ export async function patchFileContext(sessionId: string, path: string, file: Fi
 export async function patchFile(sessionId: string, path: string, file: File): Promise<File> {
 	const context = await patchFileContext(sessionId, path, file);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as File;
 }
 
 export async function getDeltaContext(sessionId: string, path: string, pagination: Pagination): Promise<AppContext> {
@@ -191,5 +191,5 @@ export async function getDeltaContext(sessionId: string, path: string, paginatio
 export async function getDelta(sessionId: string, path: string, pagination: Pagination): Promise<PaginatedResults> {
 	const context = await getDeltaContext(sessionId, path, pagination);
 	checkContextError(context);
-	return context.response.body;
+	return context.response.body as PaginatedResults;
 }

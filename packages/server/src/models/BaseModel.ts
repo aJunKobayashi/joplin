@@ -24,7 +24,7 @@ export interface ValidateOptions {
 	rules?: any;
 }
 
-export default abstract class BaseModel<T> {
+export default abstract class BaseModel<T extends object> {
 
 	private options_: ModelOptions = null;
 	private defaultFields_: string[] = [];
