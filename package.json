@@ -68,5 +68,8 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.10",
     "postcss": "^8.4.32"
+  },
+  "overrides": {
+    "node-gyp": "^10.0.0"
   }
 }
