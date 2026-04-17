@@ -253,6 +253,46 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setRootContextMenu(null);
   }, []);
 
+  const [viewFileDialog, setViewFileDialog] = React.useState<{ url: string; title: string } | null>(null);
+
+  const handleViewAsFile = useCallback(async () => {
+    if (contextMenu?.node.type === 'Note') {
+      const noteTitle = contextMenu.node.title;
+      setContextMenu(null);
+      try {
+        const res = await fetch('/api/note/view-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note_id: contextMenu.node.id }),
+        });
+        const json = await res.json();
+        if (json.success && json.url) {
+          setViewFileDialog({ url: json.url, title: noteTitle });
+        }
+      } catch {
+        // ignore
+      }
+    } else {
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleOpenHtml = useCallback(() => {
+    if (contextMenu?.node.type === 'Note') {
+      const url = `/api/note?id=${encodeURIComponent(contextMenu.node.id)}&format=html`;
+      window.open(url, '_blank');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleMergeNotes = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      const url = `/api/merge-notes?folder_id=${encodeURIComponent(contextMenu.node.id)}`;
+      window.open(url, '_blank');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   const handleCopyAsAnchor = useCallback(() => {
     if (contextMenu) {
       const href = `/note?note_id=${contextMenu.node.id}`;
@@ -693,6 +733,12 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         }
       >
         {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleOpenHtml}>HTMLを開く</MenuItem>
+        )}
+        {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleViewAsFile}>fileスキームで見る</MenuItem>
+        )}
+        {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
         )}
         {contextMenu?.node.type === 'Note' && (
@@ -721,6 +767,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleDeleteFolderOpen}>フォルダを削除</MenuItem>
+        )}
+        {contextMenu?.node.type === 'Folder' && (
+          <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
         )}
       </Menu>
       <Menu
@@ -915,6 +964,19 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           >
             OK
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={viewFileDialog !== null} onClose={() => setViewFileDialog(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>fileスキームで開く — {viewFileDialog?.title}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ wordBreak: 'break-all', mt: 1 }}>
+            <a href={viewFileDialog?.url ?? ''} target="_blank" rel="noopener noreferrer">
+              {viewFileDialog?.url}
+            </a>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewFileDialog(null)}>閉じる</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={addRootFolderDialog} onClose={handleAddRootFolderClose}>

@@ -378,7 +378,11 @@ export class ViewerUtil {
 
   public static revertResourceDirToJoplinScheme = (htmlBody: string, resourceDir: string) => {
     const $ = cheerio.load(htmlBody);
-    const anchors = [...$(`a[href^="/api/resource/"]`)];
+    const anchors = [
+      ...$(`a[href^="/api/resource/"]`),
+      ...$(`a[href^="file://${resourceDir}"]`),
+      ...$(`a[href^="${resourceDir}"]`),
+    ];
     for (let i = 0; i < anchors.length; i++) {
       const anchor = anchors[i] as cheerio.TagElement;
       const href = anchor.attribs.href;
@@ -387,7 +391,11 @@ export class ViewerUtil {
       anchor.attribs.href = newHref;
     }
 
-    const imgs = [...$(`[src^="/api/resource/"]`)];
+    const imgs = [
+      ...$(`[src^="/api/resource/"]`),
+      ...$(`[src^="file://${resourceDir}"]`),
+      ...$(`[src^="${resourceDir}"]`),
+    ];
     for (let i = 0; i < imgs.length; i++) {
       const img = imgs[i] as cheerio.TagElement;
       const src = img.attribs.src;

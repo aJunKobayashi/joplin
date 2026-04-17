@@ -344,4 +344,12 @@ export class ViewerUtil {
 
     return $;
   }
+
+  public static removeDataMceSrcAttr($: cheerio.Root): cheerio.Root {
+    $('[data-mce-src]').each((_, element) => {
+      const el = element as cheerio.TagElement;
+      delete el.attribs['data-mce-src'];
+    });
+    return $;
+  }
 }
