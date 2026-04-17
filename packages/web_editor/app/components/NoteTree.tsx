@@ -253,6 +253,25 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setRootContextMenu(null);
   }, []);
 
+  const handleViewAsFile = useCallback(async () => {
+    if (contextMenu?.node.type === 'Note') {
+      try {
+        const res = await fetch('/api/note/view-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note_id: contextMenu.node.id }),
+        });
+        const json = await res.json();
+        if (json.success && json.url) {
+          window.open(json.url, '_blank');
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   const handleCopyAsAnchor = useCallback(() => {
     if (contextMenu) {
       const href = `/note?note_id=${contextMenu.node.id}`;
@@ -692,6 +711,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
         }
       >
+        {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleViewAsFile}>fileスキームで見る</MenuItem>
+        )}
         {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
         )}
