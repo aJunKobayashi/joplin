@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useRef, useCallback, useEffect } from 'react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import NoteTreeWrapper from '../components/NoteTreeWrapper';
 import ReactQueryProvider from '../components/ReactQueryProvider';
@@ -10,9 +10,82 @@ import { Switch, Typography, Paper } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import PreviewIcon from '@mui/icons-material/Preview';
 import SyncButton from '../components/SyncButton';
+import {
+  ScrollAnchor,
+  findVisibleAnchor,
+  scrollToAnchorInViewer,
+  scrollToAnchorInEditor,
+} from '@/lib/scrollAnchor';
 
 export default function NotePage() {
   const [mode, setMode] = useState<'viewer' | 'editor'>('viewer');
+
+  const viewerContainerRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
+
+  /** Capture visible-element anchor from the current mode, then switch. */
+  const handleModeSwitch = useCallback(() => {
+    if (mode === 'viewer' && viewerContainerRef.current) {
+      const contentRoot = viewerContainerRef.current.querySelector(
+        '.note-content'
+      ) as HTMLElement | null;
+      if (contentRoot) {
+        const top = viewerContainerRef.current.getBoundingClientRect().top;
+        scrollAnchorRef.current = findVisibleAnchor(contentRoot, top);
+      }
+    } else if (mode === 'editor' && editorContainerRef.current) {
+      const iframe = editorContainerRef.current.querySelector('iframe');
+      const body = iframe?.contentDocument?.body as HTMLElement | undefined;
+      if (body) {
+        scrollAnchorRef.current = findVisibleAnchor(body, 0);
+      }
+    }
+    setMode(mode === 'viewer' ? 'editor' : 'viewer');
+  }, [mode]);
+
+  /** After mode changes, scroll the new mode to the saved anchor. */
+  useEffect(() => {
+    const anchor = scrollAnchorRef.current;
+    if (!anchor) return;
+
+    if (mode === 'viewer') {
+      // Viewer renders quickly; wait a tick for the DOM to settle.
+      const timer = setTimeout(() => {
+        const container = viewerContainerRef.current;
+        const contentRoot = container?.querySelector('.note-content') as HTMLElement | null;
+        if (container && contentRoot) {
+          scrollToAnchorInViewer(container, contentRoot, anchor);
+        }
+        scrollAnchorRef.current = null;
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+
+    // Editor: Wait for TinyMCE to fire 'tinymce-content-ready' after setContent.
+    const handleReady = () => {
+      // Give the layout one more moment to stabilise after content injection.
+      setTimeout(() => {
+        const iframe = editorContainerRef.current?.querySelector('iframe');
+        const body = iframe?.contentDocument?.body;
+        const win = iframe?.contentWindow;
+        if (body && win) {
+          scrollToAnchorInEditor(win, body, anchor);
+        }
+        scrollAnchorRef.current = null;
+      }, 150);
+    };
+    window.addEventListener('tinymce-content-ready', handleReady, { once: true });
+    // Safety timeout: if event never fires, clean up.
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('tinymce-content-ready', handleReady);
+      scrollAnchorRef.current = null;
+    }, 6000);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('tinymce-content-ready', handleReady);
+    };
+  }, [mode]);
 
   return (
     <ReactQueryProvider>
@@ -59,7 +132,7 @@ export default function NotePage() {
                 <Switch
                   size="small"
                   checked={mode === 'editor'}
-                  onChange={() => setMode(mode === 'viewer' ? 'editor' : 'viewer')}
+                  onChange={handleModeSwitch}
                   color="primary"
                 />
                 <Typography
@@ -76,11 +149,11 @@ export default function NotePage() {
                 />
               </Paper>
               {mode === 'viewer' ? (
-                <div className="w-full h-full overflow-auto p-4">
+                <div ref={viewerContainerRef} className="w-full h-full overflow-auto p-4">
                   <NoteViewer />
                 </div>
               ) : (
-                <div className="w-full h-full">
+                <div ref={editorContainerRef} className="w-full h-full">
                   <NoteEditor />
                 </div>
               )}
