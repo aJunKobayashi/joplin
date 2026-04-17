@@ -1605,6 +1605,10 @@ export default function TinyMCEBody({
               setTimeout(() => {
                 editor.getDoc().dispatchEvent(new Event('joplin-noteDidUpdate'));
               }, 200);
+              // スクロール同期用: コンテンツセット完了を通知
+              setTimeout(() => {
+                window.dispatchEvent(new Event('tinymce-content-ready'));
+              }, 300);
               // コンテンツ読み込み後に KaTeX 数式をレンダリング
               triggerKatexRender(editor, 600);
 

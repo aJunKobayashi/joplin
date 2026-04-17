@@ -58,35 +58,33 @@ export default function NotePage() {
           scrollToAnchorInViewer(container, contentRoot, anchor);
         }
         scrollAnchorRef.current = null;
-      }, 150);
+      }, 300);
       return () => clearTimeout(timer);
     }
 
-    // Editor: TinyMCE initialises asynchronously. Poll for the iframe to be ready.
-    let rafId: number;
-    const start = Date.now();
-    const poll = () => {
-      if (Date.now() - start > 5000) {
+    // Editor: Wait for TinyMCE to fire 'tinymce-content-ready' after setContent.
+    const handleReady = () => {
+      // Give the layout one more moment to stabilise after content injection.
+      setTimeout(() => {
+        const iframe = editorContainerRef.current?.querySelector('iframe');
+        const body = iframe?.contentDocument?.body;
+        const win = iframe?.contentWindow;
+        if (body && win) {
+          scrollToAnchorInEditor(win, body, anchor);
+        }
         scrollAnchorRef.current = null;
-        return;
-      }
-      const iframe = editorContainerRef.current?.querySelector('iframe');
-      const body = iframe?.contentDocument?.body;
-      const win = iframe?.contentWindow;
-      if (body && win && body.children.length > 0 && body.innerHTML.length > 50) {
-        // Give layout one more frame to settle after content is injected.
-        setTimeout(() => {
-          const b = iframe?.contentDocument?.body;
-          const w = iframe?.contentWindow;
-          if (b && w) scrollToAnchorInEditor(w, b, anchor);
-          scrollAnchorRef.current = null;
-        }, 200);
-        return;
-      }
-      rafId = requestAnimationFrame(poll);
+      }, 150);
     };
-    rafId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rafId);
+    window.addEventListener('tinymce-content-ready', handleReady, { once: true });
+    // Safety timeout: if event never fires, clean up.
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('tinymce-content-ready', handleReady);
+      scrollAnchorRef.current = null;
+    }, 6000);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('tinymce-content-ready', handleReady);
+    };
   }, [mode]);
 
   return (

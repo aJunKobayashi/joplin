@@ -26,7 +26,12 @@ function getBlockElements(root: HTMLElement): HTMLElement[] {
 function fingerprint(el: HTMLElement): { tag: string; text: string } {
   return {
     tag: el.tagName.toLowerCase(),
-    text: (el.textContent || '').trim().slice(0, 80),
+    // Collapse all whitespace (including &nbsp;) into single spaces for stable matching
+    // between viewer (html-react-parser) and editor (TinyMCE preserveHtmlIndent).
+    text: (el.textContent || '')
+      .replace(/[\s\u00A0]+/g, ' ')
+      .trim()
+      .slice(0, 80),
   };
 }
 
@@ -75,23 +80,23 @@ function findMatchingElement(contentRoot: HTMLElement, anchor: ScrollAnchor): HT
   const blocks = getBlockElements(contentRoot);
   if (blocks.length === 0) return null;
 
-  // Collect candidates that match by tag + text
-  const candidates: { el: HTMLElement; index: number }[] = [];
+  // 1. Exact match: tag + text
+  const exactCandidates: { el: HTMLElement; index: number }[] = [];
   for (let i = 0; i < blocks.length; i++) {
     const fp = fingerprint(blocks[i]);
     if (fp.tag === anchor.tag && fp.text === anchor.textSnippet) {
-      candidates.push({ el: blocks[i], index: i });
+      exactCandidates.push({ el: blocks[i], index: i });
     }
   }
 
-  if (candidates.length === 1) {
-    return candidates[0].el;
+  if (exactCandidates.length === 1) {
+    return exactCandidates[0].el;
   }
 
-  if (candidates.length > 1) {
+  if (exactCandidates.length > 1) {
     // Pick the candidate closest to the expected index
-    let best = candidates[0];
-    for (const c of candidates) {
+    let best = exactCandidates[0];
+    for (const c of exactCandidates) {
       if (Math.abs(c.index - anchor.blockIndex) < Math.abs(best.index - anchor.blockIndex)) {
         best = c;
       }
@@ -99,7 +104,28 @@ function findMatchingElement(contentRoot: HTMLElement, anchor: ScrollAnchor): HT
     return best.el;
   }
 
-  // Fallback: index-based
+  // 2. Partial match: same tag + text starts with the same first 30 chars
+  if (anchor.textSnippet.length > 10) {
+    const prefix = anchor.textSnippet.slice(0, 30);
+    const partialCandidates: { el: HTMLElement; index: number }[] = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const fp = fingerprint(blocks[i]);
+      if (fp.tag === anchor.tag && fp.text.startsWith(prefix)) {
+        partialCandidates.push({ el: blocks[i], index: i });
+      }
+    }
+    if (partialCandidates.length > 0) {
+      let best = partialCandidates[0];
+      for (const c of partialCandidates) {
+        if (Math.abs(c.index - anchor.blockIndex) < Math.abs(best.index - anchor.blockIndex)) {
+          best = c;
+        }
+      }
+      return best.el;
+    }
+  }
+
+  // 3. Fallback: index-based
   if (anchor.blockIndex < blocks.length) {
     return blocks[anchor.blockIndex];
   }
