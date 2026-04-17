@@ -285,6 +285,14 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setContextMenu(null);
   }, [contextMenu]);
 
+  const handleMergeNotes = useCallback(() => {
+    if (contextMenu?.node.type === 'Folder') {
+      const url = `/api/merge-notes?folder_id=${encodeURIComponent(contextMenu.node.id)}`;
+      window.open(url, '_blank');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   const handleCopyAsAnchor = useCallback(() => {
     if (contextMenu) {
       const href = `/note?note_id=${contextMenu.node.id}`;
@@ -759,6 +767,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         )}
         {contextMenu?.node.type === 'Folder' && isEditor && (
           <MenuItem onClick={handleDeleteFolderOpen}>フォルダを削除</MenuItem>
+        )}
+        {contextMenu?.node.type === 'Folder' && (
+          <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
         )}
       </Menu>
       <Menu
