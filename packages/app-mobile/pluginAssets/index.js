@@ -1,7 +1,9 @@
 module.exports = {
-hash:"23a87770b37e8206e16ed9b8bc50d61d", files: {
+hash:"42ea7f4b3989dd9a18816c79b33cffd0", files: {
+'.DS_Store': { data: require('./.DS_Store.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
 'highlight.js/atom-one-dark-reasonable.css': { data: require('./highlight.js/atom-one-dark-reasonable.css.base64.js'), mime: 'text/css', encoding: 'base64' },
 'highlight.js/atom-one-light.css': { data: require('./highlight.js/atom-one-light.css.base64.js'), mime: 'text/css', encoding: 'base64' },
+'katex/.DS_Store': { data: require('./katex/.DS_Store.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
 'katex/contrib/auto-render.min.js': { data: require('./katex/contrib/auto-render.min.js.base64.js'), mime: 'application/javascript', encoding: 'base64' },
 'katex/fonts/KaTeX_AMS-Regular.woff2': { data: require('./katex/fonts/KaTeX_AMS-Regular.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },
 'katex/fonts/KaTeX_Caligraphic-Bold.woff2': { data: require('./katex/fonts/KaTeX_Caligraphic-Bold.woff2.base64.js'), mime: 'application/octet-stream', encoding: 'base64' },

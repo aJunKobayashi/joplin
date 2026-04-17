@@ -253,8 +253,12 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setRootContextMenu(null);
   }, []);
 
+  const [viewFileDialog, setViewFileDialog] = React.useState<{ url: string; title: string } | null>(null);
+
   const handleViewAsFile = useCallback(async () => {
     if (contextMenu?.node.type === 'Note') {
+      const noteTitle = contextMenu.node.title;
+      setContextMenu(null);
       try {
         const res = await fetch('/api/note/view-file', {
           method: 'POST',
@@ -263,13 +267,14 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
         });
         const json = await res.json();
         if (json.success && json.url) {
-          window.open(json.url, '_blank');
+          setViewFileDialog({ url: json.url, title: noteTitle });
         }
       } catch {
         // ignore
       }
+    } else {
+      setContextMenu(null);
     }
-    setContextMenu(null);
   }, [contextMenu]);
 
   const handleCopyAsAnchor = useCallback(() => {
@@ -937,6 +942,19 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           >
             OK
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={viewFileDialog !== null} onClose={() => setViewFileDialog(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>fileスキームで開く — {viewFileDialog?.title}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ wordBreak: 'break-all', mt: 1 }}>
+            <a href={viewFileDialog?.url ?? ''} target="_blank" rel="noopener noreferrer">
+              {viewFileDialog?.url}
+            </a>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewFileDialog(null)}>閉じる</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={addRootFolderDialog} onClose={handleAddRootFolderClose}>
