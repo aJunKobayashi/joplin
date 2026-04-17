@@ -109,6 +109,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const id = url.searchParams.get('id');
+    const format = url.searchParams.get('format');
     if (!id) {
       return NextResponse.json(
         { success: false, error: 'id query parameter is required' },
@@ -131,6 +132,13 @@ export async function GET(req: Request) {
     }
     if (!note) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
+    }
+
+    if (format === 'html') {
+      return new Response(note.body ?? '', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
     }
 
     return NextResponse.json({ success: true, data: note });

@@ -277,6 +277,14 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     }
   }, [contextMenu]);
 
+  const handleOpenHtml = useCallback(() => {
+    if (contextMenu?.node.type === 'Note') {
+      const url = `/api/note?id=${encodeURIComponent(contextMenu.node.id)}&format=html`;
+      window.open(url, '_blank');
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
   const handleCopyAsAnchor = useCallback(() => {
     if (contextMenu) {
       const href = `/note?note_id=${contextMenu.node.id}`;
@@ -716,6 +724,9 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
         }
       >
+        {contextMenu?.node.type === 'Note' && (
+          <MenuItem onClick={handleOpenHtml}>HTMLを開く</MenuItem>
+        )}
         {contextMenu?.node.type === 'Note' && (
           <MenuItem onClick={handleViewAsFile}>fileスキームで見る</MenuItem>
         )}
