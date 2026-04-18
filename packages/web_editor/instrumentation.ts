@@ -11,5 +11,16 @@ export async function register() {
       console.error('Failed to initialize application:', error);
       throw error;
     }
+
+    // stdio ベースの MCP サーバーを子プロセスとして事前起動する
+    // これにより HTTP ポートなしで LangChain エージェントが利用できる
+    try {
+      const { getMcpClient } = await import('./lib/mcpClientSingleton');
+      await getMcpClient();
+      console.log('Application initialized: MCP stdio server started');
+    } catch (error) {
+      // MCP の起動失敗はアプリ全体を止めない（チャット機能だけ使えなくなる）
+      console.error('Failed to start MCP stdio server:', error);
+    }
   }
 }
