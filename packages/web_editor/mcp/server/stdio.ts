@@ -26,7 +26,14 @@ async function main() {
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // stdin が閉じられるまで待機（process が生き続ける）
+
+  // connect() 後に onmessage をラップしてリクエストをログ出力する
+  // （stdout は MCP プロトコル専用なので stderr へ書く）
+  const originalOnMessage = transport.onmessage;
+  transport.onmessage = (message) => {
+    console.error('[MCP stdio] Request:', JSON.stringify(message, null, 2));
+    originalOnMessage?.(message);
+  };
 }
 
 main().catch((err) => {
