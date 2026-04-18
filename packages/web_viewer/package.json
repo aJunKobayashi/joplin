@@ -14,6 +14,7 @@
     "mcp:dev": "tsx ./mcp/server/index.ts",
     "mcp:client": "tsx ./mcp/client/index.ts",
     "mcp:server": "tsx ./mcp/server/index.ts",
+    "mcp:stdio": "tsx ./mcp/server/stdio.ts",
     "agent": "tsx mcp/client/LangChainClient.ts"
   },
   "dependencies": {

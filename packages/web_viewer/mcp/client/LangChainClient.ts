@@ -3,6 +3,7 @@ import { createAgent } from 'langchain';
 import { ChatOpenAI } from '@langchain/openai';
 import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { Config } from '../../config.ts';
+import { getMcpClient } from '../../lib/mcpClientSingleton';
 
 export interface ChatHistory {
   id: string;
@@ -17,17 +18,9 @@ export class LangChainClient {
     systemPrompt?: string,
     histories: ChatHistory[] = []
   ): Promise<string> {
-    const mcp = new MultiServerMCPClient({
-      myServer: {
-        transport: 'http',
-        url: 'http://localhost:8080/mcp', // MCPのHTTPエンドポイント
-        // headers を付けたい場合は下（※ドキュメントに記載あり）
-        // headers: { Authorization: `Bearer ${process.env.MCP_TOKEN}` },
-      },
-    });
-
-    // MCPサーバーが公開している tools を LangChain Tool として取得
-    const tools = await mcp.getTools(); // :contentReference[oaicite:1]{index=1}
+    // stdio シングルトンクライアントを利用（HTTP ポート不要）
+    const mcp = await getMcpClient();
+    const tools = await mcp.getTools();
 
     // Proxy設定
     const modelConfig: ConstructorParameters<typeof ChatOpenAI>[0] = {
@@ -111,13 +104,8 @@ export class LangChainClient {
     systemPrompt?: string,
     histories: ChatHistory[] = []
   ): Promise<void> {
-    const mcp = new MultiServerMCPClient({
-      myServer: {
-        transport: 'http',
-        url: 'http://localhost:8080/mcp',
-      },
-    });
-
+    // stdio シングルトンクライアントを利用（HTTP ポート不要）
+    const mcp = await getMcpClient();
     const tools = await mcp.getTools();
 
     const modelConfig: ConstructorParameters<typeof ChatOpenAI>[0] = {
