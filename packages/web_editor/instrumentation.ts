@@ -15,9 +15,16 @@ export async function register() {
     // stdio ベースの MCP サーバーを子プロセスとして事前起動する
     // これにより HTTP ポートなしで LangChain エージェントが利用できる
     try {
-      const { getMcpClient } = await import('./lib/mcpClientSingleton');
+      const { getMcpClient, closeMcpClient } = await import('./lib/mcpClientSingleton');
       await getMcpClient();
       console.log('Application initialized: MCP stdio server started');
+
+      // プロセス終了時（Ctrl+C / SIGTERM）に子プロセスを確実に閉じる
+      const shutdown = () => {
+        closeMcpClient().catch((e) => console.error('Failed to close MCP client:', e));
+      };
+      process.once('SIGINT', shutdown);
+      process.once('SIGTERM', shutdown);
     } catch (error) {
       // MCP の起動失敗はアプリ全体を止めない（チャット機能だけ使えなくなる）
       console.error('Failed to start MCP stdio server:', error);
