@@ -4,6 +4,30 @@ import { ChatOpenAI } from '@langchain/openai';
 import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { Config } from '../../config.ts';
 import { getMcpClient } from '../../lib/mcpClientSingleton';
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
+import type { LLMResult } from '@langchain/core/outputs';
+
+class TokenCounter extends BaseCallbackHandler {
+  name = 'token_counter';
+  inputTokens = 0;
+  outputTokens = 0;
+  totalTokens = 0;
+
+  handleLLMEnd(output: LLMResult) {
+    const usage = output.llmOutput?.tokenUsage;
+    if (usage) {
+      this.inputTokens += usage.promptTokens ?? 0;
+      this.outputTokens += usage.completionTokens ?? 0;
+      this.totalTokens += usage.totalTokens ?? 0;
+    }
+  }
+
+  log() {
+    console.log(
+      `[Token Usage] input: ${this.inputTokens}, output: ${this.outputTokens}, total: ${this.totalTokens}`
+    );
+  }
+}
 
 export interface ChatHistory {
   id: string;
@@ -42,7 +66,8 @@ export class LangChainClient {
       };
     }
 
-    const model = new ChatOpenAI(modelConfig);
+    const tokenCounter = new TokenCounter();
+    const model = new ChatOpenAI({ ...modelConfig, callbacks: [tokenCounter] });
 
     const agent = createAgent({
       model,
@@ -69,23 +94,10 @@ export class LangChainClient {
       messages,
     });
 
-    // トークン使用量を集計して表示
-    const msgs = Array.isArray(result?.messages) ? result.messages : [];
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    for (const m of msgs) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const usage = (m as any)?.usage_metadata;
-      if (usage) {
-        totalInputTokens += usage.input_tokens ?? 0;
-        totalOutputTokens += usage.output_tokens ?? 0;
-      }
-    }
-    console.log(
-      `[Token Usage] input: ${totalInputTokens}, output: ${totalOutputTokens}, total: ${totalInputTokens + totalOutputTokens}`
-    );
+    tokenCounter.log();
 
     // Extract the final AI reply content
+    const msgs = Array.isArray(result?.messages) ? result.messages : [];
     const lastAi = msgs
       .slice()
       .reverse()
@@ -141,7 +153,8 @@ export class LangChainClient {
       };
     }
 
-    const model = new ChatOpenAI(modelConfig);
+    const tokenCounter = new TokenCounter();
+    const model = new ChatOpenAI({ ...modelConfig, callbacks: [tokenCounter] });
     const agent = createAgent({ model, tools });
 
     const messages: Array<{ role: string; content: string }> = [];
@@ -160,20 +173,10 @@ export class LangChainClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stream: AsyncIterable<any> = await agent.stream({ messages }, { streamMode: 'messages' });
 
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-
     for await (const chunk of stream) {
       // タプル形式 [message, metadata] の場合は先頭要素を取得
       const msg = Array.isArray(chunk) ? chunk[0] : chunk;
       if (!msg || !('content' in msg)) continue;
-
-      // トークン使用量を集計（usage_metadataは通常ストリームの最終チャンクに付与される）
-      const usage = msg?.usage_metadata;
-      if (usage) {
-        totalInputTokens += usage.input_tokens ?? 0;
-        totalOutputTokens += usage.output_tokens ?? 0;
-      }
 
       // AIメッセージのみを対象とする（ToolMessageやHumanMessageは除外）
       // msg.type === 'tool' はツール実行結果（検索結果JSONなど）
@@ -202,9 +205,7 @@ export class LangChainClient {
       }
     }
 
-    console.log(
-      `[Token Usage] input: ${totalInputTokens}, output: ${totalOutputTokens}, total: ${totalInputTokens + totalOutputTokens}`
-    );
+    tokenCounter.log();
 
     await mcp.close();
   }
