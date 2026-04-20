@@ -2,7 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { ViewerUtil } from '../../lib/viewerUtil';
 import { Note } from '@/lib/note';
-import TurndownService from 'turndown';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import * as fs from 'fs';
 
 // UTF-8 バイトオフセット → JS 文字列インデックス のマッピングを構築
 export function buildByteToCharMap(text: string): number[] {
@@ -21,6 +22,13 @@ export function buildByteToCharMap(text: string): number[] {
   }
   map[bytePos] = text.length;
   return map;
+}
+
+const MAX_RESPONSE_CHARS = 8000;
+
+function truncateResponse(text: string): string {
+  if (text.length <= MAX_RESPONSE_CHARS) return text;
+  return text.slice(0, MAX_RESPONSE_CHARS) + '...(truncated)';
 }
 
 export function createServer(): McpServer {
@@ -179,8 +187,10 @@ export function createServer(): McpServer {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                results.slice(snippetsOffset ?? 0, (snippetsOffset ?? 0) + (maxSnippets ?? 200))
+              text: truncateResponse(
+                JSON.stringify(
+                  results.slice(snippetsOffset ?? 0, (snippetsOffset ?? 0) + (maxSnippets ?? 200))
+                )
               ),
             },
           ],
@@ -218,7 +228,7 @@ export function createServer(): McpServer {
         };
       }
       const body = notes[0].body ?? '';
-      const text = body.slice(offset, offset + length);
+      const text = truncateResponse(body.slice(offset, offset + length));
       return {
         content: [{ type: 'text', text }],
       };
