@@ -69,8 +69,23 @@ export class LangChainClient {
       messages,
     });
 
-    // Extract the final AI reply content
+    // トークン使用量を集計して表示
     const msgs = Array.isArray(result?.messages) ? result.messages : [];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    for (const m of msgs) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const usage = (m as any)?.usage_metadata;
+      if (usage) {
+        totalInputTokens += usage.input_tokens ?? 0;
+        totalOutputTokens += usage.output_tokens ?? 0;
+      }
+    }
+    console.log(
+      `[Token Usage] input: ${totalInputTokens}, output: ${totalOutputTokens}, total: ${totalInputTokens + totalOutputTokens}`
+    );
+
+    // Extract the final AI reply content
     const lastAi = msgs
       .slice()
       .reverse()
@@ -145,10 +160,20 @@ export class LangChainClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stream: AsyncIterable<any> = await agent.stream({ messages }, { streamMode: 'messages' });
 
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
     for await (const chunk of stream) {
       // タプル形式 [message, metadata] の場合は先頭要素を取得
       const msg = Array.isArray(chunk) ? chunk[0] : chunk;
       if (!msg || !('content' in msg)) continue;
+
+      // トークン使用量を集計（usage_metadataは通常ストリームの最終チャンクに付与される）
+      const usage = msg?.usage_metadata;
+      if (usage) {
+        totalInputTokens += usage.input_tokens ?? 0;
+        totalOutputTokens += usage.output_tokens ?? 0;
+      }
 
       // AIメッセージのみを対象とする（ToolMessageやHumanMessageは除外）
       // msg.type === 'tool' はツール実行結果（検索結果JSONなど）
@@ -176,6 +201,10 @@ export class LangChainClient {
         }
       }
     }
+
+    console.log(
+      `[Token Usage] input: ${totalInputTokens}, output: ${totalOutputTokens}, total: ${totalInputTokens + totalOutputTokens}`
+    );
 
     await mcp.close();
   }
