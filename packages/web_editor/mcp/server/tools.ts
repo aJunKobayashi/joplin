@@ -100,7 +100,7 @@ export function createServer(): McpServer {
           .optional(),
         maxSnippets: z
           .number()
-          .describe('Maximum number of snippets to return (default: 200)')
+          .describe('Maximum number of snippets to return (default: 10)')
           .optional(),
         snippetsOffset: z
           .number()
@@ -118,7 +118,7 @@ export function createServer(): McpServer {
           const countB = b.offsets ? Math.floor(b.offsets.split(' ').length / 4) : 0;
           return countB - countA;
         });
-        const limited = maxResults ? ranked.slice(0, maxResults) : ranked;
+        const limited = maxResults ? ranked.slice(0, maxResults) : ranked.slice(0, 10);
         const ids = limited.map((r) => r.id);
         const notes = Note.markdownByIds(ids);
         const noteMap: Record<string, (typeof notes)[0]> = {};
