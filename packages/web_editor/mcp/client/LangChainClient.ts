@@ -1,11 +1,79 @@
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
-import { createAgent } from 'langchain';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { Config } from '../../config.ts';
 import { getMcpClient } from '../../lib/mcpClientSingleton';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { LLMResult } from '@langchain/core/outputs';
+
+/**
+ * 同じツールが複数回呼ばれた場合、古い呼び出し結果を除去して最新のみ残す。
+ * LLMに送るメッセージが膨らむのを防ぎトークンを節約する。
+ */
+function deduplicateToolResults(messages: BaseMessage[]): BaseMessage[] {
+  // tool_call_id → tool_name のマッピングを構築
+  const callIdToName = new Map<string, string>();
+  for (const msg of messages) {
+    if (msg instanceof AIMessage && msg.tool_calls) {
+      for (const tc of msg.tool_calls) {
+        if (tc.id) callIdToName.set(tc.id, tc.name);
+      }
+    }
+  }
+
+  // ツール名ごとに最後の ToolMessage インデックスを記録
+  const latestByName = new Map<string, number>();
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg instanceof ToolMessage) {
+      const name = callIdToName.get(msg.tool_call_id) ?? '';
+      if (name) latestByName.set(name, i);
+    }
+  }
+
+  // 古い呼び出しの tool_call_id を収集
+  const staleIds = new Set<string>();
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg instanceof ToolMessage) {
+      const name = callIdToName.get(msg.tool_call_id) ?? '';
+      if (name && latestByName.get(name) !== i) {
+        staleIds.add(msg.tool_call_id);
+      }
+    }
+  }
+
+  if (staleIds.size === 0) return messages;
+
+  const result: BaseMessage[] = [];
+  for (const msg of messages) {
+    // 古い ToolMessage は除去
+    if (msg instanceof ToolMessage && staleIds.has(msg.tool_call_id)) continue;
+
+    if (msg instanceof AIMessage && msg.tool_calls && msg.tool_calls.length > 0) {
+      const kept = msg.tool_calls.filter((tc) => !staleIds.has(tc.id ?? ''));
+      if (kept.length !== msg.tool_calls.length) {
+        // tool_calls がすべて除去される場合はメッセージごと削除（contentもなければ）
+        if (kept.length === 0 && !msg.content) continue;
+        result.push(
+          new AIMessage({
+            content: msg.content,
+            tool_calls: kept,
+            id: msg.id,
+            response_metadata: msg.response_metadata,
+            additional_kwargs: msg.additional_kwargs,
+          })
+        );
+        continue;
+      }
+    }
+    result.push(msg);
+  }
+  return result;
+}
 
 class TokenCounter extends BaseCallbackHandler {
   name = 'token_counter';
@@ -77,9 +145,10 @@ export class LangChainClient {
     const tokenCounter = new TokenCounter();
     const model = new ChatOpenAI({ ...modelConfig, callbacks: [tokenCounter] });
 
-    const agent = createAgent({
-      model,
+    const agent = createReactAgent({
+      llm: model,
       tools,
+      messageModifier: deduplicateToolResults,
     });
 
     const messages: Array<{ role: string; content: string }> = [];
@@ -163,7 +232,11 @@ export class LangChainClient {
 
     const tokenCounter = new TokenCounter();
     const model = new ChatOpenAI({ ...modelConfig, callbacks: [tokenCounter] });
-    const agent = createAgent({ model, tools });
+    const agent = createReactAgent({
+      llm: model,
+      tools,
+      messageModifier: deduplicateToolResults,
+    });
 
     const messages: Array<{ role: string; content: string }> = [];
     if (systemPrompt) {
