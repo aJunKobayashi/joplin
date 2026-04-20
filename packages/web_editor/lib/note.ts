@@ -65,7 +65,9 @@ export class Note {
   public static getNotesByParentId(parentId: string): NoteEntity[] {
     const db = getDatabase();
     const rows = db
-      .prepare('SELECT id, parent_id, title, updated_time FROM notes WHERE parent_id = ? ORDER BY title ASC')
+      .prepare(
+        'SELECT id, parent_id, title, updated_time FROM notes WHERE parent_id = ? ORDER BY title ASC'
+      )
       .all(parentId) as NoteEntity[];
     return rows;
   }
@@ -104,11 +106,23 @@ export class Note {
   }
 
   public static selectAllMarkdownFts(matchQuery: string): MarkdownSearchResult[] {
+    return this.selectAllMarkdownFtsByMode(matchQuery, 'OR');
+  }
+
+  /**
+   * AND/OR モードを指定して FTS 検索を行う
+   * AND: すべてのキーワードを含むノートのみ（精度重視）
+   * OR: いずれかのキーワードを含むノート（再現率重視）
+   */
+  public static selectAllMarkdownFtsByMode(
+    matchQuery: string,
+    mode: 'AND' | 'OR'
+  ): MarkdownSearchResult[] {
     const db = getDatabase();
 
-    // Split by half-width or full-width spaces and OR-join for FTS MATCH
     const terms = matchQuery.split(/[\s\u3000]+/).filter(Boolean);
-    const ftsQuery = terms.length > 1 ? terms.join(' OR ') : terms[0] || matchQuery;
+    const joiner = mode === 'AND' ? ' ' : ' OR ';
+    const ftsQuery = terms.length > 1 ? terms.join(joiner) : terms[0] || matchQuery;
 
     const sql = `
             SELECT
@@ -151,6 +165,22 @@ export class Note {
 
     const stmt = db.prepare(sql);
     const rows = stmt.all(...ids);
+    return rows as MarkdownNoteEntity[];
+  }
+
+  /**
+   * タイトルでノートを部分一致検索（LIKE）
+   * 軽量なタイトルのみ検索。結果は updated_time 降順。
+   */
+  public static searchByTitle(query: string, maxResults: number = 10): MarkdownNoteEntity[] {
+    const db = getDatabase();
+    const likePattern = `%${query}%`;
+    const sql = `SELECT id, parent_id, title, '' AS body, created_time, updated_time
+                 FROM markdown_notes
+                 WHERE title LIKE ?
+                 ORDER BY updated_time DESC
+                 LIMIT ?`;
+    const rows = db.prepare(sql).all(likePattern, maxResults);
     return rows as MarkdownNoteEntity[];
   }
 
@@ -237,17 +267,23 @@ export class Note {
     const now = Date.now();
     const id = require('crypto').randomUUID().replace(/-/g, '');
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO notes (id, parent_id, title, body, created_time, updated_time,
         is_conflict, latitude, longitude, altitude, author, source_url,
         is_todo, todo_due, todo_completed, source, source_application, application_data, \`order\`)
       VALUES (?, ?, ?, '', ?, ?, 0, 0, 0, 0, '', '', 0, 0, 0, '', '', '', 0)
-    `).run(id, parentId, title, now, now);
+    `
+    ).run(id, parentId, title, now, now);
 
     db.transaction(() => {
       const normTitle = this.normalizeText(title);
       db.prepare('DELETE FROM notes_normalized WHERE id = ?').run(id);
-      db.prepare('INSERT INTO notes_normalized (id, title, body) VALUES (?, ?, ?)').run(id, normTitle, '');
+      db.prepare('INSERT INTO notes_normalized (id, title, body) VALUES (?, ?, ?)').run(
+        id,
+        normTitle,
+        ''
+      );
     })();
 
     const note = this.getNoteById(id);
