@@ -12,19 +12,27 @@ class TokenCounter extends BaseCallbackHandler {
   inputTokens = 0;
   outputTokens = 0;
   totalTokens = 0;
+  callCount = 0;
 
   handleLLMEnd(output: LLMResult) {
     const usage = output.llmOutput?.tokenUsage;
     if (usage) {
-      this.inputTokens += usage.promptTokens ?? 0;
-      this.outputTokens += usage.completionTokens ?? 0;
-      this.totalTokens += usage.totalTokens ?? 0;
+      this.callCount++;
+      const input = usage.promptTokens ?? 0;
+      const out = usage.completionTokens ?? 0;
+      const total = usage.totalTokens ?? 0;
+      this.inputTokens += input;
+      this.outputTokens += out;
+      this.totalTokens += total;
+      console.log(
+        `[Token Usage #${this.callCount}] input: ${input}, output: ${out}, total: ${total}`
+      );
     }
   }
 
   log() {
     console.log(
-      `[Token Usage] input: ${this.inputTokens}, output: ${this.outputTokens}, total: ${this.totalTokens}`
+      `[Token Usage Total] input: ${this.inputTokens}, output: ${this.outputTokens}, total: ${this.totalTokens} (${this.callCount} calls)`
     );
   }
 }
