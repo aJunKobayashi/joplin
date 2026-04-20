@@ -235,5 +235,66 @@ export function createServer(): McpServer {
     }
   );
 
+  server.registerTool(
+    'search_rag',
+    {
+      description:
+        'Semantic similarity search over notes using vector embeddings (RAG). Returns relevant document chunks ranked by similarity. Useful when keyword search does not find good results.',
+      inputSchema: z.object({
+        query: z.string().describe('Natural language query for semantic search'),
+        k: z.number().describe('Number of similar results to return (default: 10)').optional(),
+      }),
+    },
+    async ({ query, k }) => {
+      const vectorDbPath = ViewerUtil.getVectorDbFilePath();
+      if (!fs.existsSync(vectorDbPath)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Vector database not found. Run embedding indexing first.',
+            },
+          ],
+          isError: true,
+        };
+      }
+      try {
+        const embeddings = new OpenAIEmbeddings({
+          model: 'text-embedding-3-large',
+          openAIApiKey: process.env.JOPLIN_OAI_KEY,
+        });
+        // @ts-expect-error -- @langchain/community is a transitive dependency (via @joplin/ai)
+        const { FaissStore } = await import('@langchain/community/vectorstores/faiss');
+        const vectorStore = await FaissStore.load(vectorDbPath, embeddings);
+        const docs = await vectorStore.similaritySearchWithScore(query, k ?? 10);
+        const results = docs.map(
+          ([doc, score]: [{ pageContent: string; metadata: Record<string, unknown> }, number]) => ({
+            content: doc.pageContent,
+            metadata: doc.metadata,
+            score,
+          })
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: truncateResponse(JSON.stringify(results)),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `RAG search error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
   return server;
 }
