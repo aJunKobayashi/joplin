@@ -28,13 +28,14 @@ const gSystemPrompt = `あなたはJoplinノートを参照して質問に答え
 1. fragment_id がある場合: \`[ノート名](/note?note_id={noteId}#{fragment_id})\`
 2. 検索マッチ箇所がある場合: \`[ノート名](/note?note_id={noteId}&search={search})\`
    - search には回答の根拠となった一節を具体的に（15〜50文字）そのまま指定する
+   - search の値はURLエンコードすること（スペース→%20、/→%2F など特殊文字はすべてパーセントエンコーディングする）
 3. 上記がない場合: \`[ノート名](/note?note_id={noteId})\`
 
 複数ノートを参照した場合はすべて列挙してください。
 
 **記載例:**
 > 根拠:
-> - [タスク管理ガイド](/note?note_id=abc123&search=優先度はP1からP3で分類する)
+> - [タスク管理ガイド](/note?note_id=abc123&search=%E5%84%AA%E5%85%88%E5%BA%A6%E3%81%AFP1%E3%81%8B%E3%82%89P3%E3%81%A7%E5%88%86%E9%A1%9E%E3%81%99%E3%82%8B)
 > - [プロジェクト手順書](/note?note_id=def456#section-setup)
 `;
 
