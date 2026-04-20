@@ -88,7 +88,7 @@ export function createServer(): McpServer {
     'search_markdown_notes',
     {
       description:
-        'Full-text search over markdown_notes. Returns snippets around matched keywords instead of full note bodies.',
+        'Full-text search over markdown_notes. Returns snippets around matched keywords instead of full note bodies. Each snippet includes charStart/charEnd indicating the match position in the note body, which can be used as offset/length for get_markdown_content.',
       inputSchema: z.object({
         query: z
           .string()
@@ -100,7 +100,7 @@ export function createServer(): McpServer {
           .optional(),
         maxSnippets: z
           .number()
-          .describe('Maximum number of snippets to return (default: 200)')
+          .describe('Maximum number of snippets to return (default: 10)')
           .optional(),
         snippetsOffset: z
           .number()
@@ -118,7 +118,7 @@ export function createServer(): McpServer {
           const countB = b.offsets ? Math.floor(b.offsets.split(' ').length / 4) : 0;
           return countB - countA;
         });
-        const limited = maxResults ? ranked.slice(0, maxResults) : ranked;
+        const limited = maxResults ? ranked.slice(0, maxResults) : ranked.slice(0, 10);
         const ids = limited.map((r) => r.id);
         const notes = Note.markdownByIds(ids);
         const noteMap: Record<string, (typeof notes)[0]> = {};
@@ -148,7 +148,13 @@ export function createServer(): McpServer {
           }
 
           const byteToChar = buildByteToCharMap(body);
-          const snippets: { note_id: string; note_title: string; text: string }[] = [];
+          const snippets: {
+            note_id: string;
+            note_title: string;
+            text: string;
+            charStart: number;
+            charEnd: number;
+          }[] = [];
           const seen = new Set<string>();
 
           for (const { byteOffset, byteLen } of bodyOffsets) {
@@ -159,9 +165,10 @@ export function createServer(): McpServer {
             const prefix = fragStart > 0 ? '...' : '';
             const suffix = fragEnd < body.length ? '...' : '';
             const text = `${prefix}${body.slice(fragStart, fragEnd)}${suffix}`;
-            if (!seen.has(text)) {
-              seen.add(text);
-              snippets.push({ note_id: r.id, note_title: r.title, text });
+            const key = `${r.id}:${charStart}:${charEnd}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              snippets.push({ note_id: r.id, note_title: r.title, text, charStart, charEnd });
             }
           }
 
@@ -189,6 +196,32 @@ export function createServer(): McpServer {
           isError: true,
         };
       }
+    }
+  );
+
+  server.registerTool(
+    'get_markdown_content',
+    {
+      description:
+        'Get a substring of a note body from markdown_notes. Use offset and length from search_markdown_notes results to fetch the exact portion you need.',
+      inputSchema: z.object({
+        noteId: z.string().describe('The ID of the note'),
+        offset: z.number().describe('The character offset to start reading from'),
+        length: z.number().describe('The number of characters to read'),
+      }),
+    },
+    async ({ noteId, offset, length }) => {
+      const notes = Note.markdownByIds([noteId]);
+      if (notes.length === 0) {
+        return {
+          content: [{ type: 'text', text: '' }],
+        };
+      }
+      const body = notes[0].body ?? '';
+      const text = body.slice(offset, offset + length);
+      return {
+        content: [{ type: 'text', text }],
+      };
     }
   );
 
