@@ -48,7 +48,7 @@ export class LangChainClient {
 
     // Proxy設定
     const modelConfig: ConstructorParameters<typeof ChatOpenAI>[0] = {
-      model: 'gpt-5-mini', // adjust if needed
+      model: 'gpt-5.4-mini', // adjust if needed
       apiKey: process.env.JOPLIN_OAI_KEY,
     };
 
@@ -136,7 +136,7 @@ export class LangChainClient {
     const tools = await mcp.getTools();
 
     const modelConfig: ConstructorParameters<typeof ChatOpenAI>[0] = {
-      model: 'gpt-5-mini',
+      model: 'gpt-5.4-mini',
       apiKey: process.env.JOPLIN_OAI_KEY,
       streaming: true,
     };
