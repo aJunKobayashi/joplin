@@ -44,45 +44,45 @@ export function createServer(): McpServer {
     }
   );
 
-  server.registerTool(
-    'get_note_content',
-    {
-      description: 'Get the content of a specific note',
-      inputSchema: z.object({
-        noteId: z.string().describe('The ID of the note'),
-        offset: z.number().describe('The offset to start reading the note content from').optional(),
-        length: z.number().describe('The length of the content to read').optional(),
-      }),
-    },
-    async ({ noteId, offset, length }) => {
-      const content = Note.getNoteById(noteId);
-      if (!content) {
-        return {
-          content: [{ type: 'text', text: '' }],
-        };
-      }
+  // server.registerTool(
+  //   'get_note_content',
+  //   {
+  //     description: 'Get the content of a specific note',
+  //     inputSchema: z.object({
+  //       noteId: z.string().describe('The ID of the note'),
+  //       offset: z.number().describe('The offset to start reading the note content from').optional(),
+  //       length: z.number().describe('The length of the content to read').optional(),
+  //     }),
+  //   },
+  //   async ({ noteId, offset, length }) => {
+  //     const content = Note.getNoteById(noteId);
+  //     if (!content) {
+  //       return {
+  //         content: [{ type: 'text', text: '' }],
+  //       };
+  //     }
 
-      let bodyText = content.body ?? '';
+  //     let bodyText = content.body ?? '';
 
-      if (bodyText) {
-        const turndownService = new TurndownService({
-          headingStyle: 'atx',
-          codeBlockStyle: 'fenced',
-        });
-        bodyText = turndownService.turndown(bodyText);
-      }
+  //     if (bodyText) {
+  //       const turndownService = new TurndownService({
+  //         headingStyle: 'atx',
+  //         codeBlockStyle: 'fenced',
+  //       });
+  //       bodyText = turndownService.turndown(bodyText);
+  //     }
 
-      if (offset !== undefined && length !== undefined) {
-        const text = bodyText.slice(offset, offset + length);
-        return {
-          content: [{ type: 'text', text }],
-        };
-      }
-      return {
-        content: [{ type: 'text', text: bodyText }],
-      };
-    }
-  );
+  //     if (offset !== undefined && length !== undefined) {
+  //       const text = bodyText.slice(offset, offset + length);
+  //       return {
+  //         content: [{ type: 'text', text }],
+  //       };
+  //     }
+  //     return {
+  //       content: [{ type: 'text', text: bodyText }],
+  //     };
+  //   }
+  // );
 
   server.registerTool(
     'search_markdown_notes',
