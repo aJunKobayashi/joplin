@@ -14,23 +14,27 @@ import type { LLMResult } from '@langchain/core/outputs';
  * LLMに送るメッセージが膨らむのを防ぎトークンを節約する。
  */
 function deduplicateToolResults(messages: BaseMessage[]): BaseMessage[] {
-  // tool_call_id → tool_name のマッピングを構築
-  const callIdToName = new Map<string, string>();
+  // tool_call_id → dedup key (tool_name + JSON args) のマッピングを構築
+  // 引数が異なる呼び出し（例: get_markdown_content の異なる offset）は別扱いにする
+  const callIdToKey = new Map<string, string>();
   for (const msg of messages) {
     if (msg instanceof AIMessage && msg.tool_calls) {
       for (const tc of msg.tool_calls) {
-        if (tc.id) callIdToName.set(tc.id, tc.name);
+        if (tc.id) {
+          const key = `${tc.name}::${JSON.stringify(tc.args ?? {})}`;
+          callIdToKey.set(tc.id, key);
+        }
       }
     }
   }
 
-  // ツール名ごとに最後の ToolMessage インデックスを記録
-  const latestByName = new Map<string, number>();
+  // dedup key ごとに最後の ToolMessage インデックスを記録
+  const latestByKey = new Map<string, number>();
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     if (msg instanceof ToolMessage) {
-      const name = callIdToName.get(msg.tool_call_id) ?? '';
-      if (name) latestByName.set(name, i);
+      const key = callIdToKey.get(msg.tool_call_id) ?? '';
+      if (key) latestByKey.set(key, i);
     }
   }
 
@@ -39,8 +43,8 @@ function deduplicateToolResults(messages: BaseMessage[]): BaseMessage[] {
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     if (msg instanceof ToolMessage) {
-      const name = callIdToName.get(msg.tool_call_id) ?? '';
-      if (name && latestByName.get(name) !== i) {
+      const key = callIdToKey.get(msg.tool_call_id) ?? '';
+      if (key && latestByKey.get(key) !== i) {
         staleIds.add(msg.tool_call_id);
       }
     }
