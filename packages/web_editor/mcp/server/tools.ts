@@ -177,14 +177,9 @@ export function createServer(): McpServer {
           }
 
           const nums = r.offsets.split(' ').map(Number);
-          const bodyOffsets: { byteOffset: number; byteLen: number }[] = [];
-          for (let i = 0; i + 3 < nums.length; i += 4) {
-            if (nums[i] === BODY_COL) {
-              bodyOffsets.push({ byteOffset: nums[i + 2], byteLen: nums[i + 3] });
-            }
-          }
+          const hasBodyOffset = nums.some((_, i) => i % 4 === 0 && nums[i] === BODY_COL);
 
-          if (bodyOffsets.length === 0) {
+          if (!hasBodyOffset) {
             return [
               {
                 note_id: r.id,
@@ -196,7 +191,22 @@ export function createServer(): McpServer {
           }
 
           const byteToChar = buildByteToCharMap(body);
-          const snippets: {
+          const seen = new Set<string>();
+
+          // termNum → 最初のスニペット（クエリ語ごとに代表1件）
+          const termRepresentative = new Map<
+            number,
+            {
+              note_id: string;
+              note_title: string;
+              folder_name: string;
+              text: string;
+              charStart: number;
+              charEnd: number;
+            }
+          >();
+          // 代表以外のスニペット（ドキュメント順・追加情報用）
+          const extraSnippets: {
             note_id: string;
             note_title: string;
             folder_name: string;
@@ -204,9 +214,12 @@ export function createServer(): McpServer {
             charStart: number;
             charEnd: number;
           }[] = [];
-          const seen = new Set<string>();
 
-          for (const { byteOffset, byteLen } of bodyOffsets) {
+          for (let i = 0; i + 3 < nums.length; i += 4) {
+            if (nums[i] !== BODY_COL) continue;
+            const termNum = nums[i + 1];
+            const byteOffset = nums[i + 2];
+            const byteLen = nums[i + 3];
             const charStart = byteToChar[byteOffset] ?? 0;
             const charEnd = byteToChar[byteOffset + byteLen] ?? charStart + 1;
             const fragStart = Math.max(0, charStart - CONTEXT);
@@ -217,17 +230,28 @@ export function createServer(): McpServer {
             const key = `${r.id}:${charStart}:${charEnd}`;
             if (!seen.has(key)) {
               seen.add(key);
-              snippets.push({
+              const snippet = {
                 note_id: r.id,
                 note_title: r.title,
                 folder_name: folderName,
                 text,
                 charStart,
                 charEnd,
-              });
+              };
+              // クエリ語ごとに最初のマッチを代表として記録（最も重要なスニペット）
+              if (!termRepresentative.has(termNum)) {
+                termRepresentative.set(termNum, snippet);
+              } else {
+                extraSnippets.push(snippet);
+              }
             }
           }
 
+          // 代表スニペット（クエリ語ごと）を先頭に、残りをドキュメント順で続ける
+          const representatives = [...termRepresentative.values()].sort(
+            (a, b) => a.charStart - b.charStart
+          );
+          const snippets = [...representatives, ...extraSnippets];
           return snippets;
         });
 
