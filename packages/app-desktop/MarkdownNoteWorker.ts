@@ -27,7 +27,7 @@ function normalizeText(text: string): string {
 function removeToc(html: string): string {
 	const parser = new DOMParser();
 	const doc = parser.parseFromString(html, 'text/html');
-	doc.querySelectorAll('.goog-toc, [data-joplin-toc]').forEach(el => el.remove());
+	doc.querySelectorAll('.goog-toc, .mce-toc, [data-joplin-toc]').forEach(el => el.remove());
 	return doc.body.innerHTML;
 }
 
