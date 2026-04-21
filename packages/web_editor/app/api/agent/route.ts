@@ -21,14 +21,14 @@ const gSystemPrompt = `あなたはJoplinノートを参照して質問に答え
    - get_markdown_content を複数回試みても情報が不十分な場合は、**必ず get_note_content でノート全体を取得すること（省略不可）**
 3. **フォルダ構造の把握が必要な場合**: get_note_tree を活用してください
 
-## 必須手順（この順番を厳守）
+## 必須手順（この順番を厳守・省略禁止）
 1. search_markdown_notes（maxResults:5, contextChars:200, maxSnippets:20）で関連ノートとマッチ箇所（charStart/charEnd）を特定する
-2. get_markdown_content を呼ぶ: **charStart = search_markdown_notes が返したスニペットの charStart の値**（**この手順は省略不可。charStart に 0 や推測値を使ってはいけない**）
+2. get_markdown_content を呼ぶ: **charStart = search_markdown_notes が返したスニペットの charStart の値**（charStart に 0 や推測値を使ってはいけない）
 3. レスポンスの内容を確認する
-   - 回答に必要な情報が含まれている → 回答を生成する
-   - 情報が不十分かつ readEnd < totalLength → charStart = readEnd で再取得する（続きを読む）
-   - それでも情報が見つからない → **get_note_content でノート全体を必ず取得する（省略不可）**
-4. 上記3の手順をすべて試みた後でも情報が見つからなかった場合のみ「提供された情報では回答できません」と回答する
+   - 回答に必要な情報が含まれている → 回答を生成する（手順4・5はスキップ）
+   - 情報が不十分かつ readEnd < totalLength → charStart = readEnd で再取得する（続きを読む。最大3回まで繰り返す）
+4. **手順3を繰り返しても情報が不十分な場合、または readEnd ≧ totalLength に達した場合 → 必ず get_note_content でノート全体を取得すること（この手順は絶対に省略してはいけない）**
+5. 上記4まですべて試みた後でも情報が見つからなかった場合のみ「提供された情報では回答できません」と回答する
 
 ## 検索キーワード選定のルール
 - 質問の核心となる名詞・専門用語・固有名詞を優先する
