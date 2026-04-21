@@ -21,13 +21,17 @@ const gSystemPrompt = `あなたはJoplinノートを参照して質問に答え
      - length = 5000（固定。短くしてはいけない）
    - **offset は必ず search_markdown_notes が返した charStart の値から計算すること。自分で推測した値を使ってはいけない**
    - 取得した内容に回答に必要な情報が含まれていない場合は、同じ note_id で offset を変えて再取得すること（例: offset を charEnd + 1000 に進める）
-   - ノート全体が必要な場合のみ get_note_content を使用する（通常は get_markdown_content で十分）
+   - get_markdown_content を複数回試みても情報が不十分な場合は、**必ず get_note_content でノート全体を取得すること（省略不可）**
 3. **フォルダ構造の把握が必要な場合**: get_note_tree を活用してください
 
 ## 必須手順（この順番を厳守）
 1. search_markdown_notes（maxResults:5, contextChars:200, maxSnippets:20）で関連ノートとマッチ箇所（charStart/charEnd）を特定する
 2. get_markdown_content を呼ぶ: offset = max(0, charStart - 1000), length = 5000（**この手順は省略不可。length は 5000 未満にしてはいけない**）
-3. 取得した内容に基づいて回答する。不足していれば offset を進めて再取得する
+3. 取得した内容を確認する
+   - 回答に必要な情報が含まれている → 回答を生成する
+   - 情報が不十分 → offset を charEnd + 1000 にずらして get_markdown_content を再取得する
+   - それでも情報が見つからない → **get_note_content でノート全体を必ず取得する（この手順は省略不可）**
+4. 上記3の手順をすべて試みた後でも情報が見つからなかった場合のみ「提供された情報では回答できません」と回答する
 
 ## 検索キーワード選定のルール
 - 質問の核心となる名詞・専門用語・固有名詞を優先する
