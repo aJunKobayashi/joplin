@@ -23,6 +23,7 @@ export default class InteropService_Exporter_Markdowndb extends InteropService_E
 	private removeToc(html: string): string {
 		const $ = cheerio.load(html);
 		$('.goog-toc').remove();
+		$('.mce-toc').remove();
 		$('[data-joplin-toc]').remove();
 		return $.html();
 	}

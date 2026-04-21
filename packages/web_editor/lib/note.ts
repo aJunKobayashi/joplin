@@ -241,6 +241,7 @@ export class Note {
         const mdTitle = current.title ?? '';
         const $ = cheerio.load(current.body);
         $('.goog-toc').remove();
+        $('.mce-toc').remove();
         $('[data-joplin-toc]').remove();
         const cleanedBody = $.html();
         const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
