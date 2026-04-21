@@ -262,26 +262,19 @@ export function createServer(): McpServer {
     'get_markdown_content',
     {
       description:
-        'Get a portion of a note body around a match position. Provide charStart from search results and the tool auto-calculates a good range. Or provide manual offset/length.',
+        'Get a portion of a note body. charStart MUST be the value returned by search_markdown_notes — never use 0 or a guessed value. ' +
+        'Reads ~4000 chars around the match. ' +
+        'The response includes readEnd and totalLength. If readEnd < totalLength and you need more content, call again with charStart = readEnd.',
       inputSchema: z.object({
         noteId: z.string().describe('The ID of the note'),
         charStart: z
           .number()
           .describe(
-            'The charStart value from search_markdown_notes. Auto-calculates offset=max(0,charStart-500) and length=3000.'
-          )
-          .optional(),
-        offset: z
-          .number()
-          .describe('Manual character offset (ignored if charStart is provided)')
-          .optional(),
-        length: z
-          .number()
-          .describe('Manual character length (ignored if charStart is provided)')
-          .optional(),
+            'charStart from search_markdown_notes results. The tool reads from max(0, charStart-500) for ~4000 chars. For continuation, pass the readEnd value from the previous response.'
+          ),
       }),
     },
-    async ({ noteId, charStart, offset, length }) => {
+    async ({ noteId, charStart }) => {
       const notes = Note.markdownByIds([noteId]);
       if (notes.length === 0) {
         return {
@@ -289,22 +282,16 @@ export function createServer(): McpServer {
         };
       }
       const body = notes[0].body ?? '';
-      let start: number;
-      let len: number;
-      if (charStart !== undefined) {
-        start = Math.max(0, charStart - 500);
-        len = 3000;
-      } else {
-        start = offset ?? 0;
-        len = length ?? body.length;
-      }
+      const start = Math.max(0, charStart - 500);
+      const len = 4000;
       const text = body.slice(start, start + len);
+      const readEnd = Math.min(start + len, body.length);
       const totalLength = body.length;
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ content: text, offset: start, length: len, totalLength }),
+            text: JSON.stringify({ content: text, readStart: start, readEnd, totalLength }),
           },
         ],
       };
