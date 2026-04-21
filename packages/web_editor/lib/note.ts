@@ -1,5 +1,6 @@
 import { NoteEntity, getDatabase } from './database';
 import TurndownService from 'turndown';
+import * as cheerio from 'cheerio';
 import { ModelType } from './resource';
 
 export type { NoteEntity };
@@ -208,8 +209,12 @@ export class Note {
       //    MarkdownNoteService 同様、body は HTML→Markdown 変換してから保存する
       if (current.body) {
         const mdTitle = current.title ?? '';
+        const $ = cheerio.load(current.body);
+        $('.goog-toc').remove();
+        $('[data-joplin-toc]').remove();
+        const cleanedBody = $.html();
         const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
-        const mdBody = turndown.turndown(current.body);
+        const mdBody = turndown.turndown(cleanedBody);
 
         db.prepare('DELETE FROM markdown_notes WHERE id = ?').run(id);
         db.prepare(
