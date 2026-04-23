@@ -18,7 +18,8 @@
     "mcp:server": "tsx ./mcp/server/index.ts",
     "mcp:stdio": "tsx ./mcp/server/stdio.ts",
     "agent": "tsx mcp/client/LangChainClient.ts",
-    "non_use_rsc": "tsx scripts/non_use_rsc.ts"
+    "non_use_rsc": "tsx scripts/non_use_rsc.ts",
+    "check_conflict": "tsx scripts/check_conflict.ts"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
