@@ -24,7 +24,15 @@ function normalizeText(text: string): string {
 	return removeDiacritics(normalizedText.toLowerCase());
 }
 
+function removeToc(html: string): string {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, 'text/html');
+	doc.querySelectorAll('.goog-toc, .mce-toc, [data-joplin-toc]').forEach(el => el.remove());
+	return doc.body.innerHTML;
+}
+
 function htmlToMarkdown(html: string): string {
+	const cleanedHtml = removeToc(html);
 	const turndown = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
@@ -36,7 +44,7 @@ function htmlToMarkdown(html: string): string {
 	turndown.use(turndownPluginGfm);
 	turndown.remove('script');
 	turndown.remove('style');
-	return turndown.turndown(html);
+	return turndown.turndown(cleanedHtml);
 }
 
 function processQueue() {

@@ -1,6 +1,7 @@
 import InteropService_Exporter_Base from './InteropService_Exporter_Base';
 import BaseModel from '../../BaseModel';
 import HtmlToMd from '../../HtmlToMd';
+import * as cheerio from 'cheerio';
 
 const { removeDiacritics } = require('../../string-utils.js');
 
@@ -17,6 +18,14 @@ export default class InteropService_Exporter_Markdowndb extends InteropService_E
 	private normalizeText(text: string): string {
 		const normalizedText = text.normalize ? text.normalize() : text;
 		return removeDiacritics(normalizedText.toLowerCase());
+	}
+
+	private removeToc(html: string): string {
+		const $ = cheerio.load(html);
+		$('.goog-toc').remove();
+		$('.mce-toc').remove();
+		$('[data-joplin-toc]').remove();
+		return $.html();
 	}
 
 	async processItem(itemType: number, item: any) {
@@ -36,7 +45,7 @@ export default class InteropService_Exporter_Markdowndb extends InteropService_E
 		// Convert HTML to Markdown
 		let markdownBody = '';
 		try {
-			markdownBody = this.htmlToMd_.parse(body);
+			markdownBody = this.htmlToMd_.parse(this.removeToc(body));
 		} catch (error) {
 			console.error(`InteropService_Exporter_Markdowndb: Error converting note ${noteId}:`, error);
 			return;
