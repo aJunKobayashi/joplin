@@ -1504,7 +1504,7 @@ export default function TinyMCEBody({
         readonly: readOnly,
         plugins: 'link lists table codesample',
         contextmenu: 'joplinResource',
-        contextmenu_never_use_native: false,
+        contextmenu_never_use_native: true,
         toolbar: readOnly
           ? false
           : [
@@ -1589,8 +1589,9 @@ export default function TinyMCEBody({
           joplinSub: { inline: 'sub', remove: 'all' },
         },
         setup: (editor: any) => {
-          // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示するためのフラグ
-          let lastContextMenuMetaKey = false;
+          // Meta/Ctrl キー + 右クリック時のみカスタムコンテキストメニューを表示するためのフラグ
+          const isMac = navigator.platform.toUpperCase().includes('MAC');
+          let lastContextMenuModKey = false;
 
           editor.on('init', () => {
             if (!destroyed) {
@@ -1659,13 +1660,13 @@ export default function TinyMCEBody({
               // audio 要素に設定ボタン (⚙) をオーバーレイ
               attachAudioSettingsButtons(editor);
 
-              // Meta キー + 右クリック時のみカスタムコンテキストメニューを表示する
-              // capture フェーズで Meta キー状態を記録し、Meta なしなら TinyMCE のハンドラをスキップ
+              // Mac は Meta キー、Windows/Linux は Ctrl キー + 右クリック時のみカスタムコンテキストメニューを表示する
+              // capture フェーズで修飾キー状態を記録し、修飾キーなしなら TinyMCE のハンドラをスキップ
               iframeDoc.addEventListener(
                 'contextmenu',
                 (e: MouseEvent) => {
-                  lastContextMenuMetaKey = e.metaKey;
-                  if (!e.metaKey) {
+                  lastContextMenuModKey = isMac ? e.metaKey : e.ctrlKey;
+                  if (!lastContextMenuModKey) {
                     e.stopImmediatePropagation();
                   }
                 },
@@ -1766,7 +1767,7 @@ export default function TinyMCEBody({
 
           editor.ui.registry.addContextMenu('joplinResource', {
             update: (element: Element) => {
-              if (!lastContextMenuMetaKey) return '';
+              if (!lastContextMenuModKey) return '';
               let el: Element | null = element;
               while (el) {
                 const tag = el.tagName?.toLowerCase();

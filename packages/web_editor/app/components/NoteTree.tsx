@@ -209,7 +209,8 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   }, []);
 
   const handleContextMenu = useCallback((event: React.MouseEvent, node: TreeNode) => {
-    if (!event.metaKey) return;
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    if (isMac ? !event.metaKey : !event.ctrlKey) return;
     event.preventDefault();
     event.stopPropagation();
     if (node.type === 'Note') {
@@ -233,7 +234,8 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   } | null>(null);
 
   const handleRootContextMenu = useCallback((event: React.MouseEvent) => {
-    if (!event.metaKey) return;
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    if (isMac ? !event.metaKey : !event.ctrlKey) return;
     event.preventDefault();
     setRootContextMenu({ mouseX: event.clientX, mouseY: event.clientY });
   }, []);
