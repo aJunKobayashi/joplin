@@ -7,15 +7,14 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import DescriptionIcon from '@mui/icons-material/Description';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import DescriptionIcon from '@mui/icons-material/Description';
 import Link from 'next/link';
 import { useFolderQuery } from '@/lib/hooks';
 import { FolderTreeNode, NoteTreeNode, TreeNode } from '@/lib/viewerUtil';
 import { NoteEntity } from '@/lib/database';
+import { NoteContextMenu, NoteContextMenuState } from './NoteContextMenu';
 
 const searchMatchedNotes = (query: string, folders: TreeNode[]): NoteEntity[] => {
   const q = (query || '').trim().toLowerCase();
@@ -54,42 +53,31 @@ interface FtsResult {
   title: string;
 }
 
-export default function SearchResult({ query, fts = false }: { query: string; fts?: boolean }) {
+export default function SearchResult({
+  query,
+  fts = false,
+  isEditor,
+}: {
+  query: string;
+  fts?: boolean;
+  isEditor?: boolean;
+}) {
   const [results, setResults] = React.useState<NoteEntity[] | null>(null);
   const [ftsResults, setFtsResults] = React.useState<FtsResult[] | null>(null);
   const [ftsLoading, setFtsLoading] = React.useState(false);
   const [ftsError, setFtsError] = React.useState<string | null>(null);
   const { folders, isLoading, error } = useFolderQuery();
 
-  const [contextMenu, setContextMenu] = useState<{
-    mouseX: number;
-    mouseY: number;
-    note: NoteEntity;
-  } | null>(null);
+  const [noteContextMenu, setNoteContextMenu] = useState<NoteContextMenuState | null>(null);
 
-  const handleContextMenu = useCallback((event: React.MouseEvent, note: NoteEntity) => {
-    if (!event.metaKey) return;
-    event.preventDefault();
-    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, note });
-  }, []);
-
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenu(null);
-  }, []);
-
-  const handleCopyAsAnchor = useCallback(() => {
-    if (contextMenu) {
-      const href = `/note?note_id=${contextMenu.note.id}`;
-      const anchor = `<a href="${href}">${contextMenu.note.title}</a>`;
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([anchor], { type: 'text/html' }),
-          'text/plain': new Blob([anchor], { type: 'text/plain' }),
-        }),
-      ]);
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent, note: { id: string; title: string }) => {
+      if (!event.metaKey) return;
+      event.preventDefault();
+      setNoteContextMenu({ mouseX: event.clientX, mouseY: event.clientY, note });
+    },
+    []
+  );
 
   React.useEffect(() => {
     if (fts) {
@@ -148,10 +136,19 @@ export default function SearchResult({ query, fts = false }: { query: string; ft
 
     return (
       <Box sx={{ height: '100%', overflowY: 'auto' }}>
+        <NoteContextMenu
+          state={noteContextMenu}
+          isEditor={isEditor}
+          onClose={() => setNoteContextMenu(null)}
+        />
         <List>
           {ftsResults.map((r) => (
             <ListItem key={r.id} disablePadding>
-              <Link href={`/note?note_id=${r.id}`} prefetch={false}>
+              <Link
+                href={`/note?note_id=${r.id}`}
+                prefetch={false}
+                onContextMenu={(e) => handleContextMenu(e, r)}
+              >
                 <ListItemButton>
                   <ListItemIcon>
                     <DescriptionIcon />
@@ -178,16 +175,11 @@ export default function SearchResult({ query, fts = false }: { query: string; ft
 
   return (
     <Box sx={{ height: '100%', overflowY: 'auto' }}>
-      <Menu
-        open={contextMenu !== null}
-        onClose={handleContextMenuClose}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
-        }
-      >
-        <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
-      </Menu>
+      <NoteContextMenu
+        state={noteContextMenu}
+        isEditor={isEditor}
+        onClose={() => setNoteContextMenu(null)}
+      />
       <List>
         {results.map((r) => (
           <ListItem key={r.id} disablePadding>

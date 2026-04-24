@@ -23,6 +23,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import { FolderNode, TreeNode, useFolderQuery } from '@/lib/hooks';
+import { NoteContextMenu, NoteContextMenuState } from './NoteContextMenu';
 
 // fetch logic moved to `useFolderQuery` in `lib/hooks`
 function renderTree(
@@ -98,27 +99,6 @@ function renderTree(
       />
     );
   });
-}
-
-function renderFolderOnly(nodes: TreeNode[]): React.ReactNode[] {
-  return nodes
-    .filter((node) => node.type === 'Folder')
-    .map((node) => (
-      <TreeItem
-        key={node.id}
-        itemId={node.id}
-        label={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
-            <span>{node.title}</span>
-          </Box>
-        }
-      >
-        {node.children &&
-          node.children.some((c) => c.type === 'Folder') &&
-          renderFolderOnly(node.children)}
-      </TreeItem>
-    ));
 }
 
 function collectFolderIds(nodes: TreeNode[]): string[] {
@@ -217,7 +197,8 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     [allFolderIds, startTransition]
   );
 
-  const [contextMenu, setContextMenu] = React.useState<{
+  const [noteContextMenu, setNoteContextMenu] = React.useState<NoteContextMenuState | null>(null);
+  const [folderContextMenu, setFolderContextMenu] = React.useState<{
     mouseX: number;
     mouseY: number;
     node: TreeNode;
@@ -231,11 +212,19 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     if (!event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
-    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, node });
+    if (node.type === 'Note') {
+      setNoteContextMenu({
+        mouseX: event.clientX,
+        mouseY: event.clientY,
+        note: { id: node.id, title: node.title },
+      });
+    } else {
+      setFolderContextMenu({ mouseX: event.clientX, mouseY: event.clientY, node });
+    }
   }, []);
 
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenu(null);
+  const handleFolderContextMenuClose = useCallback(() => {
+    setFolderContextMenu(null);
   }, []);
 
   const [rootContextMenu, setRootContextMenu] = React.useState<{
@@ -253,92 +242,24 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setRootContextMenu(null);
   }, []);
 
-  const [viewFileDialog, setViewFileDialog] = React.useState<{ url: string; title: string } | null>(null);
-
-  const handleViewAsFile = useCallback(async () => {
-    if (contextMenu?.node.type === 'Note') {
-      const noteTitle = contextMenu.node.title;
-      setContextMenu(null);
-      try {
-        const res = await fetch('/api/note/view-file', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ note_id: contextMenu.node.id }),
-        });
-        const json = await res.json();
-        if (json.success && json.url) {
-          setViewFileDialog({ url: json.url, title: noteTitle });
-        }
-      } catch {
-        // ignore
-      }
-    } else {
-      setContextMenu(null);
-    }
-  }, [contextMenu]);
-
-  const handleOpenHtml = useCallback(() => {
-    if (contextMenu?.node.type === 'Note') {
-      const url = `/api/note?id=${encodeURIComponent(contextMenu.node.id)}&format=html`;
-      window.open(url, '_blank');
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
-
   const handleMergeNotes = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      const url = `/api/merge-notes?folder_id=${encodeURIComponent(contextMenu.node.id)}`;
+    if (folderContextMenu?.node.type === 'Folder') {
+      const url = `/api/merge-notes?folder_id=${encodeURIComponent(folderContextMenu.node.id)}`;
       window.open(url, '_blank');
     }
-    setContextMenu(null);
-  }, [contextMenu]);
-
-  const handleCopyAsAnchor = useCallback(() => {
-    if (contextMenu) {
-      const href = `/note?note_id=${contextMenu.node.id}`;
-      const anchor = `<a href="${href}">${contextMenu.node.title}</a>`;
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([anchor], { type: 'text/html' }),
-          'text/plain': new Blob([anchor], { type: 'text/plain' }),
-        }),
-      ]);
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
-
-  const handleCopySubpageList = useCallback(async () => {
-    if (contextMenu?.node.type === 'Note') {
-      try {
-        const res = await fetch(
-          `/api/subpage-list?note_id=${encodeURIComponent(contextMenu.node.id)}`
-        );
-        const json = await res.json();
-        if (json.success) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'text/html': new Blob([json.html], { type: 'text/html' }),
-              'text/plain': new Blob([json.html], { type: 'text/plain' }),
-            }),
-          ]);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   const [addNoteDialog, setAddNoteDialog] = React.useState<{ folderId: string } | null>(null);
   const [newNoteTitle, setNewNoteTitle] = React.useState('');
 
   const handleAddNoteOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      setAddNoteDialog({ folderId: contextMenu.node.id });
+    if (folderContextMenu?.node.type === 'Folder') {
+      setAddNoteDialog({ folderId: folderContextMenu.node.id });
       setNewNoteTitle('');
     }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   const handleAddNoteClose = useCallback(() => {
     setAddNoteDialog(null);
@@ -364,83 +285,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setNewNoteTitle('');
   }, [addNoteDialog, newNoteTitle, queryClient]);
 
-  const [renameDialog, setRenameDialog] = React.useState<{
-    noteId: string;
-    currentTitle: string;
-  } | null>(null);
-  const [renameTitle, setRenameTitle] = React.useState('');
-
-  const [deleteDialog, setDeleteDialog] = React.useState<{
-    noteId: string;
-    noteTitle: string;
-  } | null>(null);
-
-  const handleRenameOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Note') {
-      setRenameDialog({ noteId: contextMenu.node.id, currentTitle: contextMenu.node.title });
-      setRenameTitle(contextMenu.node.title);
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
-
-  const handleRenameClose = useCallback(() => {
-    setRenameDialog(null);
-    setRenameTitle('');
-  }, []);
-
-  const handleRenameSubmit = useCallback(async () => {
-    if (!renameDialog || !renameTitle.trim()) return;
-    try {
-      const res = await fetch('/api/note', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: renameDialog.noteId, title: renameTitle.trim() }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await queryClient.invalidateQueries({ queryKey: ['folders'] });
-      }
-    } catch {
-      // ignore
-    }
-    setRenameDialog(null);
-    setRenameTitle('');
-  }, [renameDialog, renameTitle, queryClient]);
-
-  const handleDeleteOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Note') {
-      setDeleteDialog({ noteId: contextMenu.node.id, noteTitle: contextMenu.node.title });
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
-
-  const handleDeleteClose = useCallback(() => {
-    setDeleteDialog(null);
-  }, []);
-
-  const searchParams2 = useSearchParams();
-  const handleDeleteConfirm = useCallback(async () => {
-    if (!deleteDialog) return;
-    try {
-      const res = await fetch('/api/note', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deleteDialog.noteId }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await queryClient.invalidateQueries({ queryKey: ['folders'] });
-        // 削除したノートが現在表示中なら別ページへ遷移
-        if (searchParams2.get('note_id') === deleteDialog.noteId) {
-          window.location.href = '/';
-        }
-      }
-    } catch {
-      // ignore
-    }
-    setDeleteDialog(null);
-  }, [deleteDialog, queryClient, searchParams2]);
-
   const [addRootFolderDialog, setAddRootFolderDialog] = React.useState<boolean>(false);
   const [newRootFolderTitle, setNewRootFolderTitle] = React.useState('');
 
@@ -450,11 +294,14 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   } | null>(null);
 
   const handleDeleteFolderOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      setDeleteFolderDialog({ folderId: contextMenu.node.id, folderTitle: contextMenu.node.title });
+    if (folderContextMenu?.node.type === 'Folder') {
+      setDeleteFolderDialog({
+        folderId: folderContextMenu.node.id,
+        folderTitle: folderContextMenu.node.title,
+      });
     }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   const handleDeleteFolderClose = useCallback(() => {
     setDeleteFolderDialog(null);
@@ -518,15 +365,15 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   const [renameFolderTitle, setRenameFolderTitle] = React.useState('');
 
   const handleRenameFolderOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
+    if (folderContextMenu?.node.type === 'Folder') {
       setRenameFolderDialog({
-        folderId: contextMenu.node.id,
-        currentTitle: contextMenu.node.title,
+        folderId: folderContextMenu.node.id,
+        currentTitle: folderContextMenu.node.title,
       });
-      setRenameFolderTitle(contextMenu.node.title);
+      setRenameFolderTitle(folderContextMenu.node.title);
     }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   const handleRenameFolderClose = useCallback(() => {
     setRenameFolderDialog(null);
@@ -553,12 +400,12 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   }, [renameFolderDialog, renameFolderTitle, queryClient]);
 
   const handleAddFolderOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      setAddFolderDialog({ parentId: contextMenu.node.id });
+    if (folderContextMenu?.node.type === 'Folder') {
+      setAddFolderDialog({ parentId: folderContextMenu.node.id });
       setNewFolderTitle('');
     }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   const handleAddFolderClose = useCallback(() => {
     setAddFolderDialog(null);
@@ -584,46 +431,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
     setNewFolderTitle('');
   }, [addFolderDialog, newFolderTitle, queryClient]);
 
-  const [moveDialog, setMoveDialog] = React.useState<{
-    noteId: string;
-    noteTitle: string;
-  } | null>(null);
-  const [moveTargetFolderId, setMoveTargetFolderId] = React.useState<string | null>(null);
-  const [moveDialogExpanded, setMoveDialogExpanded] = React.useState<string[]>([]);
-
-  const handleMoveOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Note') {
-      setMoveDialog({ noteId: contextMenu.node.id, noteTitle: contextMenu.node.title });
-      setMoveTargetFolderId(null);
-      setMoveDialogExpanded(allFolderIds);
-    }
-    setContextMenu(null);
-  }, [contextMenu, allFolderIds]);
-
-  const handleMoveClose = useCallback(() => {
-    setMoveDialog(null);
-    setMoveTargetFolderId(null);
-  }, []);
-
-  const handleMoveConfirm = useCallback(async () => {
-    if (!moveDialog || !moveTargetFolderId) return;
-    try {
-      const res = await fetch('/api/note', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: moveDialog.noteId, parent_id: moveTargetFolderId }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await queryClient.invalidateQueries({ queryKey: ['folders'] });
-      }
-    } catch {
-      // ignore
-    }
-    setMoveDialog(null);
-    setMoveTargetFolderId(null);
-  }, [moveDialog, moveTargetFolderId, queryClient]);
-
   const [moveFolderDialog, setMoveFolderDialog] = React.useState<{
     folderId: string;
     folderTitle: string;
@@ -633,16 +440,19 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
   const [moveFolderExcludeIds, setMoveFolderExcludeIds] = React.useState<Set<string>>(new Set());
 
   const handleMoveFolderOpen = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      const excludeIds = collectSubtreeIds(folders || [], contextMenu.node.id);
-      setMoveFolderDialog({ folderId: contextMenu.node.id, folderTitle: contextMenu.node.title });
+    if (folderContextMenu?.node.type === 'Folder') {
+      const excludeIds = collectSubtreeIds(folders || [], folderContextMenu.node.id);
+      setMoveFolderDialog({
+        folderId: folderContextMenu.node.id,
+        folderTitle: folderContextMenu.node.title,
+      });
       setMoveFolderTargetId(null);
       setMoveFolderExcludeIds(excludeIds);
       const allIds = allFolderIds.filter((id) => !excludeIds.has(id));
       setMoveFolderDialogExpanded(allIds);
     }
-    setContextMenu(null);
-  }, [contextMenu, folders, allFolderIds]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu, folders, allFolderIds]);
 
   const handleMoveFolderClose = useCallback(() => {
     setMoveFolderDialog(null);
@@ -724,53 +534,27 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <NoteContextMenu
+        state={noteContextMenu}
+        isEditor={isEditor}
+        onClose={() => setNoteContextMenu(null)}
+      />
       <Menu
-        open={contextMenu !== null}
-        onClose={handleContextMenuClose}
+        open={folderContextMenu !== null}
+        onClose={handleFolderContextMenuClose}
         anchorReference="anchorPosition"
         anchorPosition={
-          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+          folderContextMenu !== null
+            ? { top: folderContextMenu.mouseY, left: folderContextMenu.mouseX }
+            : undefined
         }
       >
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleOpenHtml}>HTMLを開く</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleViewAsFile}>fileスキームで見る</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleCopyAsAnchor}>リンクをa要素としてコピー</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleCopySubpageList}>サブページリスト</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && isEditor && (
-          <MenuItem onClick={handleRenameOpen}>名前を変更</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && isEditor && (
-          <MenuItem onClick={handleDeleteOpen}>ノートを削除</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && isEditor && (
-          <MenuItem onClick={handleMoveOpen}>ノートを移動</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && isEditor && (
-          <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && isEditor && (
-          <MenuItem onClick={handleAddFolderOpen}>フォルダを追加</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && isEditor && (
-          <MenuItem onClick={handleRenameFolderOpen}>名前を変更</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && isEditor && (
-          <MenuItem onClick={handleMoveFolderOpen}>フォルダを移動</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && isEditor && (
-          <MenuItem onClick={handleDeleteFolderOpen}>フォルダを削除</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && (
-          <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
-        )}
+        {isEditor && <MenuItem onClick={handleAddNoteOpen}>ノートを追加</MenuItem>}
+        {isEditor && <MenuItem onClick={handleAddFolderOpen}>フォルダを追加</MenuItem>}
+        {isEditor && <MenuItem onClick={handleRenameFolderOpen}>名前を変更</MenuItem>}
+        {isEditor && <MenuItem onClick={handleMoveFolderOpen}>フォルダを移動</MenuItem>}
+        {isEditor && <MenuItem onClick={handleDeleteFolderOpen}>フォルダを削除</MenuItem>}
+        <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
       </Menu>
       <Menu
         open={rootContextMenu !== null}
@@ -784,29 +568,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
       >
         {isEditor && <MenuItem onClick={handleAddRootFolderOpen}>ルートにフォルダを追加</MenuItem>}
       </Menu>
-      <Dialog open={renameDialog !== null} onClose={handleRenameClose}>
-        <DialogTitle>名前を変更</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="ノートのタイトル"
-            fullWidth
-            variant="outlined"
-            value={renameTitle}
-            onChange={(e) => setRenameTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit();
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleRenameClose}>キャンセル</Button>
-          <Button onClick={handleRenameSubmit} disabled={!renameTitle.trim()} variant="contained">
-            変更
-          </Button>
-        </DialogActions>
-      </Dialog>
       <Dialog open={addNoteDialog !== null} onClose={handleAddNoteClose}>
         <DialogTitle>ノートを追加</DialogTitle>
         <DialogContent>
@@ -827,18 +588,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           <Button onClick={handleAddNoteClose}>キャンセル</Button>
           <Button onClick={handleAddNoteSubmit} disabled={!newNoteTitle.trim()} variant="contained">
             追加
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={deleteDialog !== null} onClose={handleDeleteClose}>
-        <DialogTitle>ノートを削除</DialogTitle>
-        <DialogContent>
-          <span>「{deleteDialog?.noteTitle}」を削除しますか？この操作は元に戻せません。</span>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>キャンセル</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            削除
           </Button>
         </DialogActions>
       </Dialog>
@@ -911,29 +660,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={moveDialog !== null} onClose={handleMoveClose} maxWidth="xs" fullWidth>
-        <DialogTitle>ノートを移動</DialogTitle>
-        <DialogContent>
-          <SimpleTreeView
-            expandedItems={moveDialogExpanded}
-            onExpandedItemsChange={(_e, ids) => setMoveDialogExpanded(ids)}
-            selectedItems={moveTargetFolderId ?? ''}
-            onSelectedItemsChange={(_e, id) =>
-              setMoveTargetFolderId(typeof id === 'string' && id ? id : null)
-            }
-            slots={{ collapseIcon: ExpandMoreIcon, expandIcon: ChevronRightIcon }}
-            sx={{ minHeight: 200, maxHeight: 400, overflowY: 'auto' }}
-          >
-            {renderFolderOnly(folders || [])}
-          </SimpleTreeView>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleMoveClose}>キャンセル</Button>
-          <Button onClick={handleMoveConfirm} disabled={!moveTargetFolderId} variant="contained">
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
       <Dialog
         open={moveFolderDialog !== null}
         onClose={handleMoveFolderClose}
@@ -964,19 +690,6 @@ function NoteTree({ isEditor, ref }: NoteTreeProps) {
           >
             OK
           </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={viewFileDialog !== null} onClose={() => setViewFileDialog(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>fileスキームで開く — {viewFileDialog?.title}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ wordBreak: 'break-all', mt: 1 }}>
-            <a href={viewFileDialog?.url ?? ''} target="_blank" rel="noopener noreferrer">
-              {viewFileDialog?.url}
-            </a>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewFileDialog(null)}>閉じる</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={addRootFolderDialog} onClose={handleAddRootFolderClose}>

@@ -141,7 +141,7 @@ export default function NoteTreeWrapper({ mode }: NoteTreeWrapperProps) {
       <ChatDialog open={openChatDialog} onClose={onCloseChatDialog} />
 
       <div style={{ flex: 1, minHeight: 0, display: !hideTree ? 'none' : undefined }}>
-        <SearchResult query={query} fts={fts} />
+        <SearchResult query={query} fts={fts} isEditor={mode === 'editor'} />
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: hideTree ? 'none' : undefined }}>
