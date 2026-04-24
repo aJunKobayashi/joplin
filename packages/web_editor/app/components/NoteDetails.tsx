@@ -161,13 +161,14 @@ export default function NoteDetails({ note }: { note: (NoteEntity & { body?: str
     return () => cleanups.forEach((fn) => fn());
   }, [note?.body]);
 
-  // Meta キー + 右クリックで /api/resource/ 画像に OCR コンテキストメニューを表示
+  // Mac は Meta キー、Windows/Linux は Ctrl キー + 右クリックで /api/resource/ 画像に OCR コンテキストメニューを表示
   useEffect(() => {
     const container = contentRef.current;
     if (!container) return;
 
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
     const handleContextMenu = (e: MouseEvent) => {
-      if (!e.metaKey) return;
+      if (isMac ? !e.metaKey : !e.ctrlKey) return;
       const target = e.target as HTMLElement;
       if (target.tagName.toLowerCase() !== 'img') return;
       const src = target.getAttribute('src') ?? '';
