@@ -72,7 +72,8 @@ export default function SearchResult({
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent, note: { id: string; title: string }) => {
-      if (!event.metaKey) return;
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      if (isMac ? !event.metaKey : !event.ctrlKey) return;
       event.preventDefault();
       setNoteContextMenu({ mouseX: event.clientX, mouseY: event.clientY, note });
     },
