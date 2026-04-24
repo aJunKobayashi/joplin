@@ -1598,6 +1598,39 @@ export default function TinyMCEBody({
               injectMermaidScripts(editor);
               injectKatexScripts(editor);
               initShikiHighlighter(); // Shiki を事前初期化（非同期）
+
+              // -------------------------------------------------------
+              // nodeChanged デバウンス
+              // DOM が巨大（Shiki span 多数）なため nodeChanged が入力ごとに
+              // 走ると毎回フルレイアウト計算が発生し、入力遅延の主因になる。
+              // 入力が止まってから DEBOUNCE_MS 後にまとめて実行する。
+              // -------------------------------------------------------
+              const DEBOUNCE_MS = 600;
+              const origNodeChanged =
+                (editor.nodeChanged as any)._orig ?? editor.nodeChanged.bind(editor);
+              let _ncTimer: ReturnType<typeof setTimeout> | null = null;
+              const debouncedNodeChanged = (...args: unknown[]) => {
+                if (_ncTimer) clearTimeout(_ncTimer);
+                _ncTimer = setTimeout(() => {
+                  _ncTimer = null;
+                  origNodeChanged(...args);
+                }, DEBOUNCE_MS);
+              };
+              (debouncedNodeChanged as any)._orig = origNodeChanged;
+              editor.nodeChanged = debouncedNodeChanged as typeof editor.nodeChanged;
+
+              // undoManager: 入力中はレベル追加を抑制し、入力が止まってから確定する
+              const origAdd = editor.undoManager.add.bind(editor.undoManager);
+              let _undoTimer: ReturnType<typeof setTimeout> | null = null;
+              editor.undoManager.add = (...args: unknown[]) => {
+                if (_undoTimer) clearTimeout(_undoTimer);
+                _undoTimer = setTimeout(() => {
+                  _undoTimer = null;
+                  (origAdd as (...a: unknown[]) => void)(...args);
+                }, DEBOUNCE_MS);
+                return undefined as any;
+              };
+
               editor.setContent(preserveHtmlIndent(html ?? ''));
               editor.undoManager.reset();
               setEditorReady(true);
