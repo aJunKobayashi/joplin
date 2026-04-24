@@ -1504,7 +1504,7 @@ export default function TinyMCEBody({
         readonly: readOnly,
         plugins: 'link lists table codesample',
         contextmenu: 'joplinResource',
-        contextmenu_never_use_native: false,
+        contextmenu_never_use_native: true,
         toolbar: readOnly
           ? false
           : [
