@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useFolderQuery } from '@/lib/hooks';
 import { FolderTreeNode, NoteTreeNode, TreeNode } from '@/lib/viewerUtil';
 import { NoteEntity } from '@/lib/database';
+import { NoteContextMenu, NoteContextMenuState } from './NoteContextMenu';
 
 const searchMatchedNotes = (query: string, folders: TreeNode[]): NoteEntity[] => {
   const q = (query || '').trim().toLowerCase();
@@ -58,6 +59,18 @@ export default function SearchResult({ query, fts = false }: { query: string; ft
   const [ftsLoading, setFtsLoading] = React.useState(false);
   const [ftsError, setFtsError] = React.useState<string | null>(null);
   const { folders, isLoading, error } = useFolderQuery();
+
+  const [noteContextMenu, setNoteContextMenu] = useState<NoteContextMenuState | null>(null);
+
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent, note: { id: string; title: string }) => {
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      if (isMac ? !event.metaKey : !event.ctrlKey) return;
+      event.preventDefault();
+      setNoteContextMenu({ mouseX: event.clientX, mouseY: event.clientY, note });
+    },
+    []
+  );
 
   React.useEffect(() => {
     if (fts) {
@@ -114,10 +127,15 @@ export default function SearchResult({ query, fts = false }: { query: string; ft
 
     return (
       <Box sx={{ height: '100%', overflowY: 'auto' }}>
+        <NoteContextMenu state={noteContextMenu} onClose={() => setNoteContextMenu(null)} />
         <List>
           {ftsResults.map((r) => (
             <ListItem key={r.id} disablePadding>
-              <Link href={`/note?note_id=${r.id}`} prefetch={false}>
+              <Link
+                href={`/note?note_id=${r.id}`}
+                prefetch={false}
+                onContextMenu={(e) => handleContextMenu(e, r)}
+              >
                 <ListItemButton>
                   <ListItemIcon>
                     <DescriptionIcon />
@@ -144,10 +162,15 @@ export default function SearchResult({ query, fts = false }: { query: string; ft
 
   return (
     <Box sx={{ height: '100%', overflowY: 'auto' }}>
+      <NoteContextMenu state={noteContextMenu} onClose={() => setNoteContextMenu(null)} />
       <List>
         {results.map((r) => (
           <ListItem key={r.id} disablePadding>
-            <Link href={`/note?note_id=${r.id}`} prefetch={false}>
+            <Link
+              href={`/note?note_id=${r.id}`}
+              prefetch={false}
+              onContextMenu={(e) => handleContextMenu(e, r)}
+            >
               <ListItemButton>
                 <ListItemIcon>
                   <DescriptionIcon />
