@@ -1661,22 +1661,11 @@ export default function TinyMCEBody({
               attachAudioSettingsButtons(editor);
 
               // Mac は Meta キー、Windows/Linux は Ctrl キー + 右クリック時のみカスタムコンテキストメニューを表示する
-              // contextmenu イベントの ctrlKey は Linux 環境で false になるブラウザがあるため、
-              // 先に発火する mousedown で修飾キー状態を記録し、contextmenu では mousedown の値を優先する
-              iframeDoc.addEventListener(
-                'mousedown',
-                (e: MouseEvent) => {
-                  if (e.button === 2) {
-                    lastContextMenuModKey = isMac ? e.metaKey : e.ctrlKey;
-                  }
-                },
-                true
-              );
+              // capture フェーズで修飾キー状態を記録し、修飾キーなしなら TinyMCE のハンドラをスキップ
               iframeDoc.addEventListener(
                 'contextmenu',
                 (e: MouseEvent) => {
-                  // mousedown で記録済みの値を優先しつつ、イベント自体の値もフォールバックとして使用
-                  lastContextMenuModKey = lastContextMenuModKey || (isMac ? e.metaKey : e.ctrlKey);
+                  lastContextMenuModKey = isMac ? e.metaKey : e.ctrlKey;
                   if (!lastContextMenuModKey) {
                     e.stopImmediatePropagation();
                   }
