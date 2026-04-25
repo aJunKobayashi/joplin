@@ -98,7 +98,11 @@ export interface NoteTreeHandle {
   collapseAll: () => void;
 }
 
-const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
+interface NoteTreeProps {
+  ref?: React.Ref<NoteTreeHandle>;
+}
+
+function NoteTree({ ref }: NoteTreeProps) {
   const { folders, isLoading, error } = useFolderQuery();
 
   const searchParams = useSearchParams();
@@ -274,6 +278,6 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
       </SimpleTreeView>
     </Box>
   );
-});
+}
 
 export default NoteTree;
