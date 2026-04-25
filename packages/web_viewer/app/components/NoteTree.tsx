@@ -37,7 +37,9 @@ function renderTree(
               onContextMenu={(e: React.MouseEvent) => onContextMenu?.(e, node)}
             >
               <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
-              <span>{node.title}</span>
+              <span style={node.id === '__conflict__' ? { color: 'red' } : undefined}>
+                {node.title}
+              </span>
             </Box>
           }
         >
