@@ -16,12 +16,8 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
 import { TreeNode, useFolderQuery } from '@/lib/hooks';
+import { NoteContextMenu, NoteContextMenuState } from './NoteContextMenu';
 
 // fetch logic moved to `useFolderQuery` in `lib/hooks`
 function renderTree(
@@ -41,11 +37,15 @@ function renderTree(
               onContextMenu={(e: React.MouseEvent) => onContextMenu?.(e, node)}
             >
               <FolderIcon fontSize="small" sx={{ color: '#F3C13A' }} />
-              <span>{node.title}</span>
+              <span style={node.id === '__conflict__' ? { color: 'red' } : undefined}>
+                {node.title}
+              </span>
             </Box>
           }
         >
-          {node.children && node.children.length > 0 && renderTree(node.children, onNoteClick, onContextMenu)}
+          {node.children &&
+            node.children.length > 0 &&
+            renderTree(node.children, onNoteClick, onContextMenu)}
         </TreeItem>
       );
     }
@@ -100,7 +100,11 @@ export interface NoteTreeHandle {
   collapseAll: () => void;
 }
 
-const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
+interface NoteTreeProps {
+  ref?: React.Ref<NoteTreeHandle>;
+}
+
+function NoteTree({ ref }: NoteTreeProps) {
   const { folders, isLoading, error } = useFolderQuery();
 
   const searchParams = useSearchParams();
@@ -131,62 +135,56 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
     setIsClicked(true);
   }, []);
 
-  const [contextMenu, setContextMenu] = React.useState<{
+  const [noteContextMenu, setNoteContextMenu] = React.useState<NoteContextMenuState | null>(null);
+  const [folderContextMenu, setFolderContextMenu] = React.useState<{
     mouseX: number;
     mouseY: number;
     node: TreeNode;
   } | null>(null);
 
   const handleContextMenu = useCallback((event: React.MouseEvent, node: TreeNode) => {
-    if (!event.metaKey) return;
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    if (isMac ? !event.metaKey : !event.ctrlKey) return;
     event.preventDefault();
     event.stopPropagation();
-    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, node });
-  }, []);
-
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenu(null);
-  }, []);
-
-  const [viewFileDialog, setViewFileDialog] = React.useState<{ url: string; title: string } | null>(null);
-
-  const handleOpenHtml = useCallback(() => {
-    if (contextMenu?.node.type === 'Note') {
-      const url = `/api/note?id=${encodeURIComponent(contextMenu.node.id)}&format=html`;
-      window.open(url, '_blank');
-    }
-    setContextMenu(null);
-  }, [contextMenu]);
-
-  const handleViewAsFile = useCallback(async () => {
-    if (contextMenu?.node.type === 'Note') {
-      const noteTitle = contextMenu.node.title;
-      setContextMenu(null);
-      try {
-        const res = await fetch('/api/note/view-file', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ note_id: contextMenu.node.id }),
-        });
-        const json = await res.json();
-        if (json.success && json.url) {
-          setViewFileDialog({ url: json.url, title: noteTitle });
-        }
-      } catch {
-        // ignore
-      }
+    if (node.type === 'Note') {
+      setNoteContextMenu({
+        mouseX: event.clientX,
+        mouseY: event.clientY,
+        note: { id: node.id, title: node.title },
+      });
     } else {
-      setContextMenu(null);
+      setFolderContextMenu({ mouseX: event.clientX, mouseY: event.clientY, node });
     }
-  }, [contextMenu]);
+  }, []);
+
+  const handleFolderContextMenuClose = useCallback(() => {
+    setFolderContextMenu(null);
+  }, []);
+
+  const [rootContextMenu, setRootContextMenu] = React.useState<{
+    mouseX: number;
+    mouseY: number;
+  } | null>(null);
+
+  const handleRootContextMenu = useCallback((event: React.MouseEvent) => {
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    if (isMac ? !event.metaKey : !event.ctrlKey) return;
+    event.preventDefault();
+    setRootContextMenu({ mouseX: event.clientX, mouseY: event.clientY });
+  }, []);
+
+  const handleRootContextMenuClose = useCallback(() => {
+    setRootContextMenu(null);
+  }, []);
 
   const handleMergeNotes = useCallback(() => {
-    if (contextMenu?.node.type === 'Folder') {
-      const url = `/api/merge-notes?folder_id=${encodeURIComponent(contextMenu.node.id)}`;
+    if (folderContextMenu?.node.type === 'Folder') {
+      const url = `/api/merge-notes?folder_id=${encodeURIComponent(folderContextMenu.node.id)}`;
       window.open(url, '_blank');
     }
-    setContextMenu(null);
-  }, [contextMenu]);
+    setFolderContextMenu(null);
+  }, [folderContextMenu]);
 
   // URLクエリパラメータのnote_idに対応するノートへスクロール＆フォーカス
   React.useEffect(() => {
@@ -244,37 +242,29 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <NoteContextMenu state={noteContextMenu} onClose={() => setNoteContextMenu(null)} />
       <Menu
-        open={contextMenu !== null}
-        onClose={handleContextMenuClose}
+        open={folderContextMenu !== null}
+        onClose={handleFolderContextMenuClose}
         anchorReference="anchorPosition"
         anchorPosition={
-          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+          folderContextMenu !== null
+            ? { top: folderContextMenu.mouseY, left: folderContextMenu.mouseX }
+            : undefined
         }
       >
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleOpenHtml}>HTMLを開く</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Note' && (
-          <MenuItem onClick={handleViewAsFile}>fileスキームで見る</MenuItem>
-        )}
-        {contextMenu?.node.type === 'Folder' && (
-          <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
-        )}
+        <MenuItem onClick={handleMergeNotes}>マージノートを開く</MenuItem>
       </Menu>
-      <Dialog open={viewFileDialog !== null} onClose={() => setViewFileDialog(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>fileスキームで開く — {viewFileDialog?.title}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ wordBreak: 'break-all', mt: 1 }}>
-            <a href={viewFileDialog?.url ?? ''} target="_blank" rel="noopener noreferrer">
-              {viewFileDialog?.url}
-            </a>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewFileDialog(null)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+      <Menu
+        open={rootContextMenu !== null}
+        onClose={handleRootContextMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          rootContextMenu !== null
+            ? { top: rootContextMenu.mouseY, left: rootContextMenu.mouseX }
+            : undefined
+        }
+      ></Menu>
       <SimpleTreeView
         aria-label="folder tree"
         slots={{
@@ -284,11 +274,12 @@ const NoteTree = React.forwardRef<NoteTreeHandle>(function NoteTree(_, ref) {
         sx={{ flex: 1, overflowY: 'auto' }}
         expandedItems={expandedItems}
         onExpandedItemsChange={(_e, ids) => setExpandedItems(ids)}
+        onContextMenu={handleRootContextMenu}
       >
         {treeCompoent}
       </SimpleTreeView>
     </Box>
   );
-});
+}
 
 export default NoteTree;
