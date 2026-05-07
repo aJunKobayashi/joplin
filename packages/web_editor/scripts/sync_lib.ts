@@ -431,7 +431,19 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     await reg.scheduleSync(0);
     // Setting.autoSaveEnabled が false のため、setValue() による変更（delta カーソル等）が
     // DBに保存されない。明示的に saveAll() を呼んで永続化する。
+    // tsx のモジュール分離により Synchronizer が使う Setting インスタンスが別物になるため、
+    // require.cache 上の全 Setting インスタンスに対して saveAll() を呼ぶ。
     await Setting.saveAll();
+    for (const cacheKey of Object.keys(require.cache)) {
+      const cached = require.cache[cacheKey]?.exports?.default;
+      if (!cached || cached === Setting) continue;
+      if (typeof cached.saveAll !== 'function') continue;
+      try {
+        await cached.saveAll();
+      } catch (_) {
+        /* ignore */
+      }
+    }
   } catch (syncError: unknown) {
     const msg = syncError instanceof Error ? syncError.message : String(syncError);
     console.error(`[Sync Error] ${msg}`);
