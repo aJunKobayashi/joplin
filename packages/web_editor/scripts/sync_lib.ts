@@ -422,7 +422,8 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
   for (const cacheKey of Object.keys(require.cache)) {
     const cached = require.cache[cacheKey]?.exports?.default;
-    if (!cached || cached === BaseItem || typeof cached !== 'object') continue;
+    if (!cached || cached === BaseItem) continue;
+    if (typeof cached !== 'object' && typeof cached !== 'function') continue;
     if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
       try {
         cached.encryptionService_ = encService;
@@ -431,7 +432,23 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
       }
     }
   }
-  await encService.loadMasterKeysFromSettings();
+  // loadMasterKeysFromSettings() は内部で別インスタンスの Setting を参照するため
+  // secure 設定 (encryption.passwordCache) を読めない場合がある。
+  // sync_lib 側の Setting から直接パスワードキャッシュを取得してロードする。
+  const masterKeys = await MasterKey.all();
+  const passwords: Record<string, string> = Setting.value('encryption.passwordCache') || {};
+  const activeMasterKeyId: string = Setting.value('encryption.activeMasterKeyId') || '';
+  console.log(`Trying to load ${masterKeys.length} master key(s), passwordCache has ${Object.keys(passwords).length} entry(ies).`);
+  for (const mk of masterKeys) {
+    const pw = passwords[mk.id];
+    if (!pw) continue;
+    if (encService.isMasterKeyLoaded(mk.id)) continue;
+    try {
+      await encService.loadMasterKey_(mk, pw, activeMasterKeyId === mk.id);
+    } catch (e: any) {
+      console.warn(`Cannot load master key ${mk.id}: ${e.message}`);
+    }
+  }
   if (encService.loadedMasterKeysCount() > 0) {
     console.log(`Loaded ${encService.loadedMasterKeysCount()} master key(s). Encryption is ready.`);
   }
