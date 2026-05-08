@@ -639,21 +639,27 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   }
   console.log('Sync finished.');
 
-  // --- 10.5. FETCH_STATUS_IDLE のリソースファイルを実際にダウンロードする ---
-  // reg.scheduleSync() はメタデータのみ同期し、実ファイルは ResourceFetcher が担う。
-  console.log('Starting resource download...');
+  // --- 10.5. 復号 → リソース取得 → 再復号 の3段階処理 ---
+  // 暗号化が有効な場合、同期直後のメタデータは encryption_applied=1 のため
+  // ResourceFetcher が needToBeFetched() でリソースを検出できない。
+  // そこで:
+  //   (1) DecryptionWorker でメタデータを復号 (encryption_applied=0 にする)
+  //   (2) ResourceFetcher でリソース blob をダウンロード
+  //   (3) DecryptionWorker で blob を復号 (encryption_blob_encrypted=0 にする)
   const fileApiFunc = async () => reg.syncTarget(syncTargetId).fileApi();
   const fetcher: typeof ResourceFetcher = ResourceFetcher.instance();
   fetcher.setFileApi(fileApiFunc);
   fetcher.setLogger(globalLogger);
-  await fetcher.fetchAll();
-  await fetcher.waitForAllFinished();
-  console.log('Resource download finished.');
 
-  // --- 10.6. 暗号化アイテムがあれば自動で復号化する ---
-  // マスターキーはステップ 9.7 でロード済み。DecryptionWorker で復号を実行する。
-  if (encService.loadedMasterKeysCount() > 0) {
-    console.log(`Starting decryption...`);
+  const runDecryption = async (label: string) => {
+    if (encService.loadedMasterKeysCount() <= 0) {
+      const hasMasterKeys = (await MasterKey.count()) > 0;
+      if (hasMasterKeys) {
+        console.warn('Master key(s) found but no password available in encryption.passwordCache. Encrypted items will not be decrypted.');
+      }
+      return 0;
+    }
+    console.log(`Starting decryption (${label})...`);
     const decWorker = DecryptionWorker.instance();
     decWorker.setLogger(globalLogger);
     decWorker.setEncryptionService(encService);
@@ -666,16 +672,24 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     });
 
     if (decResult && decResult.error) {
-      console.warn(`DecryptionWorker finished with warning: ${decResult.error.message}`);
+      console.warn(`DecryptionWorker (${label}) finished with warning: ${decResult.error.message}`);
     } else {
-      console.log(`Decryption finished. Decrypted items: ${decResult?.decryptedItemCount ?? 0}`);
+      console.log(`Decryption (${label}) finished. Decrypted items: ${decResult?.decryptedItemCount ?? 0}`);
     }
-  } else {
-    const hasMasterKeys = (await MasterKey.count()) > 0;
-    if (hasMasterKeys) {
-      console.warn('Master key(s) found but no password available in encryption.passwordCache. Encrypted items will not be decrypted.');
-    }
-  }
+    return decResult?.decryptedItemCount ?? 0;
+  };
+
+  // (1) メタデータ復号: encryption_applied=1 → 0 にして ResourceFetcher が検出可能にする
+  await runDecryption('metadata');
+
+  // (2) リソース blob ダウンロード
+  console.log('Starting resource download...');
+  await fetcher.fetchAll();
+  await fetcher.waitForAllFinished();
+  console.log('Resource download finished.');
+
+  // (3) blob 復号: encryption_blob_encrypted=1 → 0 にしてファイルを利用可能にする
+  await runDecryption('blob');
 
   const totalFolders: number = await Folder.count();
   const totalNotes: number = await Note.count();
