@@ -445,6 +445,17 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     console.log(`[EncSetup] masterKey IDs: ${masterKeys.map((mk: any) => mk.id).join(', ')}`);
   }
 
+  // settings.json にパスワードキャッシュが指定されている場合は最優先で使用する。
+  // OS keychain へのアクセス（security コマンド等）を回避できるため、
+  // 複数 PC から同期する場合にダイアログが出ない利点がある。
+  if (Object.keys(passwords).length === 0 && masterKeys.length > 0) {
+    const jsonPasswords = earlySettingsJson['encryption.passwordCache'];
+    if (jsonPasswords && typeof jsonPasswords === 'object') {
+      passwords = jsonPasswords as Record<string, string>;
+      console.log(`Loaded encryption.passwordCache from settings.json`);
+    }
+  }
+
   // パスワードキャッシュが空の場合、keychain から別の appId で読み込みを試みる。
   // プロファイルが desktop で作成されている場合、appId が異なる可能性があるため。
   if (Object.keys(passwords).length === 0 && masterKeys.length > 0 && shim.keytar()) {
@@ -499,15 +510,6 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
         const msg = secErr.stderr ? secErr.stderr.toString().trim() : secErr.message;
         console.log(`[EncSetup] security command failed for ${appIdToTry}: ${msg}`);
       }
-    }
-  }
-
-  // settings.json にパスワードキャッシュが手動で指定されている場合のフォールバック
-  if (Object.keys(passwords).length === 0 && masterKeys.length > 0) {
-    const jsonPasswords = earlySettingsJson['encryption.passwordCache'];
-    if (jsonPasswords && typeof jsonPasswords === 'object') {
-      passwords = jsonPasswords as Record<string, string>;
-      console.log(`Loaded encryption.passwordCache from settings.json`);
     }
   }
 
