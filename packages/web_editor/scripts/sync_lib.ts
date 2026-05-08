@@ -519,16 +519,18 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
           if (Object.keys(filteredPasswords).length > 0) {
             passwords = filteredPasswords;
             console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry}), filtered to ${Object.keys(filteredPasswords).length} local key(s)`);
-            // settings.json に自動保存して次回以降 security コマンドを回避する
-            try {
-              const currentJson: Record<string, unknown> = fs.existsSync(settingsJsonPath)
-                ? fs.readJsonSync(settingsJsonPath)
-                : {};
-              currentJson['encryption.passwordCache'] = filteredPasswords;
-              fs.writeJsonSync(settingsJsonPath, currentJson, { spaces: '\t' });
-              console.log(`[EncSetup] Saved encryption.passwordCache to settings.json (${Object.keys(filteredPasswords).length} key(s))`);
-            } catch (saveErr: any) {
-              console.warn(`[EncSetup] Failed to save passwordCache to settings.json: ${saveErr.message}`);
+            // settings.json に自動保存して次回以降 security コマンドを回避する（macOS のみ）
+            if (process.platform === 'darwin') {
+              try {
+                const currentJson: Record<string, unknown> = fs.existsSync(settingsJsonPath)
+                  ? fs.readJsonSync(settingsJsonPath)
+                  : {};
+                currentJson['encryption.passwordCache'] = filteredPasswords;
+                fs.writeJsonSync(settingsJsonPath, currentJson, { spaces: '\t' });
+                console.log(`[EncSetup] Saved encryption.passwordCache to settings.json (${Object.keys(filteredPasswords).length} key(s))`);
+              } catch (saveErr: any) {
+                console.warn(`[EncSetup] Failed to save passwordCache to settings.json: ${saveErr.message}`);
+              }
             }
           }
           break;
