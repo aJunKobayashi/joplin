@@ -424,7 +424,7 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     const cached = require.cache[cacheKey]?.exports?.default;
     if (!cached || cached === BaseItem) continue;
     if (typeof cached !== 'object' && typeof cached !== 'function') continue;
-    if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
+    if ('encryptionService_' in cached) {
       try {
         cached.encryptionService_ = encService;
       } catch (_) {
@@ -438,6 +438,12 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   const masterKeys = await MasterKey.all();
   let passwords: Record<string, string> = Setting.value('encryption.passwordCache') || {};
   const activeMasterKeyId: string = Setting.value('encryption.activeMasterKeyId') || '';
+
+  console.log(`[EncSetup] masterKeys: ${masterKeys.length}, passwordCache keys: ${JSON.stringify(Object.keys(passwords))}, activeMasterKeyId: ${activeMasterKeyId || '(empty)'}`);
+  console.log(`[EncSetup] encryption.enabled: ${Setting.value('encryption.enabled')}, keytar available: ${!!shim.keytar()}`);
+  if (masterKeys.length > 0) {
+    console.log(`[EncSetup] masterKey IDs: ${masterKeys.map((mk: any) => mk.id).join(', ')}`);
+  }
 
   // パスワードキャッシュが空の場合、keychain から別の appId で読み込みを試みる。
   // プロファイルが desktop で作成されている場合、appId が異なる可能性があるため。
@@ -515,6 +521,51 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   let lastReport: Record<string, unknown> = {};
   const syncTargetId = Setting.value('sync.target');
   const syncInstance = await reg.syncTarget(syncTargetId).synchronizer();
+
+  // --- 9.8. synchronizer() が新たにモジュールをロードするため、EncryptionService と
+  // BaseItem の伝播をもう一度実行する。BaseSyncTarget.synchronizer() は内部で
+  // EncryptionService.instance() を呼ぶが、tsx モジュール分離により初期化済みの
+  // encService とは別のシングルトンが使われている可能性がある。---
+
+  // (a) EncryptionService のシングルトン (instance_) を全モジュールインスタンスに伝播
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === EncryptionService) continue;
+    if (typeof cached !== 'function') continue;
+    if (typeof cached.instance === 'function' && 'instance_' in cached && cached !== encService) {
+      // EncryptionService クラスかどうかを判定（instance_ 静的プロパティ + instance() メソッド +
+      // METHOD_SJCL 定数を持つ）
+      if ('METHOD_SJCL' in cached) {
+        try {
+          cached.instance_ = encService;
+          console.log(`[EncService] Propagated initialized EncryptionService singleton to module: ${cacheKey.split('/').slice(-3).join('/')}`);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+  }
+
+  // (b) BaseItem.encryptionService_ を全モジュールインスタンスに再伝播
+  //     （synchronizer() 呼び出しで新たにロードされた BaseItem にも適用）
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === BaseItem) continue;
+    if (typeof cached !== 'object' && typeof cached !== 'function') continue;
+    if ('encryptionService_' in cached) {
+      try {
+        cached.encryptionService_ = encService;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+
+  // (c) Synchronizer の encryptionService も明示的に上書き
+  syncInstance.setEncryptionService(encService);
+
+  console.log(`[EncService] activeMasterKeyId: ${encService.activeMasterKeyId_ || '(not set)'}, loadedKeys: ${encService.loadedMasterKeysCount()}`);
+
   const originalDispatch = syncInstance.dispatch;
   syncInstance.dispatch = (action: { type: string; report?: Record<string, unknown> }) => {
     if (action.type === 'SYNC_REPORT_UPDATE' && action.report) {
