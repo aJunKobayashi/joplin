@@ -682,7 +682,12 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   fetcher.setFileApi(fileApiFunc);
   fetcher.setLogger(globalLogger);
 
+  const encryptionEnabled = !!Setting.value('encryption.enabled');
+
   const runDecryption = async (label: string) => {
+    if (!encryptionEnabled) {
+      return 0;
+    }
     if (encService.loadedMasterKeysCount() <= 0) {
       const hasMasterKeys = (await MasterKey.count()) > 0;
       if (hasMasterKeys) {
