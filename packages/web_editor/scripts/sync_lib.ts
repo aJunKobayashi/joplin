@@ -502,8 +502,31 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
         const raw = execSync(cmd, { encoding: 'utf8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
         if (raw) {
           console.log(`[EncSetup] Raw keychain value (first 80 chars): ${raw.substring(0, 80)}`);
-          passwords = JSON.parse(raw);
-          console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry})`);
+          const allKeychainPasswords: Record<string, string> = JSON.parse(raw);
+          // 当該プロファイルのマスターキーに該当するパスワードのみ採用する。
+          // 他プロファイルのマスターキーのパスワードは含めない。
+          const localMasterKeyIds = new Set(masterKeys.map((mk: any) => mk.id));
+          const filteredPasswords: Record<string, string> = {};
+          for (const [mkId, pw] of Object.entries(allKeychainPasswords)) {
+            if (localMasterKeyIds.has(mkId)) {
+              filteredPasswords[mkId] = pw;
+            }
+          }
+          if (Object.keys(filteredPasswords).length > 0) {
+            passwords = filteredPasswords;
+            console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry}), filtered to ${Object.keys(filteredPasswords).length} local key(s)`);
+            // settings.json に自動保存して次回以降 security コマンドを回避する
+            try {
+              const currentJson: Record<string, unknown> = fs.existsSync(settingsJsonPath)
+                ? fs.readJsonSync(settingsJsonPath)
+                : {};
+              currentJson['encryption.passwordCache'] = filteredPasswords;
+              fs.writeJsonSync(settingsJsonPath, currentJson, { spaces: '\t' });
+              console.log(`[EncSetup] Saved encryption.passwordCache to settings.json (${Object.keys(filteredPasswords).length} key(s))`);
+            } catch (saveErr: any) {
+              console.warn(`[EncSetup] Failed to save passwordCache to settings.json: ${saveErr.message}`);
+            }
+          }
           break;
         }
       } catch (secErr: any) {
