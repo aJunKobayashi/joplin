@@ -413,6 +413,29 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     );
   }
 
+  // --- 9.7. EncryptionService の初期化（sync 前に必要）---
+  // serializeForSync() が暗号化を行うには BaseItem.encryptionService_ が必要。
+  // また Synchronizer.start() 内部でも encryptionService() が参照される。
+  const encService = EncryptionService.instance();
+  encService.setLogger(globalLogger);
+  BaseItem.encryptionService_ = encService;
+  // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === BaseItem) continue;
+    if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
+      try {
+        cached.encryptionService_ = encService;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+  await encService.loadMasterKeysFromSettings();
+  if (encService.loadedMasterKeysCount() > 0) {
+    console.log(`Loaded ${encService.loadedMasterKeysCount()} master key(s). Encryption is ready.`);
+  }
+
   // --- 10. 同期実行（Sidebar の「同期」ボタンと同じコードパス）---
   console.log('Starting OneDrive sync...');
 
@@ -473,28 +496,9 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   console.log('Resource download finished.');
 
   // --- 10.6. 暗号化アイテムがあれば自動で復号化する ---
-  // EncryptionService にマスターキーをロードし、DecryptionWorker で復号を実行する。
-  // パスワードは Joplin Desktop が encryption.passwordCache に保存済みであることが前提。
-  const encService = EncryptionService.instance();
-  encService.setLogger(globalLogger);
-  BaseItem.encryptionService_ = encService;
-  // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
-  for (const cacheKey of Object.keys(require.cache)) {
-    const cached = require.cache[cacheKey]?.exports?.default;
-    if (!cached || cached === BaseItem) continue;
-    if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
-      try {
-        cached.encryptionService_ = encService;
-      } catch (_) {
-        /* ignore */
-      }
-    }
-  }
-
-  await encService.loadMasterKeysFromSettings();
-
+  // マスターキーはステップ 9.7 でロード済み。DecryptionWorker で復号を実行する。
   if (encService.loadedMasterKeysCount() > 0) {
-    console.log(`Loaded ${encService.loadedMasterKeysCount()} master key(s). Starting decryption...`);
+    console.log(`Starting decryption...`);
     const decWorker = DecryptionWorker.instance();
     decWorker.setLogger(globalLogger);
     decWorker.setEncryptionService(encService);
