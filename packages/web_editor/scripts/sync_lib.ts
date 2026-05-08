@@ -482,20 +482,21 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     ];
     console.log(`[EncSetup] keytar unavailable, trying macOS security command (clientId: ${clientId})`);
     for (const appIdToTry of appIdsToTry) {
+      const serviceName = `${appIdToTry}.setting.encryption.passwordCache`;
+      const accountName = `${clientId}@joplin`;
       try {
-        const serviceName = `${appIdToTry}.setting.encryption.passwordCache`;
-        const accountName = `${clientId}@joplin`;
-        const raw = execSync(
-          `security find-generic-password -s ${JSON.stringify(serviceName)} -a ${JSON.stringify(accountName)} -w`,
-          { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
-        ).trim();
+        const cmd = `security find-generic-password -s ${JSON.stringify(serviceName)} -a ${JSON.stringify(accountName)} -w`;
+        console.log(`[EncSetup] Trying: ${cmd}`);
+        const raw = execSync(cmd, { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
         if (raw) {
+          console.log(`[EncSetup] Raw keychain value (first 80 chars): ${raw.substring(0, 80)}`);
           passwords = JSON.parse(raw);
           console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry})`);
           break;
         }
-      } catch (_) {
-        /* not found with this appId, try next */
+      } catch (secErr: any) {
+        const msg = secErr.stderr ? secErr.stderr.toString().trim() : secErr.message;
+        console.log(`[EncSetup] security command failed for ${appIdToTry}: ${msg}`);
       }
     }
   }
