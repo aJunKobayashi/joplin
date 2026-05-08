@@ -422,7 +422,7 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
   for (const cacheKey of Object.keys(require.cache)) {
     const cached = require.cache[cacheKey]?.exports?.default;
-    if (!cached || cached === BaseItem) continue;
+    if (!cached || cached === BaseItem || typeof cached !== 'object') continue;
     if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
       try {
         cached.encryptionService_ = encService;
