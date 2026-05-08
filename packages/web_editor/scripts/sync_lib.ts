@@ -26,6 +26,7 @@ const NoteTag = require('@joplin/lib/models/NoteTag').default;
 const MasterKey = require('@joplin/lib/models/MasterKey').default;
 const Revision = require('@joplin/lib/models/Revision').default;
 const EncryptionService = require('@joplin/lib/services/EncryptionService').default;
+const DecryptionWorker = require('@joplin/lib/services/DecryptionWorker').default;
 const RevisionService = require('@joplin/lib/services/RevisionService').default;
 const { FileApiDriverLocal } = require('@joplin/lib/file-api-driver-local.js');
 const FsDriverNode = require('@joplin/lib/fs-driver-node').default;
@@ -470,6 +471,52 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   await fetcher.fetchAll();
   await fetcher.waitForAllFinished();
   console.log('Resource download finished.');
+
+  // --- 10.6. 暗号化アイテムがあれば自動で復号化する ---
+  // EncryptionService にマスターキーをロードし、DecryptionWorker で復号を実行する。
+  // パスワードは Joplin Desktop が encryption.passwordCache に保存済みであることが前提。
+  const encService = EncryptionService.instance();
+  encService.setLogger(globalLogger);
+  BaseItem.encryptionService_ = encService;
+  // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === BaseItem) continue;
+    if ('encryptionService_' in cached && typeof cached.encryptionService_ !== 'undefined') {
+      try {
+        cached.encryptionService_ = encService;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+
+  await encService.loadMasterKeysFromSettings();
+
+  if (encService.loadedMasterKeysCount() > 0) {
+    console.log(`Loaded ${encService.loadedMasterKeysCount()} master key(s). Starting decryption...`);
+    const decWorker = DecryptionWorker.instance();
+    decWorker.setLogger(globalLogger);
+    decWorker.setEncryptionService(encService);
+    decWorker.setKvStore(KvStore.instance());
+    decWorker.dispatch = () => {};
+
+    const decResult = await decWorker.start_({
+      masterKeyNotLoadedHandler: 'dispatch',
+      errorHandler: 'log',
+    });
+
+    if (decResult && decResult.error) {
+      console.warn(`DecryptionWorker finished with warning: ${decResult.error.message}`);
+    } else {
+      console.log(`Decryption finished. Decrypted items: ${decResult?.decryptedItemCount ?? 0}`);
+    }
+  } else {
+    const hasMasterKeys = (await MasterKey.count()) > 0;
+    if (hasMasterKeys) {
+      console.warn('Master key(s) found but no password available in encryption.passwordCache. Encrypted items will not be decrypted.');
+    }
+  }
 
   const totalFolders: number = await Folder.count();
   const totalNotes: number = await Note.count();
