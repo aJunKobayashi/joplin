@@ -470,6 +470,36 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     }
   }
 
+  // keytar が利用できない場合（tsx/Node.js 環境）、macOS では security コマンドで
+  // Keychain から直接パスワードキャッシュを読み込む。
+  if (Object.keys(passwords).length === 0 && masterKeys.length > 0 && !shim.keytar() && process.platform === 'darwin') {
+    const { execSync } = require('child_process');
+    const appIdsToTry = [
+      'net.cozic.joplin-desktop',
+      'net.cozic.joplindev-desktop',
+      'net.cozic.joplin-cli',
+      'net.cozic.joplindev-cli',
+    ];
+    console.log(`[EncSetup] keytar unavailable, trying macOS security command (clientId: ${clientId})`);
+    for (const appIdToTry of appIdsToTry) {
+      try {
+        const serviceName = `${appIdToTry}.setting.encryption.passwordCache`;
+        const accountName = `${clientId}@joplin`;
+        const raw = execSync(
+          `security find-generic-password -s ${JSON.stringify(serviceName)} -a ${JSON.stringify(accountName)} -w`,
+          { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+        ).trim();
+        if (raw) {
+          passwords = JSON.parse(raw);
+          console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry})`);
+          break;
+        }
+      } catch (_) {
+        /* not found with this appId, try next */
+      }
+    }
+  }
+
   // settings.json にパスワードキャッシュが手動で指定されている場合のフォールバック
   if (Object.keys(passwords).length === 0 && masterKeys.length > 0) {
     const jsonPasswords = earlySettingsJson['encryption.passwordCache'];
