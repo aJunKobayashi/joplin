@@ -26,6 +26,7 @@ const NoteTag = require('@joplin/lib/models/NoteTag').default;
 const MasterKey = require('@joplin/lib/models/MasterKey').default;
 const Revision = require('@joplin/lib/models/Revision').default;
 const EncryptionService = require('@joplin/lib/services/EncryptionService').default;
+const DecryptionWorker = require('@joplin/lib/services/DecryptionWorker').default;
 const RevisionService = require('@joplin/lib/services/RevisionService').default;
 const { FileApiDriverLocal } = require('@joplin/lib/file-api-driver-local.js');
 const FsDriverNode = require('@joplin/lib/fs-driver-node').default;
@@ -96,6 +97,10 @@ function reportToStats(
  * @param profileDir Joplin プロファイルの絶対パス（例: ~/.config/joplin-desktop）
  */
 export async function runSync(profileDir: string): Promise<SyncStats> {
+  // MCP stdio モードでは stdout が JSON-RPC プロトコル専用のため、
+  // console.log を console.error にリダイレクトして stderr へ出力する。
+  console.log = console.error;
+
   // --- 1. FsDriver のセットアップ（shimInit より前に必要）---
   const fsDriver = new FsDriverNode();
   Logger.fsDriver_ = fsDriver;
@@ -126,7 +131,7 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
 
   // 後で全モジュールインスタンスへ伝播するためマップとして保持する
   const settingConstants: Record<string, string> = {
-    appId: 'net.cozic.joplin-cli',
+    appId: 'net.cozic.joplin-desktop',
     appType: 'cli',
     // env: typeof earlySettingsJson['env'] === 'string' ? earlySettingsJson['env'] : 'prod',
     env: 'dev',
@@ -412,6 +417,166 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
     );
   }
 
+  // --- 9.7. EncryptionService の初期化（sync 前に必要）---
+  // serializeForSync() が暗号化を行うには BaseItem.encryptionService_ が必要。
+  // また Synchronizer.start() 内部でも encryptionService() が参照される。
+  const encService = EncryptionService.instance();
+  encService.setLogger(globalLogger);
+  BaseItem.encryptionService_ = encService;
+  // tsx のモジュール分離により別インスタンスの BaseItem にも伝播
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === BaseItem) continue;
+    if (typeof cached !== 'object' && typeof cached !== 'function') continue;
+    if ('encryptionService_' in cached) {
+      try {
+        cached.encryptionService_ = encService;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+  // loadMasterKeysFromSettings() は内部で別インスタンスの Setting を参照するため
+  // secure 設定 (encryption.passwordCache) を読めない場合がある。
+  // sync_lib 側の Setting から直接パスワードキャッシュを取得してロードする。
+  const masterKeys = await MasterKey.all();
+  let passwords: Record<string, string> = Setting.value('encryption.passwordCache') || {};
+  const activeMasterKeyId: string = Setting.value('encryption.activeMasterKeyId') || '';
+
+  console.log(`[EncSetup] masterKeys: ${masterKeys.length}, passwordCache keys: ${JSON.stringify(Object.keys(passwords))}, activeMasterKeyId: ${activeMasterKeyId || '(empty)'}`);
+  console.log(`[EncSetup] encryption.enabled: ${Setting.value('encryption.enabled')}, keytar available: ${!!shim.keytar()}`);
+  if (masterKeys.length > 0) {
+    console.log(`[EncSetup] masterKey IDs: ${masterKeys.map((mk: any) => mk.id).join(', ')}`);
+  }
+
+  // settings.json にパスワードキャッシュが指定されている場合は最優先で使用する。
+  // OS keychain へのアクセス（security コマンド等）を回避できるため、
+  // 複数 PC から同期する場合にダイアログが出ない利点がある。
+  if (Object.keys(passwords).length === 0 && masterKeys.length > 0) {
+    const jsonPasswords = earlySettingsJson['encryption.passwordCache'];
+    if (jsonPasswords && typeof jsonPasswords === 'object') {
+      passwords = jsonPasswords as Record<string, string>;
+      console.log(`Loaded encryption.passwordCache from settings.json`);
+    }
+  }
+
+  // パスワードキャッシュが空の場合、keychain から別の appId で読み込みを試みる。
+  // プロファイルが desktop で作成されている場合、appId が異なる可能性があるため。
+  if (Object.keys(passwords).length === 0 && masterKeys.length > 0 && shim.keytar()) {
+    const fallbackAppIds = [
+      'net.cozic.joplindev-desktop',
+      'net.cozic.joplin-cli',
+      'net.cozic.joplindev-cli',
+    ];
+    for (const fallbackAppId of fallbackAppIds) {
+      try {
+        const raw = await shim.keytar().getPassword(
+          `${fallbackAppId}.setting.encryption.passwordCache`,
+          `${clientId}@joplin`
+        );
+        if (raw) {
+          passwords = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          console.log(`Loaded encryption.passwordCache from keychain (appId: ${fallbackAppId})`);
+          break;
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+
+  // keytar が利用できない場合（tsx/Node.js 環境）、macOS では security コマンドで
+  // Keychain から直接パスワードキャッシュを読み込む。
+  if (Object.keys(passwords).length === 0 && masterKeys.length > 0 && !shim.keytar() && process.platform === 'darwin') {
+    const { execSync } = require('child_process');
+    const appIdsToTry = [
+      'net.cozic.joplin-desktop',
+      'net.cozic.joplindev-desktop',
+      'net.cozic.joplin-cli',
+      'net.cozic.joplindev-cli',
+    ];
+    console.log(`[EncSetup] keytar unavailable, trying macOS security command (clientId: ${clientId})`);
+    console.log(`[EncSetup] *** macOS Keychain のアクセス許可ダイアログが表示された場合は「常に許可」をクリックしてください ***`);
+    for (const appIdToTry of appIdsToTry) {
+      const serviceName = `${appIdToTry}.setting.encryption.passwordCache`;
+      const accountName = `${clientId}@joplin`;
+      try {
+        const cmd = `security find-generic-password -s ${JSON.stringify(serviceName)} -a ${JSON.stringify(accountName)} -w`;
+        console.log(`[EncSetup] Trying: ${cmd}`);
+        const raw = execSync(cmd, { encoding: 'utf8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        if (raw) {
+          console.log(`[EncSetup] Raw keychain value (first 80 chars): ${raw.substring(0, 80)}`);
+          const allKeychainPasswords: Record<string, string> = JSON.parse(raw);
+          // 当該プロファイルのマスターキーに該当するパスワードのみ採用する。
+          // 他プロファイルのマスターキーのパスワードは含めない。
+          const localMasterKeyIds = new Set(masterKeys.map((mk: any) => mk.id));
+          const filteredPasswords: Record<string, string> = {};
+          for (const [mkId, pw] of Object.entries(allKeychainPasswords)) {
+            if (localMasterKeyIds.has(mkId)) {
+              filteredPasswords[mkId] = pw;
+            }
+          }
+          if (Object.keys(filteredPasswords).length > 0) {
+            passwords = filteredPasswords;
+            console.log(`Loaded encryption.passwordCache from macOS Keychain via security command (appId: ${appIdToTry}), filtered to ${Object.keys(filteredPasswords).length} local key(s)`);
+            // settings.json に自動保存して次回以降 security コマンドを回避する（macOS のみ）
+            if (process.platform === 'darwin') {
+              try {
+                const currentJson: Record<string, unknown> = fs.existsSync(settingsJsonPath)
+                  ? fs.readJsonSync(settingsJsonPath)
+                  : {};
+                currentJson['encryption.passwordCache'] = filteredPasswords;
+                fs.writeJsonSync(settingsJsonPath, currentJson, { spaces: '\t' });
+                console.log(`[EncSetup] Saved encryption.passwordCache to settings.json (${Object.keys(filteredPasswords).length} key(s))`);
+              } catch (saveErr: any) {
+                console.warn(`[EncSetup] Failed to save passwordCache to settings.json: ${saveErr.message}`);
+              }
+            }
+          }
+          break;
+        }
+      } catch (secErr: any) {
+        const msg = secErr.stderr ? secErr.stderr.toString().trim() : secErr.message;
+        console.log(`[EncSetup] security command failed for ${appIdToTry}: ${msg}`);
+      }
+    }
+  }
+
+  console.log(`Trying to load ${masterKeys.length} master key(s), passwordCache has ${Object.keys(passwords).length} entry(ies).`);
+  for (const mk of masterKeys) {
+    const pw = passwords[mk.id];
+    if (!pw) continue;
+    if (encService.isMasterKeyLoaded(mk.id)) continue;
+    try {
+      await encService.loadMasterKey_(mk, pw, activeMasterKeyId === mk.id);
+    } catch (e: any) {
+      console.warn(`Cannot load master key ${mk.id}: ${e.message}`);
+    }
+  }
+
+  // activeMasterKeyId が Setting に設定されていないが、マスターキーがロードされた場合は
+  // 最初にロードされたキーをアクティブにする。
+  if (encService.loadedMasterKeysCount() > 0) {
+    let hasActiveKey = false;
+    try {
+      encService.activeMasterKeyId();
+      hasActiveKey = true;
+    } catch (_) {
+      // activeMasterKeyId_ が未設定
+    }
+    if (!hasActiveKey) {
+      const firstLoadedId = masterKeys.find((mk: any) => encService.isMasterKeyLoaded(mk.id))?.id;
+      if (firstLoadedId) {
+        encService.setActiveMasterKeyId(firstLoadedId);
+        console.log(`Set active master key to: ${firstLoadedId}`);
+      }
+    }
+  }
+
+  if (encService.loadedMasterKeysCount() > 0) {
+    console.log(`Loaded ${encService.loadedMasterKeysCount()} master key(s). Encryption is ready.`);
+  }
+
   // --- 10. 同期実行（Sidebar の「同期」ボタンと同じコードパス）---
   console.log('Starting OneDrive sync...');
 
@@ -419,6 +584,51 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   let lastReport: Record<string, unknown> = {};
   const syncTargetId = Setting.value('sync.target');
   const syncInstance = await reg.syncTarget(syncTargetId).synchronizer();
+
+  // --- 9.8. synchronizer() が新たにモジュールをロードするため、EncryptionService と
+  // BaseItem の伝播をもう一度実行する。BaseSyncTarget.synchronizer() は内部で
+  // EncryptionService.instance() を呼ぶが、tsx モジュール分離により初期化済みの
+  // encService とは別のシングルトンが使われている可能性がある。---
+
+  // (a) EncryptionService のシングルトン (instance_) を全モジュールインスタンスに伝播
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === EncryptionService) continue;
+    if (typeof cached !== 'function') continue;
+    if (typeof cached.instance === 'function' && 'instance_' in cached && cached !== encService) {
+      // EncryptionService クラスかどうかを判定（instance_ 静的プロパティ + instance() メソッド +
+      // METHOD_SJCL 定数を持つ）
+      if ('METHOD_SJCL' in cached) {
+        try {
+          cached.instance_ = encService;
+          console.log(`[EncService] Propagated initialized EncryptionService singleton to module: ${cacheKey.split('/').slice(-3).join('/')}`);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+  }
+
+  // (b) BaseItem.encryptionService_ を全モジュールインスタンスに再伝播
+  //     （synchronizer() 呼び出しで新たにロードされた BaseItem にも適用）
+  for (const cacheKey of Object.keys(require.cache)) {
+    const cached = require.cache[cacheKey]?.exports?.default;
+    if (!cached || cached === BaseItem) continue;
+    if (typeof cached !== 'object' && typeof cached !== 'function') continue;
+    if ('encryptionService_' in cached) {
+      try {
+        cached.encryptionService_ = encService;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+
+  // (c) Synchronizer の encryptionService も明示的に上書き
+  syncInstance.setEncryptionService(encService);
+
+  console.log(`[EncService] activeMasterKeyId: ${encService.activeMasterKeyId_ || '(not set)'}, loadedKeys: ${encService.loadedMasterKeysCount()}`);
+
   const originalDispatch = syncInstance.dispatch;
   syncInstance.dispatch = (action: { type: string; report?: Record<string, unknown> }) => {
     if (action.type === 'SYNC_REPORT_UPDATE' && action.report) {
@@ -460,16 +670,62 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   }
   console.log('Sync finished.');
 
-  // --- 10.5. FETCH_STATUS_IDLE のリソースファイルを実際にダウンロードする ---
-  // reg.scheduleSync() はメタデータのみ同期し、実ファイルは ResourceFetcher が担う。
-  console.log('Starting resource download...');
+  // --- 10.5. 復号 → リソース取得 → 再復号 の3段階処理 ---
+  // 暗号化が有効な場合、同期直後のメタデータは encryption_applied=1 のため
+  // ResourceFetcher が needToBeFetched() でリソースを検出できない。
+  // そこで:
+  //   (1) DecryptionWorker でメタデータを復号 (encryption_applied=0 にする)
+  //   (2) ResourceFetcher でリソース blob をダウンロード
+  //   (3) DecryptionWorker で blob を復号 (encryption_blob_encrypted=0 にする)
   const fileApiFunc = async () => reg.syncTarget(syncTargetId).fileApi();
   const fetcher: typeof ResourceFetcher = ResourceFetcher.instance();
   fetcher.setFileApi(fileApiFunc);
   fetcher.setLogger(globalLogger);
+
+  const encryptionEnabled = !!Setting.value('encryption.enabled');
+
+  const runDecryption = async (label: string) => {
+    if (!encryptionEnabled) {
+      return 0;
+    }
+    if (encService.loadedMasterKeysCount() <= 0) {
+      const hasMasterKeys = (await MasterKey.count()) > 0;
+      if (hasMasterKeys) {
+        console.warn('Master key(s) found but no password available in encryption.passwordCache. Encrypted items will not be decrypted.');
+      }
+      return 0;
+    }
+    console.log(`Starting decryption (${label})...`);
+    const decWorker = DecryptionWorker.instance();
+    decWorker.setLogger(globalLogger);
+    decWorker.setEncryptionService(encService);
+    decWorker.setKvStore(KvStore.instance());
+    decWorker.dispatch = () => {};
+
+    const decResult = await decWorker.start_({
+      masterKeyNotLoadedHandler: 'dispatch',
+      errorHandler: 'log',
+    });
+
+    if (decResult && decResult.error) {
+      console.warn(`DecryptionWorker (${label}) finished with warning: ${decResult.error.message}`);
+    } else {
+      console.log(`Decryption (${label}) finished. Decrypted items: ${decResult?.decryptedItemCount ?? 0}`);
+    }
+    return decResult?.decryptedItemCount ?? 0;
+  };
+
+  // (1) メタデータ復号: encryption_applied=1 → 0 にして ResourceFetcher が検出可能にする
+  await runDecryption('metadata');
+
+  // (2) リソース blob ダウンロード
+  console.log('Starting resource download...');
   await fetcher.fetchAll();
   await fetcher.waitForAllFinished();
   console.log('Resource download finished.');
+
+  // (3) blob 復号: encryption_blob_encrypted=1 → 0 にしてファイルを利用可能にする
+  await runDecryption('blob');
 
   const totalFolders: number = await Folder.count();
   const totalNotes: number = await Note.count();
