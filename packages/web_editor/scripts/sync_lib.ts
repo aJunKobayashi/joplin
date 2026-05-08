@@ -97,6 +97,10 @@ function reportToStats(
  * @param profileDir Joplin プロファイルの絶対パス（例: ~/.config/joplin-desktop）
  */
 export async function runSync(profileDir: string): Promise<SyncStats> {
+  // MCP stdio モードでは stdout が JSON-RPC プロトコル専用のため、
+  // console.log を console.error にリダイレクトして stderr へ出力する。
+  console.log = console.error;
+
   // --- 1. FsDriver のセットアップ（shimInit より前に必要）---
   const fsDriver = new FsDriverNode();
   Logger.fsDriver_ = fsDriver;
