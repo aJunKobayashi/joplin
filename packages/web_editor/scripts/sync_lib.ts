@@ -481,13 +481,14 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
       'net.cozic.joplindev-cli',
     ];
     console.log(`[EncSetup] keytar unavailable, trying macOS security command (clientId: ${clientId})`);
+    console.log(`[EncSetup] *** macOS Keychain のアクセス許可ダイアログが表示された場合は「常に許可」をクリックしてください ***`);
     for (const appIdToTry of appIdsToTry) {
       const serviceName = `${appIdToTry}.setting.encryption.passwordCache`;
       const accountName = `${clientId}@joplin`;
       try {
         const cmd = `security find-generic-password -s ${JSON.stringify(serviceName)} -a ${JSON.stringify(accountName)} -w`;
         console.log(`[EncSetup] Trying: ${cmd}`);
-        const raw = execSync(cmd, { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        const raw = execSync(cmd, { encoding: 'utf8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
         if (raw) {
           console.log(`[EncSetup] Raw keychain value (first 80 chars): ${raw.substring(0, 80)}`);
           passwords = JSON.parse(raw);
