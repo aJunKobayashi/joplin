@@ -241,6 +241,12 @@ export async function runSync(profileDir: string): Promise<SyncStats> {
   }
   shimInit(sharp, keytar, null, () => '0.0.1');
 
+  // tsx は @joplin/lib/shim を shim.ts (TS インスタンス) として解決するが、
+  // shimInit は shim.js (JS インスタンス) をパッチする。モジュールインスタンスが
+  // 異なるため、TS 側の shim.keytar() がまだ "Not implemented" のままになる。
+  // shimInit 後に明示的に TS インスタンスも同じ keytar でパッチする。
+  (shim as any).keytar = () => keytar;
+
   // --- 8. データベースを開く ---
   const dbPath = path.join(profileDir, 'database.sqlite');
   console.log(`Opening database: ${dbPath}`);
