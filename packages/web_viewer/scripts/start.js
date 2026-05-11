@@ -75,7 +75,7 @@ async function main() {
 
   // Next.js を起動
   const command = 'next';
-  const commandArgs = ['start', '-p', port.toString(), ...nextArgs];
+  const commandArgs = ['start', '-p', port.toString(), '-H', '127.0.0.1', ...nextArgs];
 
   const child = spawn(command, commandArgs, {
     stdio: 'inherit',
