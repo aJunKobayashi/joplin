@@ -2197,24 +2197,52 @@ export default function TinyMCEBody({
           });
 
           // ---------- ショートカットキー ----------
-          editor.addShortcut('meta+shift+b', 'Insert pre element', function () {
-            console.log('meta+shift+b ==> commandline');
-            insertCommandPre(editor);
-          });
-          editor.addShortcut('ctrl+w', 'White', 'text_color_command_w');
-          editor.addShortcut('meta+shift+r', 'Red', 'text_color_command_r');
-          editor.addShortcut('meta+shift+g', 'Green', 'text_color_command_g');
-          editor.addShortcut('meta+shift+l', 'Blue', 'text_color_command_b');
-          editor.addShortcut('meta+shift+h', 'Dark', 'text_color_command_h');
-          editor.addShortcut('meta+shift+e', 'Size 8pt', 'text_size_command_8');
-          editor.addShortcut('meta+shift+j', 'Size 10pt', 'text_size_command_10');
-          editor.addShortcut('meta+1', 'H1', 'change_to_h1');
-          editor.addShortcut('meta+2', 'H2', 'change_to_h2');
-          editor.addShortcut('meta+3', 'H3', 'change_to_h3');
-          editor.addShortcut('meta+shift+u', '箇条書き', 'change_to_ul');
-          editor.addShortcut('meta+shift+o', '番号付き箇条書き', 'change_to_ol');
-          editor.addShortcut('meta+s', '保存', () => handleSaveRef.current(editor));
-          // editor.addShortcut('ctrl+s', '保存', () => handleSaveRef.current(editor));
+          // Mac と Linux/Windows でブラウザデフォルトとの衝突を避けるためプラットフォーム別に登録する。
+          // Linux では meta = Ctrl となり以下が衝突する:
+          //   Ctrl+W(タブ閉じ), Ctrl+Shift+B(ブックマークバー), Ctrl+Shift+R(ハードリロード),
+          //   Ctrl+Shift+H(履歴), Ctrl+Shift+J(DevTools), Ctrl+1-3(タブ切替),
+          //   Ctrl+Shift+O(ブックマーク), Ctrl+Shift+U(Unicode入力)
+          // → Linux では Alt+Shift+<key> / Ctrl+Shift+<num> に変更する。
+          if (isMac) {
+            editor.addShortcut('meta+shift+b', 'Insert pre element', function () {
+              console.log('meta+shift+b ==> commandline');
+              insertCommandPre(editor);
+            });
+            editor.addShortcut('ctrl+w', 'White', 'text_color_command_w');
+            editor.addShortcut('meta+shift+r', 'Red', 'text_color_command_r');
+            editor.addShortcut('meta+shift+g', 'Green', 'text_color_command_g');
+            editor.addShortcut('meta+shift+l', 'Blue', 'text_color_command_b');
+            editor.addShortcut('meta+shift+h', 'Dark', 'text_color_command_h');
+            editor.addShortcut('meta+shift+e', 'Size 8pt', 'text_size_command_8');
+            editor.addShortcut('meta+shift+j', 'Size 10pt', 'text_size_command_10');
+            editor.addShortcut('meta+1', 'H1', 'change_to_h1');
+            editor.addShortcut('meta+2', 'H2', 'change_to_h2');
+            editor.addShortcut('meta+3', 'H3', 'change_to_h3');
+            editor.addShortcut('meta+shift+u', '箇条書き', 'change_to_ul');
+            editor.addShortcut('meta+shift+o', '番号付き箇条書き', 'change_to_ol');
+            editor.addShortcut('meta+s', '保存', () => handleSaveRef.current(editor));
+          } else {
+            // Linux / Windows
+            editor.addShortcut('alt+shift+b', 'Insert pre element', function () {
+              console.log('alt+shift+b ==> commandline');
+              insertCommandPre(editor);
+            });
+            editor.addShortcut('alt+shift+w', 'White', 'text_color_command_w');
+            editor.addShortcut('alt+shift+r', 'Red', 'text_color_command_r');
+            editor.addShortcut('alt+shift+g', 'Green', 'text_color_command_g');
+            editor.addShortcut('alt+shift+l', 'Blue', 'text_color_command_b');
+            editor.addShortcut('alt+shift+h', 'Dark', 'text_color_command_h');
+            editor.addShortcut('alt+shift+e', 'Size 8pt', 'text_size_command_8');
+            editor.addShortcut('alt+shift+j', 'Size 10pt', 'text_size_command_10');
+            // Ctrl+1-3 はタブ切替に衝突するため Ctrl+Shift+1-3 を使用する
+            editor.addShortcut('ctrl+shift+1', 'H1', 'change_to_h1');
+            editor.addShortcut('ctrl+shift+2', 'H2', 'change_to_h2');
+            editor.addShortcut('ctrl+shift+3', 'H3', 'change_to_h3');
+            // Ctrl+Shift+U は GTK の Unicode 入力に衝突するため Alt+Shift+U を使用する
+            editor.addShortcut('alt+shift+u', '箇条書き', 'change_to_ul');
+            editor.addShortcut('alt+shift+o', '番号付き箇条書き', 'change_to_ol');
+            editor.addShortcut('ctrl+s', '保存', () => handleSaveRef.current(editor));
+          }
 
           // ---------- 変更時に目次を自動更新するコールバック (execOnChangeEvent に相当) ----------
           setupTocAutoUpdate(editor);
