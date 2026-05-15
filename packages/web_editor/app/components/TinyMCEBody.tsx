@@ -2234,10 +2234,10 @@ export default function TinyMCEBody({
             editor.addShortcut('alt+shift+h', 'Dark', 'text_color_command_h');
             editor.addShortcut('alt+shift+e', 'Size 8pt', 'text_size_command_8');
             editor.addShortcut('alt+shift+j', 'Size 10pt', 'text_size_command_10');
-            // Ctrl+1-3 はタブ切替に衝突するため Ctrl+Shift+1-3 を使用する
-            editor.addShortcut('ctrl+shift+1', 'H1', 'change_to_h1');
-            editor.addShortcut('ctrl+shift+2', 'H2', 'change_to_h2');
-            editor.addShortcut('ctrl+shift+3', 'H3', 'change_to_h3');
+            // Ctrl+1-3 はタブ切替に衝突するため Alt+Shift+1-3 を使用する
+            editor.addShortcut('alt+shift+1', 'H1', 'change_to_h1');
+            editor.addShortcut('alt+shift+2', 'H2', 'change_to_h2');
+            editor.addShortcut('alt+shift+3', 'H3', 'change_to_h3');
             // Ctrl+Shift+U は GTK の Unicode 入力に衝突するため Alt+Shift+U を使用する
             editor.addShortcut('alt+shift+u', '箇条書き', 'change_to_ul');
             editor.addShortcut('alt+shift+o', '番号付き箇条書き', 'change_to_ol');
