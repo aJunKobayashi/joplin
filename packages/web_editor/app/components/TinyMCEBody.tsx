@@ -1792,16 +1792,11 @@ export default function TinyMCEBody({
             },
           });
 
+          let commandShiftKey = false;
           // Cmd/Ctrl+Shift+V: プレーンテキストとして貼り付け（HTML タグをエスケープ）
           editor.on('keydown', (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyV') {
-              e.preventDefault();
-              navigator.clipboard.readText().then((text) => {
-                if (text) {
-                  const escapedText = htmlEntity.encode(text);
-                  editor.insertContent(escapedText);
-                }
-              });
+              commandShiftKey = true;
             }
           });
 
@@ -1810,6 +1805,16 @@ export default function TinyMCEBody({
             const clipboardData = e.clipboardData;
             if (!clipboardData) return;
             const pastedHtml = clipboardData.getData('text/html');
+            if (commandShiftKey) {
+              e.preventDefault();
+              commandShiftKey = false;
+              const text = clipboardData.getData('text/plain');
+              if (text) {
+                const escapedText = htmlEntity.encode(text);
+                editor.insertContent(escapedText);
+              }
+              return;
+            }
             if (!pastedHtml) return;
             e.preventDefault();
             const pasteDoc = new DOMParser().parseFromString(pastedHtml, 'text/html');
